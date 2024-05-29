@@ -24,4 +24,4 @@ jobs:
 
     - name: Compile Python script with Nuitka
       run: |
-        python -m nuitka --follow-imports your_script.py
+        python -m nuitka --follow-imports main.py
