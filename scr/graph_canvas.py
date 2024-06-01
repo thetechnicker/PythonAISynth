@@ -70,8 +70,11 @@ class GraphCanvas(tk.Frame):
 
     def convert_canvas_to_graph_coordinates(self, x, y):
         # return x,y
-        graph_x = (x - 300) / 100 * math.pi
-        graph_y = (300 - y) / 300
+        # graph_x = (x - 300) / 100 * math.pi +self.offset
+        # graph_y = (300 - y) / 300 + self.offset
+        graph_x = ((x+self.offset) - self.canvas_width/2) / 100 * 2*math.pi
+        graph_y = (self.canvas_height/2 - y) / self.canvas_height/2
+        print(graph_x, graph_y)
         return graph_x, graph_y
 
     def convert_graph_to_canvas_coordinates(self, x, y):
