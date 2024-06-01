@@ -11,8 +11,12 @@ class GraphCanvas(tk.Frame):
         self.canvas.pack(fill=tk.BOTH, expand=True)
         self.canvas.bind('<Configure>', self.maintain_aspect_ratio)
         self.canvas.bind('<B1-Motion>', self.on_mouse_move)
+        self.canvas.bind('<space>', self.on_space_press)
         self.data:list[tuple[float,float]] = []
         self.setup_axes()
+        
+    def on_space_press(self, event):
+        self.on_mouse_move(event)
 
     def setup_axes(self):
         self.canvas.create_line(self.offset, self.canvas_height/2+self.offset, self.canvas_width+self.offset, self.canvas_height/2+self.offset, fill='black')  # X-axis
