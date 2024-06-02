@@ -33,7 +33,8 @@ class GraphCanvas(tk.Frame):
             #print(y)
             self.canvas.create_line((self.canvas_height/2)-10+self.offset, y, (self.canvas_height/2)+10+self.offset, y, fill='red')
             #self.canvas.create_oval((self.canvas_height/2)-10, y+10, (self.canvas_height/2)+10, y-10,  fill='black')
-            #self.canvas.create_text((self.canvas_height/2)-10, y, text=f'{i}')
+            self.canvas.create_text((self.canvas_height/2)-10, y, text=f'{i}')
+
     first=True
     def maintain_aspect_ratio(self, event):
         if self.first:
