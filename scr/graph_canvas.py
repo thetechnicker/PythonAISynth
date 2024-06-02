@@ -74,13 +74,33 @@ class GraphCanvas(tk.Frame):
         return self.data
 
     def convert_canvas_to_graph_coordinates(self, x, y):
-        # return x,y
-        # graph_x = (x - 300) / 100 * math.pi +self.offset
-        # graph_y = (300 - y) / 300 + self.offset
-        graph_x = ((x+self.offset) - self.canvas_width/2) / 100 * 2*math.pi
-        graph_y = (self.canvas_height/2 - y) / self.canvas_height/2
-        print(graph_x, graph_y)
+        return x+self.offset,y+self.offset
+
+
+    def convert_graph_to_canvas_coordinates(self, x, y):
+        x,y=x,y
+        ax_1,ax_2, bx_1, bx_2=self.offset,self.canvas_width, 0, 0
+        ay_1,ay_2, by_1, by_2=self.offset,self.canvas_height, 0, 0
+        graph_x=0
+        graph_y=-1+()
         return graph_x, graph_y
+    
+    def map_value(self, x, a1, a2, b1, b2):
+        """
+        Maps a value from one range to another.
+
+        Parameters:
+        x (float): The value to map.
+        a1 (float): The lower bound of the original range.
+        a2 (float): The upper bound of the original range.
+        b1 (float): The lower bound of the target range.
+        b2 (float): The upper bound of the target range.
+
+        Returns:
+        float: The mapped value in the target range.
+        """
+        return b1 + ((x - a1) * (b2 - b1)) / (a2 - a1)
+
 
     def convert_graph_to_canvas_coordinates(self, x, y):
         canvas_x = 300 + x / math.pi * 100
