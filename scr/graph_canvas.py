@@ -22,7 +22,7 @@ def map_value(x, a1, a2, b1, b2):
 class GraphCanvas(tk.Frame):
     canvas_width = 600
     canvas_height = 600
-    offset = 5
+    offset = 10
 
     def __init__(self, master):
         super().__init__(master)
@@ -67,9 +67,9 @@ class GraphCanvas(tk.Frame):
             self.first = False
             return
         size = min(event.width, event.height)
-        self.canvas_width = size
-        self.canvas_height = size
-        self.canvas.config(width=size+self.offset*2, height=size+self.offset*2)
+        self.canvas_width = size-self.offset*2
+        self.canvas_height = size-self.offset*2
+        self.canvas.config(width=size, height=size)
         self.canvas.delete('all')
         self.setup_axes()
         for x, y in self.data:
@@ -90,8 +90,7 @@ class GraphCanvas(tk.Frame):
                 self.data.append((x, y))
             self.canvas.delete('all')
             self.setup_axes()
-            for i, (x, y) in enumerate(self.data):
-                # print(i,x,y)
+            for x, y in self.data:
                 self.draw_point(x, y)
 
     def draw_point(self, x, y):
@@ -108,14 +107,13 @@ class GraphCanvas(tk.Frame):
         graph_y = map_value(y, ay_1, ay_2, by_1, by_2)
         return graph_x, graph_y
 
-
     def convert_graph_to_canvas_coordinates(self, x, y):
         ax_1, ax_2, bx_1, bx_2 = -2*math.pi, 2*math.pi, self.offset, self.canvas_width
         ay_1, ay_2, by_1, by_2 = -1, 1, self.offset, self.canvas_height
         graph_x = map_value(x, ax_1, ax_2, bx_1, bx_2)
         graph_y = map_value(y, ay_1, ay_2, by_1, by_2)
         return graph_x, graph_y
-    
+
     def draw_bounding_box(self):
         self.canvas.create_rectangle(1, 1, 598, 598, outline='black')
 
