@@ -1,3 +1,4 @@
+from threading import Thread
 import tkinter as tk
 
 from scr.fourier_neural_network import FourierNN

@@ -84,7 +84,7 @@ class FourierNN:
             ax.plot(_x, np.sin(_x), color='black', label='Base Frequency')
             ax.scatter(actualData_x, actualData_y, color='blue', label='Training data')
             y_test = self.model.predict(np.array(_y))
-            ax.plot(_x, y_test, 'o-', color='red', label='Neural network approximation', linewidth=2)
+            ax.plot(_x, y_test, '.-', color='red', label='Neural network approximation', linewidth=2)
             ax.legend()
             ax.grid()
             plt.draw()
