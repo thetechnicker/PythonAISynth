@@ -6,6 +6,7 @@ from tensorflow.keras.layers import Dense, Input
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 
+
 class FourierNN:
     RANGE = 10**3
     EPOCHS = 50
