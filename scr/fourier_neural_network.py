@@ -1,10 +1,13 @@
+import os
+os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"  # Set PlaidML as the backend for Keras
+
 import random
 import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Input
+from keras.models import Sequential, load_model  # Import from keras instead of tensorflow.keras
+from keras.layers import Dense, Input  # Import from keras instead of tensorflow.keras
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
+
 
 class FourierNN:
     RANGE = 10**3
@@ -53,7 +56,7 @@ class FourierNN:
 
     def create_model(self, input_shape):
         self.model = Sequential([
-            Input(shape=input_shape),
+            Dense(64,input_shape=input_shape),
             Dense(64, activation='relu'),
             Dense(1)
         ])
@@ -109,11 +112,13 @@ class FourierNN:
         self.model.save(filename)
 
     def load_model(self, filename='model.h5'):
-        self.model = tf.keras.models.load_model(filename)
+        self.model = load_model(filename)
 
 if __name__ == '__main__':
+    def relu(x):
+        return np.maximum(0, x)
     # Test the class with custom data points
-    data = [(x, np.sin(x * tf.keras.activations.relu(x))) for x in np.linspace(np.pi, -np.pi, 100)]
+    data = [(x, np.sin(x * relu(x))) for x in np.linspace(np.pi, -np.pi, 100)]
     fourier_nn = FourierNN(data)
     fourier_nn.train_and_plot()
     # fourier_nn.convert_to_audio()
