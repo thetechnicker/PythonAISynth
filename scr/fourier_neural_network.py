@@ -8,8 +8,7 @@ from keras.layers import Dense, Input  # Import from keras instead of tensorflow
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 
-
-class FourierNN:
+class FourierNN():
     RANGE = 10**3
     EPOCHS = 50
     TRAINING_SPEED = 1
