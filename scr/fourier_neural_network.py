@@ -3,18 +3,21 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Input
+
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 
 
 class FourierNN:
     RANGE = 10**3
-    EPOCHS = 50
+    EPOCHS = 500
     TRAINING_SPEED = 1
     SIGNED_RANDOMNES = 0.000000001
     DEFAULT_FORIER_DEGREE = 10
     FORIER_DEGREE_DIVIDER = 100
-    FORIER_DEGREE_OFFSET = 1
+    FORIER_DEGREE_OFFSET = 25
 
     def __init__(self, data):
         self.data = data
@@ -88,8 +91,13 @@ class FourierNN:
             ax.plot(_x, y_test, '.-', color='red', label='Neural network approximation', linewidth=2)
             ax.legend()
             ax.grid()
-            plt.draw()
-            plt.pause(0.1)
+            try:
+                plt.draw()
+                plt.pause(0.1)
+            except KeyboardInterrupt:
+                return
+            except:
+                continue
 
         plt.ioff()
         plt.show()
