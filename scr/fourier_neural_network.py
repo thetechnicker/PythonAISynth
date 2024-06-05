@@ -11,11 +11,11 @@ from scipy.io.wavfile import write
 class FourierNN():
     RANGE = 10**3
     EPOCHS = 50
-    TRAINING_SPEED = 1
+    TRAINING_SPEED = 10
     SIGNED_RANDOMNES = 0.000000001
-    DEFAULT_FORIER_DEGREE = 10
+    DEFAULT_FORIER_DEGREE = 100
     FORIER_DEGREE_DIVIDER = 100
-    FORIER_DEGREE_OFFSET = 1
+    FORIER_DEGREE_OFFSET = 20
 
     def __init__(self, data):
         self.data = data
