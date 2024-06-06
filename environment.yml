@@ -1,0 +1,10 @@
+name: ai_synth_main
+channels:
+  - defaults
+dependencies:
+  - python==3.11
+  - matplotlib
+  - tensorflow
+  - scipy
+  - numpy
+prefix: /home/lucasgerdes/anaconda3/envs/ai_synth_main
