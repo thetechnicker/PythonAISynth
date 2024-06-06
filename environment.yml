@@ -7,4 +7,3 @@ dependencies:
   - tensorflow
   - scipy
   - numpy
-prefix: /home/lucasgerdes/anaconda3/envs/ai_synth_main
