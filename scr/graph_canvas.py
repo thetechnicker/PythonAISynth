@@ -1,5 +1,8 @@
+from copy import copy
 import tkinter as tk
 import math
+
+import numpy as np
 
 
 def map_value(x, a1, a2, b1, b2):
@@ -22,7 +25,9 @@ def map_value(x, a1, a2, b1, b2):
 class GraphCanvas(tk.Frame):
     canvas_width = 600
     canvas_height = 600
-    offset = 5
+    offset = 10
+    lower_end= -math.pi
+    upper_end= math.pi
 
     def __init__(self, master):
         super().__init__(master)
@@ -34,6 +39,8 @@ class GraphCanvas(tk.Frame):
         self.canvas.bind('<space>', self.on_space_press)
         self.data: list[tuple[float, float]] = []
         self.setup_axes()
+        self.lst=np.linspace(-np.pi, np.pi, 100)
+
 
     def on_space_press(self, event):
         self.on_mouse_move(event)
@@ -45,8 +52,8 @@ class GraphCanvas(tk.Frame):
                                 2+self.offset, self.canvas_height+self.offset, fill='black')  # Y-axis
         # self.canvas.create_oval()
 
-        for i in range(-2, 3):
-            x = (self.canvas_width/2 + i * self.canvas_width/5)+self.offset
+        for i in range(-1, 2):
+            x = (self.canvas_width/2 + i * self.canvas_width/2)+self.offset
             self.canvas.create_line(x, (self.canvas_width/2)-10+self.offset,
                                     x, (self.canvas_width/2)+10+self.offset, fill='blue')
             self.canvas.create_text(
@@ -67,9 +74,9 @@ class GraphCanvas(tk.Frame):
             self.first = False
             return
         size = min(event.width, event.height)
-        self.canvas_width = size
-        self.canvas_height = size
-        self.canvas.config(width=size+self.offset*2, height=size+self.offset*2)
+        self.canvas_width = size-self.offset*2
+        self.canvas_height = size-self.offset*2
+        self.canvas.config(width=size, height=size)
         self.canvas.delete('all')
         self.setup_axes()
         for x, y in self.data:
@@ -77,20 +84,21 @@ class GraphCanvas(tk.Frame):
 
     def on_mouse_move(self, event):
         x, y = self.convert_canvas_to_graph_coordinates(event.x, event.y)
-        if -1 <= y <= 1 and -2*math.pi < x < 2*math.pi:
+        x = min(self.lst, key=lambda _y: abs(x - _y))
+        
+        if -1 <= y <= 1 and self.lower_end < x < self.upper_end:
             if self.data:
-                if any(int(x) == int(_data) for _data, _ in self.data):
+                if any(x == _data for _data, _ in self.data):
                     index = [i for i, data in enumerate(
-                        self.data) if int(x) == int(data[0])][0]
-                    self.data[index] = (int(x), y,)
+                        self.data) if x == (data[0])][0]
+                    self.data[index] = (x, y,)
                 else:
-                    self.data.append((int(x), y))
+                    self.data.append((x, y))
             else:
-                self.data.append((int(x), y))
+                self.data.append((x, y))
             self.canvas.delete('all')
             self.setup_axes()
-            for i, (x, y) in enumerate(self.data):
-                # print(i,x,y)
+            for x, y in self.data:
                 self.draw_point(x, y)
 
     def draw_point(self, x, y):
@@ -98,26 +106,21 @@ class GraphCanvas(tk.Frame):
         self.canvas.create_oval(cx-2, cy-2, cx+2, cy+2, fill='red')
 
     def export_data(self):
-        return self.data
+        return copy(self.data)
 
     def convert_canvas_to_graph_coordinates(self, x, y):
-        ax_1, ax_2, bx_1, bx_2 = -2*math.pi, 2*math.pi, self.offset, self.canvas_width
-        ay_1, ay_2, by_1, by_2 = -1, 1, self.offset, self.canvas_height
-        graph_x = map_value(x, ax_1, ax_2, bx_1, bx_2)
-        graph_y = map_value(y, ay_1, ay_2, by_1, by_2)
-        return graph_x, graph_y
-
-    def convert_graph_to_canvas_coordinates(self, x, y):
-        ax_1, ax_2, bx_1, bx_2 = self.offset, self.canvas_width, -2*math.pi, 2*math.pi
+        ax_1, ax_2, bx_1, bx_2 = self.offset, self.canvas_width, self.upper_end, self.lower_end
         ay_1, ay_2, by_1, by_2 = self.offset, self.canvas_height, -1, 1
         graph_x = map_value(x, ax_1, ax_2, bx_1, bx_2)
         graph_y = map_value(y, ay_1, ay_2, by_1, by_2)
         return graph_x, graph_y
 
     def convert_graph_to_canvas_coordinates(self, x, y):
-        canvas_x = 300 + x / math.pi * 100
-        canvas_y = 300 - y * 300
-        return canvas_x, canvas_y
+        ax_1, ax_2, bx_1, bx_2 = self.upper_end, self.lower_end, self.offset, self.canvas_width
+        ay_1, ay_2, by_1, by_2 = -1, 1, self.offset, self.canvas_height
+        graph_x = map_value(x, ax_1, ax_2, bx_1, bx_2)
+        graph_y = map_value(y, ay_1, ay_2, by_1, by_2)
+        return graph_x, graph_y
 
     def draw_bounding_box(self):
         self.canvas.create_rectangle(1, 1, 598, 598, outline='black')
