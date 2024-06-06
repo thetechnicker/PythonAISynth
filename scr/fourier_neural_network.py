@@ -6,17 +6,22 @@ from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.callbacks import Callback
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
+from multiprocessing import Process, Queue
 
 
 class MyCallback(Callback):
-    def __init__(self, testData):
+    def __init__(self, queue:Queue=None, test_data=None):
         super().__init__(self)
+        self.queue:Queue = queue
+        self.test_data = test_data
 
     def on_epoch_begin(self, epoch, logs=None):
         print(f"EPOCHE {epoch} STARTED")
-    
+
     def on_epoch_end(self, epoch, logs=None):
-        print(f"EPOCHE {epoch} ENDED")
+        if self.queue:
+            self.queue.put(self.test_data[0], self.model.predict(self.test_data[1]))
+        print(f"EPOCHE {epoch} ENDED, Logs: {logs}")
 
 
 class FourierNN:
@@ -81,12 +86,15 @@ class FourierNN:
         ])
         self.model.compile(optimizer='adam', loss='mean_squared_error')
 
-    def train(self):
-        _, x_train_transformed, y_train, _, _, _ = self.generate_data()
+    def train(self, queue=None):
+        _, x_train_transformed, y_train, _, _, fourier_degree = self.generate_data()
         self.create_model((x_train_transformed.shape[1],))
 
+        _x, _y = zip(*list((x, self.fourier_basis(x, fourier_degree))
+                     for x in np.linspace(-2 * np.pi, 2 * np.pi, self.RANGE)))
+        _x, _y = np.array(_x), np.array(_y)
         self.model.fit(x_train_transformed, y_train,
-                       epochs=self.EPOCHS, callbacks=[MyCallback()], batch_size=32, verbose=0)
+                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, (_x, _y))], batch_size=32, verbose=0)
 
     def train_and_plot(self):
         x_train, x_train_transformed, y_train, actualData_x, actualData_y, fourier_degree = self.generate_data()
