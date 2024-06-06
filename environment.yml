@@ -3,9 +3,6 @@ channels:
   - defaults
 dependencies:
   - python=3.9
-  - pip
-  - pip:
-    - plaidml-keras
-    - matplotlib
   - tensorflow=2.6.0
+  - pip
   - keras=2.6.0
