@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 from multiprocessing import Process, Queue
 
+from scr.utils import midi_to_freq
+
 
 class MyCallback(Callback):
     def __init__(self, queue:Queue=None, test_data=None):
@@ -134,6 +136,18 @@ class FourierNN:
 
         plt.ioff()
         plt.show()
+
+    def synthesize(self, midi_notes, model, sample_rate=44100, duration=5.0):
+        output = np.zeros(int(sample_rate * duration))
+        for note in midi_notes:
+            freq = midi_to_freq(note)
+            t = np.linspace(0, duration, int(sample_rate * duration), False)
+            t_scaled = t * 2 * np.pi / freq
+            signal = self.model.predict(np.array([self.fourier_basis(x) for x in t_scaled]))
+            output += signal
+        output = output / np.max(np.abs(output))  # Normalize
+        return output.astype(np.int16)
+    
 
     def convert_to_audio(self, filename='output.wav'):
         sample_rate = 44100
