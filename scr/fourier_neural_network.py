@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 
 class FourierNN():
-    RANGE = 10**7
+    RANGE = 10**4
     ITTERRATIONS = 10
     EPOCHS = 10
     SIGNED_RANDOMNES = 0.00000001
@@ -40,18 +40,20 @@ class FourierNN():
         actualData_x, actualData_y = zip(*self.data)
         actualData_x = np.array(actualData_x)
         actualData_y = np.array(actualData_y)
-        print(len(self.data), self.RANGE/len(self.data), self.RANGE)
+        print(len(self.data), self.RANGE//len(self.data), self.RANGE)
         if len(self.data) < self.RANGE:
             print("extending data")
             ittr=0
             while len(self.data) < self.RANGE:
-                print("itterration:", ittr, 'len', len(self.data), self.RANGE/len(self.data), self.RANGE)
+                print("itterration:", ittr, 'len', len(self.data), self.RANGE//len(self.data), self.RANGE)
                 for i, data in enumerate(self.data):
-                    print("element:", i, 'len', len(self.data), self.RANGE/len(self.data), self.RANGE)
+                    print("element:", i, 'len', len(self.data), self.RANGE//len(self.data), self.RANGE)
                     if len(self.data) == self.RANGE:
                         break
+                    new_data_X=(self.data[i-1][0]+data[0])/2
+                    new_data_Y=(self.data[i-1][1]+data[1])/2
                     new_data=(self.data[i-1]+data)/2
-                    self.data= np.insert(self.data, i+1, new_data)
+                    self.data = np.insert(self.data, i, new_data, axis=0)
                 ittr-=-1
         # if len(self.data) < self.RANGE:
         #     if len(self.data) == self.RANGE / 2:
@@ -137,7 +139,7 @@ if __name__ == '__main__':
     def relu(x):
         return np.maximum(0, x)
     # Test the class with custom data points
-    data = np.array([(x, np.sin(x * relu(x))) for x in np.linspace(np.pi, -np.pi, 1000)])
+    data = np.array([(x, np.sin(x * relu(x))) for x in np.linspace(np.pi, -np.pi, 100)])
     fourier_nn = FourierNN(data)
     fourier_nn.train_and_plot()
     # fourier_nn.convert_to_audio()
