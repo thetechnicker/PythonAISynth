@@ -10,7 +10,6 @@ from multiprocessing import Process, Queue
 
 from scr.utils import midi_to_freq
 
-
 class MyCallback(Callback):
     def __init__(self, queue:Queue=None, test_data=None):
         super().__init__(self)
@@ -175,5 +174,3 @@ if __name__ == '__main__':
             for x in np.linspace(np.pi, -np.pi, 100)]
     fourier_nn = FourierNN(data)
     fourier_nn.train()
-    # fourier_nn.convert_to_audio()
-    # fourier_nn.save_model()
