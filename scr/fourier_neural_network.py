@@ -11,18 +11,21 @@ from multiprocessing import Process, Queue
 from scr.utils import midi_to_freq
 
 class MyCallback(Callback):
-    def __init__(self, queue:Queue=None, test_data=None):
-        super().__init__(self)
+    def __init__(self, queue:Queue=None, test_data=None, quiet=False):
+        super().__init__()
         self.queue:Queue = queue
         self.test_data = test_data
+        self.quiet = quiet
 
     def on_epoch_begin(self, epoch, logs=None):
-        print(f"EPOCHE {epoch} STARTED")
+        if not self.quiet:
+            print(f"EPOCHE {epoch} STARTED")
 
     def on_epoch_end(self, epoch, logs=None):
         if self.queue:
             self.queue.put(self.test_data[0], self.model.predict(self.test_data[1]))
-        print(f"EPOCHE {epoch} ENDED, Logs: {logs}")
+        if not self.quiet:
+            print(f"EPOCHE {epoch} ENDED, Logs: {logs}")
 
 
 class FourierNN:
@@ -54,7 +57,7 @@ class FourierNN:
         return np.array(basis)
 
     def generate_data(self):
-        fourier_degree = (
+        self.fourier_degree = (
             len(self.data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
         actualData_x, actualData_y = zip(*self.data)
         if len(self.data) < self.RANGE:
@@ -76,8 +79,8 @@ class FourierNN:
         x_train = np.array(x_train)
         y_train = np.array(y_train)
         x_train_transformed = np.array(
-            [self.fourier_basis(x, fourier_degree) for x in x_train])
-        return x_train, x_train_transformed, y_train, actualData_x, actualData_y, fourier_degree
+            [self.fourier_basis(x, self.fourier_degree) for x in x_train])
+        return x_train, x_train_transformed, y_train, actualData_x, actualData_y, self.fourier_degree
 
     def create_model(self, input_shape):
         self.model = Sequential([
@@ -87,7 +90,7 @@ class FourierNN:
         ])
         self.model.compile(optimizer='adam', loss='mean_squared_error')
 
-    def train(self, queue=None):
+    def train(self, queue=None, quiet=False):
         _, x_train_transformed, y_train, _, _, fourier_degree = self.generate_data()
         self.create_model((x_train_transformed.shape[1],))
 
@@ -95,7 +98,7 @@ class FourierNN:
                      for x in np.linspace(-2 * np.pi, 2 * np.pi, self.RANGE)))
         _x, _y = np.array(_x), np.array(_y)
         self.model.fit(x_train_transformed, y_train,
-                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, (_x, _y))], batch_size=32, verbose=0)
+                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, (_x, _y,),quiet)], batch_size=32, verbose=0)
 
     def train_and_plot(self):
         x_train, x_train_transformed, y_train, actualData_x, actualData_y, fourier_degree = self.generate_data()
@@ -136,13 +139,20 @@ class FourierNN:
         plt.ioff()
         plt.show()
 
+    def predict(self, data):
+        _, _y = zip(*list((x, self.fourier_basis(x, self.fourier_degree))
+                     for x in data))
+        y_test = self.model.predict(np.array(_y))
+        return y_test
+
+
     def synthesize(self, midi_notes, model, sample_rate=44100, duration=5.0):
         output = np.zeros(int(sample_rate * duration))
         for note in midi_notes:
             freq = midi_to_freq(note)
             t = np.linspace(0, duration, int(sample_rate * duration), False)
             t_scaled = t * 2 * np.pi / freq
-            signal = self.model.predict(np.array([self.fourier_basis(x) for x in t_scaled]))
+            signal = self.model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))
             output += signal
         output = output / np.max(np.abs(output))  # Normalize
         return output.astype(np.int16)
@@ -167,10 +177,10 @@ class FourierNN:
     def load_model(self, filename='model.h5'):
         self.model = tf.keras.models.load_model(filename)
 
-
-if __name__ == '__main__':
-    # Test the class with custom data points
-    data = [(x, np.sin(x * tf.keras.activations.relu(x)))
-            for x in np.linspace(np.pi, -np.pi, 100)]
-    fourier_nn = FourierNN(data)
-    fourier_nn.train()
+# moved to ./tests/fouriernn_test.py
+# if __name__ == '__main__':
+#     # Test the class with custom data points
+#     data = [(x, np.sin(x * tf.keras.activations.relu(x)))
+#             for x in np.linspace(np.pi, -np.pi, 100)]
+#     fourier_nn = FourierNN(data)
+#     fourier_nn.train()
