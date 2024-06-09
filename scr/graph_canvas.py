@@ -45,6 +45,12 @@ class GraphCanvas(tk.Frame):
     def on_space_press(self, event):
         self.on_mouse_move(event)
 
+    def clear(self):
+        self.data: list[tuple[float, float]] = []
+        self.canvas.delete('all')
+        self.setup_axes()
+
+
     def setup_axes(self):
         self.canvas.create_line(self.offset, self.canvas_height/2+self.offset, self.canvas_width +
                                 self.offset, self.canvas_height/2+self.offset, fill='black')  # X-axis
