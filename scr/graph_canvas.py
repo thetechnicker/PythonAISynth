@@ -36,12 +36,16 @@ class GraphCanvas(tk.Frame):
                                 height=self.canvas_height+self.offset*2, bg='white')
         self.canvas.pack(fill=tk.BOTH, expand=True)
         self.canvas.bind('<Configure>', self.maintain_aspect_ratio)
-        self.canvas.bind('<B1-Motion>', self.on_mouse_move_interpolate)
+        
+        self.canvas.bind('<B1-Motion>', self.on_mouse_move_interpolate) # on_mouse_move, on_mouse_move_optimized
+        self.canvas.bind('<B1-Motion>', self.motion_end)
         self.canvas.bind('<space>', self.on_space_press)
         self.data: list[tuple[float, float]] = []
         self.setup_axes()
-        self.lst=np.linspace(-np.pi, np.pi, 100)
+        self.lst=np.linspace(-np.pi, np.pi, 200)
 
+    def motion_end(self):
+        del self.old_point
 
     def on_space_press(self, event):
         self.on_mouse_move(event)
@@ -94,11 +98,16 @@ class GraphCanvas(tk.Frame):
                 for point in points:
                     interpolate_event = copy(event)
                     interpolate_event.x, interpolate_event.y = point
-                    self.on_mouse_move(interpolate_event)
+                    self.on_mouse_move_optimized(interpolate_event)
             else:
-                self.on_mouse_move(event)
+                self.on_mouse_move_optimized(event)
         else:
-            self.on_mouse_move(event)
+            self.on_mouse_move_optimized(event)
+
+        self.canvas.delete('all')
+        self.setup_axes()
+        for x, y in self.data:
+            self.draw_point(x, y)
         self.old_point = new_point
 
     def on_mouse_move(self, event):
@@ -120,8 +129,18 @@ class GraphCanvas(tk.Frame):
             for x, y in self.data:
                 self.draw_point(x, y)
 
+    def on_mouse_move_optimized(self, event):
+        x, y = self.convert_canvas_to_graph_coordinates_optimized(event.x, event.y)
+        x = min(self.lst, key=lambda _y: abs(x - _y))
+
+        if -1 <= y <= 1 and self.lower_end < x < self.upper_end:
+            data_dict = dict(self.data)
+            data_dict[x] = y
+            self.data = list(data_dict.items())
+
+
     def draw_point(self, x, y):
-        cx, cy = self.convert_graph_to_canvas_coordinates(x, y)
+        cx, cy = self.convert_graph_to_canvas_coordinates_optimized(x, y)
         self.canvas.create_oval(cx-2, cy-2, cx+2, cy+2, fill='red')
 
     def export_data(self):
@@ -140,6 +159,23 @@ class GraphCanvas(tk.Frame):
         graph_x = map_value(x, ax_1, ax_2, bx_1, bx_2)
         graph_y = map_value(y, ay_1, ay_2, by_1, by_2)
         return graph_x, graph_y
+
+    def convert_canvas_to_graph_coordinates_optimized(self, x, y):
+        graph_x = self.map_value(x, self.offset, self.canvas_width, self.upper_end, self.lower_end)
+        graph_y = self.map_value(y, self.offset, self.canvas_height, -1, 1)
+        return graph_x, graph_y
+
+    def convert_graph_to_canvas_coordinates_optimized(self, x, y):
+        graph_x = self.map_value(x, self.upper_end, self.lower_end, self.offset, self.canvas_width)
+        graph_y = self.map_value(y, -1, 1, self.offset, self.canvas_height)
+        return graph_x, graph_y
+
+    def map_value(self, value, leftMin, leftMax, rightMin, rightMax):
+        # Assuming map_value function looks something like this
+        leftSpan = leftMax - leftMin
+        rightSpan = rightMax - rightMin
+        valueScaled = float(value - leftMin) / float(leftSpan)
+        return rightMin + (valueScaled * rightSpan)
 
     def draw_bounding_box(self):
         self.canvas.create_rectangle(1, 1, 598, 598, outline='black')
