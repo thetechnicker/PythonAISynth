@@ -4,6 +4,7 @@ import math
 
 import numpy as np
 
+from scr import utils
 
 def map_value(x, a1, a2, b1, b2):
     """
@@ -35,7 +36,7 @@ class GraphCanvas(tk.Frame):
                                 height=self.canvas_height+self.offset*2, bg='white')
         self.canvas.pack(fill=tk.BOTH, expand=True)
         self.canvas.bind('<Configure>', self.maintain_aspect_ratio)
-        self.canvas.bind('<B1-Motion>', self.on_mouse_move)
+        self.canvas.bind('<B1-Motion>', self.on_mouse_move_interpolate)
         self.canvas.bind('<space>', self.on_space_press)
         self.data: list[tuple[float, float]] = []
         self.setup_axes()
@@ -82,6 +83,24 @@ class GraphCanvas(tk.Frame):
         for x, y in self.data:
             self.draw_point(x, y)
 
+    def on_mouse_move_interpolate(self, event):
+        new_point = (event.x, event.y)
+        if hasattr(self, 'old_point'):
+            old_point = self.old_point
+            dist = abs(new_point[0] - old_point[0])
+            if dist > 2:
+                t_values = np.arange(dist) / dist
+                points = utils.interpolate_vectorized(old_point, new_point, t_values)
+                for point in points:
+                    interpolate_event = copy(event)
+                    interpolate_event.x, interpolate_event.y = point
+                    self.on_mouse_move(interpolate_event)
+            else:
+                self.on_mouse_move(event)
+        else:
+            self.on_mouse_move(event)
+        self.old_point = new_point
+
     def on_mouse_move(self, event):
         x, y = self.convert_canvas_to_graph_coordinates(event.x, event.y)
         x = min(self.lst, key=lambda _y: abs(x - _y))
@@ -126,8 +145,9 @@ class GraphCanvas(tk.Frame):
         self.canvas.create_rectangle(1, 1, 598, 598, outline='black')
 
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    graph = GraphCanvas(root)
-    graph.pack(fill=tk.BOTH, expand=True)
-    root.mainloop()
+# moved to ./tests
+# if __name__ == "__main__":
+#     root = tk.Tk()
+#     graph = GraphCanvas(root)
+#     graph.pack(fill=tk.BOTH, expand=True)
+#     root.mainloop()
