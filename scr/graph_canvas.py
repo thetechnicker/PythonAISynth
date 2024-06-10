@@ -30,7 +30,10 @@ class GraphCanvas(tk.Frame):
     lower_end= -math.pi
     upper_end= math.pi
 
-    def __init__(self, master):
+    def __init__(self, master, width=600, height=600):
+        self.canvas_width = width
+        self.canvas_height = height
+        self.aspect_ratio=width/height
         super().__init__(master)
         self.canvas = tk.Canvas(self, width=self.canvas_width+self.offset*2,
                                 height=self.canvas_height+self.offset*2, bg='white')
@@ -38,14 +41,15 @@ class GraphCanvas(tk.Frame):
         self.canvas.bind('<Configure>', self.maintain_aspect_ratio)
         
         self.canvas.bind('<B1-Motion>', self.on_mouse_move_interpolate) # on_mouse_move, on_mouse_move_optimized
-        self.canvas.bind('<B1-Motion>', self.motion_end)
+        self.canvas.bind('<ButtonRelease-1>', self.motion_end)
         self.canvas.bind('<space>', self.on_space_press)
         self.data: list[tuple[float, float]] = []
         self.setup_axes()
         self.lst=np.linspace(-np.pi, np.pi, 200)
 
-    def motion_end(self):
-        del self.old_point
+    def motion_end(self, event):
+        if hasattr(self, 'old_point'):
+            del self.old_point
 
     def on_space_press(self, event):
         self.on_mouse_move(event)
@@ -79,6 +83,8 @@ class GraphCanvas(tk.Frame):
             self.first = False
             return
         size = min(event.width, event.height)
+        width = self.aspect_ratio
+        height = self.aspect_ratio
         self.canvas_width = size-self.offset*2
         self.canvas_height = size-self.offset*2
         self.canvas.config(width=size, height=size)

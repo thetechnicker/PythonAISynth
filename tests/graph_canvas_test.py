@@ -7,6 +7,6 @@ import tkinter as tk
 
 if __name__ == "__main__":
     root = tk.Tk()
-    graph = graph_canvas.GraphCanvas(root)
+    graph = graph_canvas.GraphCanvas(root, 900, 300)
     graph.pack(fill=tk.BOTH, expand=True)
     root.mainloop()
