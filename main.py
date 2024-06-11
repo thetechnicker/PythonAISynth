@@ -1,3 +1,4 @@
+import os
 from threading import Thread
 import tkinter as tk
 from tkinter import ttk
@@ -61,16 +62,24 @@ if __name__ == "__main__":
         def export():
             nonlocal fourier_nn
             if fourier_nn:
-                fourier_nn.save_model()
+                path='./tmp'
+                if not os.path.exists(path):
+                    os.mkdir(path)
+                i=0
+                while os.path.exists(path+f"/model{i}.h5"):
+                    i+=1
+                file=f"{path}/model{i}.h5"
+                fourier_nn.save_model(file)
 
         def load():
             nonlocal fourier_nn
             filetypes = (('tmodel files', '*.h5'), ('All files', '*.*'))
-            filename = filedialog.askopenfilename(title='Open a file', initialdir='.', filetypes=filetypes)
-            if not fourier_nn:
-                fourier_nn=FourierNN(data=None)
-            fourier_nn.load_model(filename)
-            #graph.draw_extern_graph_from_func(fourier_nn.predict)
+            filename = filedialog.askopenfilename(title='Open a file', initialdir='.', filetypes=filetypes, parent=root)
+            if os.path.exists(filename):
+                if not fourier_nn:
+                    fourier_nn=FourierNN(data=None)
+                fourier_nn.load_model(filename)
+                graph.draw_extern_graph_from_func(os.path.basename(filename), fourier_nn.predict)
         
 
         button= tk.Button(root, text='Train', command=test)

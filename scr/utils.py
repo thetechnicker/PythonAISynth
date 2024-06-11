@@ -1,3 +1,4 @@
+import random
 import numpy as np
 
 
@@ -65,3 +66,12 @@ def map_value(value, leftMin, leftMax, rightMin, rightMax):
     rightSpan = rightMax - rightMin
     valueScaled = float(value - leftMin) / float(leftSpan)
     return rightMin + (valueScaled * rightSpan)
+
+def random_hex_color():
+    # Generate a random color in hexadecimal format
+    color = '{:06x}'.format(random.randint(0, 0xFFFFFF))
+    return '#' + color
+
+def random_color():
+    colors = ["lime", "orange", "yellow", "green", "blue", "indigo", "violet"]
+    return random.choice(colors)

@@ -58,6 +58,8 @@ class GraphCanvas(tk.Frame):
         self.setup_axes()
         for x, y in self.data:
             self.draw_point(x, y)
+        if hasattr(self, 'extern_graph'):
+            self._draw_extern_graph(self.extern_graph)
 
     def motion_end(self, event):
         if hasattr(self, 'old_point'):
@@ -164,16 +166,22 @@ class GraphCanvas(tk.Frame):
         self.data = [(x, self._eval_func(function, x)) for x in self.lst]
         self._draw()
 
-    def draw_extern_graph(self, data):
-        self._draw()
-        data_ = sorted(data, key= lambda x: x[0])
-        for a, b in utils.pair_iterator(data):
-            self.canvas.create_line(a[0],a[1],b[0],b[1])
+    def _draw_extern_graph(self, data):
+        for name, (graph, color) in self.extern_graph.items():
+            x, y = self.convert_graph_to_canvas_coordinates_optimized(*graph[0])
+            self.canvas.create_text(x+10, y-20, text=name, fill=color)
+            for a, b in utils.pair_iterator(graph):
+                a_new=self.convert_graph_to_canvas_coordinates_optimized(*a)
+                b_new=self.convert_graph_to_canvas_coordinates_optimized(*b)
+                self.canvas.create_line(*a_new,*b_new, width=self.point_radius/2, fill=color)
 
     
-    def draw_extern_graph_from_func(self, function):
-        data =  self._eval_func(function, self.lst)
-        self.draw_extern_graph(data)
+    def draw_extern_graph_from_func(self, name, function):
+        data =  list(zip(self.lst,function(self.lst)))
+        if not hasattr(self, 'extern_graph'):
+            self.extern_graph={}
+        self.extern_graph[name] = (data,utils.random_color())
+        self._draw()
 
 
 # moved to ./tests
@@ -182,3 +190,4 @@ class GraphCanvas(tk.Frame):
 #     graph = GraphCanvas(root)
 #     graph.pack(fill=tk.BOTH, expand=True)
 #     root.mainloop()
+ 

@@ -181,6 +181,7 @@ class FourierNN:
         self.model = tf.keras.models.load_model(filename)
         self.model.summary()
         print(self.model.input_shape)
+        self.fourier_degree=self.model.input_shape[1]//2
 
 # moved to ./tests/fouriernn_test.py
 # if __name__ == '__main__':
