@@ -169,7 +169,7 @@ class GraphCanvas(tk.Frame):
     def _draw_extern_graph(self, data):
         for name, (graph, color) in self.extern_graph.items():
             x, y = self.convert_graph_to_canvas_coordinates_optimized(*graph[0])
-            self.canvas.create_text(x+10, y-20, text=name, fill=color)
+            self.canvas.create_text(x+30, y-20, text=name, fill=color)
             for a, b in utils.pair_iterator(graph):
                 a_new=self.convert_graph_to_canvas_coordinates_optimized(*a)
                 b_new=self.convert_graph_to_canvas_coordinates_optimized(*b)

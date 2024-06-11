@@ -3,7 +3,10 @@ from threading import Thread
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
+from tkinter import simpledialog
+from tkinter import messagebox
 from tensorflow import keras
+import numpy as np
 
 from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
@@ -24,12 +27,14 @@ if __name__ == "__main__":
         graph.grid(row=1,column=0, columnspan=5, sticky='NSEW')
 
         functions = {
+            'sin': np.sin,
+            'cos': np.cos,
+            'tan': np.tan,
             'relu':keras.activations.relu,
             'elu':keras.activations.elu,
             'linear':keras.activations.linear,
             'sigmoid':keras.activations.sigmoid,
             'exponential':keras.activations.exponential,
-            'hard_sigmoid':keras.activations.hard_sigmoid,
             'selu':keras.activations.selu,
             'gelu':keras.activations.gelu
         }
@@ -68,8 +73,15 @@ if __name__ == "__main__":
                 i=0
                 while os.path.exists(path+f"/model{i}.h5"):
                     i+=1
-                file=f"{path}/model{i}.h5"
-                fourier_nn.save_model(file)
+                user_input = simpledialog.askstring("Save Model", "Enter a File Name", initialvalue=f"model{i}", parent=root)
+                if not user_input:
+                    user_input = f"model{i}"
+                file=f"{path}/{user_input}.h5"
+                print(file)
+                if not os.path.exists(file):
+                    fourier_nn.save_model(file)
+                else:
+                    messagebox.showwarning("File already Exists", f"The selected filename {user_input} already exists.")
 
         def load():
             nonlocal fourier_nn
