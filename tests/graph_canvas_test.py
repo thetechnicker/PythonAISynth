@@ -4,6 +4,10 @@ from context import scr
 from scr import graph_canvas
 import tkinter as tk
 
+"""
+Manuel Test for GraphCanvas
+"""
+
 
 if __name__ == "__main__":
     root = tk.Tk()

@@ -84,7 +84,7 @@ class GraphCanvas(tk.Frame):
     def resize(self, event):
         if self.first:
             self.first = False
-            return        
+            return
         self.canvas_width = event.width-self.offset*2
         self.canvas_height = event.height-self.offset*2
         self.canvas.config(width=event.width, height=event.height)
@@ -92,6 +92,7 @@ class GraphCanvas(tk.Frame):
         self.setup_axes()
         for x, y in self.data:
             self.draw_point(x, y)
+        # self.first=True # Keeping this, if it breaks again.
     
     # def maintain_aspect_ratio(self, event):
     #     """Not Working"""
