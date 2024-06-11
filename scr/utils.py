@@ -59,3 +59,9 @@ def is_in_interval(value, a, b):
     lower_bound = min(a, b)
     upper_bound = max(a, b)
     return lower_bound <= value <= upper_bound
+
+def map_value(value, leftMin, leftMax, rightMin, rightMax):
+    leftSpan = leftMax - leftMin
+    rightSpan = rightMax - rightMin
+    valueScaled = float(value - leftMin) / float(leftSpan)
+    return rightMin + (valueScaled * rightSpan)
