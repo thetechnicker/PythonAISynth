@@ -79,7 +79,10 @@ if __name__ == "__main__":
                 file=f"{path}/{user_input}.h5"
                 print(file)
                 if not os.path.exists(file):
-                    fourier_nn.save_model(file)
+                    try:
+                        fourier_nn.save_model(file)
+                    except Exception as e:
+                        messagebox.showwarning("ERROR - Can't Save Model", f"{e}")
                 else:
                     messagebox.showwarning("File already Exists", f"The selected filename {user_input} already exists.")
 
