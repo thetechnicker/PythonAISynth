@@ -54,3 +54,8 @@ def interpolate_vectorized(point1, point2, t_values):
     points = (1 - t_values[:, None]) * point1 + t_values[:, None] * point2
 
     return points
+
+def is_in_interval(value, a, b):
+    lower_bound = min(a, b)
+    upper_bound = max(a, b)
+    return lower_bound <= value <= upper_bound

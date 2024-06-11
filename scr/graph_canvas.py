@@ -29,8 +29,11 @@ class GraphCanvas(tk.Frame):
     canvas_height = 600
     aspect_ratio = 1
     offset = 10
-    lower_end= -math.pi
-    upper_end= math.pi
+
+    lower_end_x= math.pi
+    upper_end_x= -math.pi
+    lower_end_y = -1
+    upper_end_y = 1
 
     def __init__(self, master, size:tuple[int, int]=None):
         if size:
@@ -53,6 +56,12 @@ class GraphCanvas(tk.Frame):
     def motion_end(self, event):
         if hasattr(self, 'old_point'):
             del self.old_point
+
+    
+    def clear(self):
+        self.data: list[tuple[float, float]] = []
+        self.canvas.delete('all')
+        self.setup_axes()
 
     def on_space_press(self, event):
         self.on_mouse_move(event)
@@ -140,7 +149,7 @@ class GraphCanvas(tk.Frame):
         x, y = self.convert_canvas_to_graph_coordinates(event.x, event.y)
         x = min(self.lst, key=lambda _y: abs(x - _y))
         
-        if -1 <= y <= 1 and self.lower_end < x < self.upper_end:
+        if utils.is_in_interval(y, self.lower_end_y, self.upper_end_y) and utils.is_in_interval(x, self.lower_end_x, self.upper_end_x):
             if self.data:
                 if any(x == _data for _data, _ in self.data):
                     index = [i for i, data in enumerate(
@@ -159,7 +168,7 @@ class GraphCanvas(tk.Frame):
         x, y = self.convert_canvas_to_graph_coordinates_optimized(event.x, event.y)
         x = min(self.lst, key=lambda _y: abs(x - _y))
 
-        if -1 <= y <= 1 and self.lower_end < x < self.upper_end:
+        if -1 <= y <= 1 and self.lower_end_x < x < self.upper_end_x:
             data_dict = dict(self.data)
             data_dict[x] = y
             self.data = list(data_dict.items())
@@ -173,27 +182,30 @@ class GraphCanvas(tk.Frame):
         return copy(self.data)
 
     def convert_canvas_to_graph_coordinates(self, x, y):
-        ax_1, ax_2, bx_1, bx_2 = self.offset, self.canvas_width, self.upper_end, self.lower_end
+        ax_1, ax_2, bx_1, bx_2 = self.offset, self.canvas_width, self.upper_end_x, self.lower_end_x
         ay_1, ay_2, by_1, by_2 = self.offset, self.canvas_height, -1, 1
         graph_x = map_value(x, ax_1, ax_2, bx_1, bx_2)
         graph_y = map_value(y, ay_1, ay_2, by_1, by_2)
         return graph_x, graph_y
 
     def convert_graph_to_canvas_coordinates(self, x, y):
-        ax_1, ax_2, bx_1, bx_2 = self.upper_end, self.lower_end, self.offset, self.canvas_width
+        ax_1, ax_2, bx_1, bx_2 = self.upper_end_x, self.lower_end_x, self.offset, self.canvas_width
         ay_1, ay_2, by_1, by_2 = -1, 1, self.offset, self.canvas_height
         graph_x = map_value(x, ax_1, ax_2, bx_1, bx_2)
         graph_y = map_value(y, ay_1, ay_2, by_1, by_2)
         return graph_x, graph_y
 
+
+
+
     def convert_canvas_to_graph_coordinates_optimized(self, x, y):
-        graph_x = self.map_value(x, self.offset, self.canvas_width, self.upper_end, self.lower_end)
-        graph_y = self.map_value(y, self.offset, self.canvas_height, -1, 1)
+        graph_x = self.map_value(x, self.offset, self.canvas_width, self.upper_end_x, self.lower_end_x)
+        graph_y = self.map_value(y, self.offset, self.canvas_height, self.lower_end_y, self.upper_end_y)
         return graph_x, graph_y
 
     def convert_graph_to_canvas_coordinates_optimized(self, x, y):
-        graph_x = self.map_value(x, self.upper_end, self.lower_end, self.offset, self.canvas_width)
-        graph_y = self.map_value(y, -1, 1, self.offset, self.canvas_height)
+        graph_x = self.map_value(x, self.upper_end_x, self.lower_end_x, self.offset, self.canvas_width)
+        graph_y = self.map_value(y, self.lower_end_y, self.upper_end_y, self.offset, self.canvas_height)
         return graph_x, graph_y
 
     def map_value(self, value, leftMin, leftMax, rightMin, rightMax):
