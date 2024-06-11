@@ -147,8 +147,7 @@ class FourierNN:
                      for x in data))
         y_test = self.model.predict(np.array(_y))
         return y_test
-
-
+    
     def synthesize(self, midi_notes, model, sample_rate=44100, duration=5.0):
         output = np.zeros(int(sample_rate * duration))
         for note in midi_notes:
@@ -161,7 +160,7 @@ class FourierNN:
         return output.astype(np.int16)
     
 
-    def convert_to_audio(self, filename='output.wav'):
+    def convert_to_audio(self, filename='./tmp/output.wav'):
         print(self.model.summary())
         sample_rate = self.RANGE
         duration = 5.0
@@ -175,11 +174,13 @@ class FourierNN:
         audio = audio.astype(np.int16)
         write(filename, sample_rate, audio)
 
-    def save_model(self, filename='model.h5'):
+    def save_model(self, filename='./tmp/model.h5'):
         self.model.save(filename)
 
-    def load_model(self, filename='model.h5'):
+    def load_model(self, filename='./tmp/model.h5'):
         self.model = tf.keras.models.load_model(filename)
+        self.model.summary()
+        print(self.model.input_shape)
 
 # moved to ./tests/fouriernn_test.py
 # if __name__ == '__main__':

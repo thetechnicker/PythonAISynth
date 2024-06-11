@@ -1,6 +1,7 @@
 from threading import Thread
 import tkinter as tk
 from tkinter import ttk
+from tkinter import filedialog
 from tensorflow import keras
 
 from scr.fourier_neural_network import FourierNN
@@ -64,8 +65,12 @@ if __name__ == "__main__":
 
         def load():
             nonlocal fourier_nn
-            if fourier_nn:
-                fourier_nn.load_model()
+            filetypes = (('tmodel files', '*.h5'), ('All files', '*.*'))
+            filename = filedialog.askopenfilename(title='Open a file', initialdir='.', filetypes=filetypes)
+            if not fourier_nn:
+                fourier_nn=FourierNN(data=None)
+            fourier_nn.load_model(filename)
+            #graph.draw_extern_graph_from_func(fourier_nn.predict)
         
 
         button= tk.Button(root, text='Train', command=test)

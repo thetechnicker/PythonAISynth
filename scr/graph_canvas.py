@@ -28,6 +28,7 @@ class GraphCanvas(tk.Frame):
     canvas_height = 600
     aspect_ratio = 1
     offset = 10
+    point_radius=5
 
     lower_end_x= -math.pi
     upper_end_x= math.pi
@@ -48,7 +49,7 @@ class GraphCanvas(tk.Frame):
         self.canvas.bind('<B1-Motion>', self.on_mouse_move_interpolate)
         self.canvas.bind('<ButtonRelease-1>', self.motion_end)
         self.canvas.bind('<space>', self.on_space_press)
-        self.lst=np.linspace(-np.pi, np.pi, 200)
+        self.lst=np.linspace(-np.pi, np.pi, 100)
         self.data: list[tuple[float, float]] = []
         self.clear()
 
@@ -136,7 +137,7 @@ class GraphCanvas(tk.Frame):
 
     def draw_point(self, x, y):
         cx, cy = self.convert_graph_to_canvas_coordinates_optimized(x, y)
-        self.canvas.create_oval(cx-2, cy-2, cx+2, cy+2, fill='red')
+        self.canvas.create_oval(cx-self.point_radius, cy-self.point_radius, cx+self.point_radius, cy+self.point_radius, fill='red')
 
     def export_data(self):
         return copy(self.data)
@@ -155,12 +156,24 @@ class GraphCanvas(tk.Frame):
     def draw_bounding_box(self):
         self.canvas.create_rectangle(1, 1, 598, 598, outline='black')
 
+    def _eval_func(self, function, x):
+        val=function(x)
+        return val if utils.is_in_interval(val, -1, 1) else 0
+
     def use_preconfig_drawing(self, function):
-        def eval_fun(function, x):
-            val=function(x)
-            return val if utils.is_in_interval(val, -1, 1) else 0
-        self.data = [(x, eval_fun(function, x)) for x in self.lst]
+        self.data = [(x, self._eval_func(function, x)) for x in self.lst]
         self._draw()
+
+    def draw_extern_graph(self, data):
+        self._draw()
+        data_ = sorted(data, key= lambda x: x[0])
+        for a, b in utils.pair_iterator(data):
+            self.canvas.create_line(a[0],a[1],b[0],b[1])
+
+    
+    def draw_extern_graph_from_func(self, function):
+        data =  self._eval_func(function, self.lst)
+        self.draw_extern_graph(data)
 
 
 # moved to ./tests
