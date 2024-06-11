@@ -25,22 +25,25 @@ def map_value(x, a1, a2, b1, b2):
 
 class GraphCanvas(tk.Frame):
     canvas_width = 600
+    canvas_width = 600
     canvas_height = 600
+    aspect_ratio = 1
     offset = 10
     lower_end= -math.pi
     upper_end= math.pi
 
-    def __init__(self, master, width=600, height=600):
-        self.canvas_width = width
-        self.canvas_height = height
-        self.aspect_ratio=width/height
+    def __init__(self, master, size:tuple[int, int]=None):
+        if size:
+            self.canvas_width = size[0]
+            self.canvas_height = size[1]
+            self.aspect_ratio=self.canvas_width/self.canvas_height
         super().__init__(master)
         self.canvas = tk.Canvas(self, width=self.canvas_width+self.offset*2,
                                 height=self.canvas_height+self.offset*2, bg='white')
         self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.canvas.bind('<Configure>', self.maintain_aspect_ratio)
+        self.canvas.bind('<Configure>', self.resize)
         
-        self.canvas.bind('<B1-Motion>', self.on_mouse_move_interpolate) # on_mouse_move, on_mouse_move_optimized
+        self.canvas.bind('<B1-Motion>', self.on_mouse_move_interpolate) # alternative functions: on_mouse_move, on_mouse_move_optimized
         self.canvas.bind('<ButtonRelease-1>', self.motion_end)
         self.canvas.bind('<space>', self.on_space_press)
         self.data: list[tuple[float, float]] = []
@@ -63,35 +66,51 @@ class GraphCanvas(tk.Frame):
 
         for i in range(-1, 2):
             x = (self.canvas_width/2 + i * self.canvas_width/2)+self.offset
-            self.canvas.create_line(x, (self.canvas_width/2)-10+self.offset,
-                                    x, (self.canvas_width/2)+10+self.offset, fill='blue')
+            self.canvas.create_line(x, (self.canvas_height/2)-10+self.offset,
+                                    x, (self.canvas_height/2)+10+self.offset, fill='blue')
             self.canvas.create_text(
-                x, (self.canvas_width/2)+10+self.offset, text=f'{i}π')
+                x, (self.canvas_height/2)+10+self.offset, text=f'{i}π')
 
         for i in range(-1, 2):
             y = (self.canvas_height/2 - i * (self.canvas_height/2))+self.offset
             # print(y)
-            self.canvas.create_line((self.canvas_height/2)-10+self.offset,
-                                    y, (self.canvas_height/2)+10+self.offset, y, fill='red')
+            self.canvas.create_line((self.canvas_width/2)-10+self.offset,
+                                    y, (self.canvas_width/2)+10+self.offset, y, fill='red')
             # self.canvas.create_oval((self.canvas_height/2)-10, y+10, (self.canvas_height/2)+10, y-10,  fill='black')
-            self.canvas.create_text((self.canvas_height/2)-10, y, text=f'{i}')
+            self.canvas.create_text((self.canvas_width/2)-10, y, text=f'{i}')
 
     first = True
 
-    def maintain_aspect_ratio(self, event):
+    def resize(self, event):
         if self.first:
             self.first = False
-            return
-        size = min(event.width, event.height)
-        width = self.aspect_ratio
-        height = self.aspect_ratio
-        self.canvas_width = size-self.offset*2
-        self.canvas_height = size-self.offset*2
-        self.canvas.config(width=size, height=size)
+            return        
+        self.canvas_width = event.width-self.offset*2
+        self.canvas_height = event.height-self.offset*2
+        self.canvas.config(width=event.width, height=event.height)
         self.canvas.delete('all')
         self.setup_axes()
         for x, y in self.data:
             self.draw_point(x, y)
+    
+    # def maintain_aspect_ratio(self, event):
+    #     """Not Working"""
+    #     if self.first:
+    #         self.first = False
+    #         return
+    #     size = min(event.width, event.height)
+
+    #     width = size * self.aspect_ratio
+    #     height = size * (1/self.aspect_ratio)
+
+    #     self.canvas_width = width-self.offset*2
+    #     self.canvas_height = height-self.offset*2
+
+    #     self.canvas.config(width=width, height=height)
+    #     self.canvas.delete('all')
+    #     self.setup_axes()
+    #     for x, y in self.data:
+    #         self.draw_point(x, y)
 
     def on_mouse_move_interpolate(self, event):
         new_point = (event.x, event.y)
