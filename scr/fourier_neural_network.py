@@ -1,9 +1,10 @@
 import random
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Input
-from tensorflow.keras.callbacks import Callback
+from tensorflow import keras
+from keras.models import Sequential
+from keras.layers import Dense, Input
+from keras.callbacks import Callback
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 from multiprocessing import Process, Queue
@@ -29,9 +30,9 @@ class MyCallback(Callback):
 
 
 class FourierNN:
-    RANGE = 10**3
+    RANGE = 44100
 
-    ITTERRATIONS = 50
+    ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
     EPOCHS = 100
@@ -44,6 +45,7 @@ class FourierNN:
     def __init__(self, data):
         self.data = data
         self.model = None
+        self.fourier_degree=self.DEFAULT_FORIER_DEGREE
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
@@ -83,12 +85,13 @@ class FourierNN:
         return x_train, x_train_transformed, y_train, actualData_x, actualData_y, self.fourier_degree
 
     def create_model(self, input_shape):
-        self.model = Sequential([
+        self.model:Sequential = Sequential([
             Input(shape=input_shape),
             Dense(64, activation='relu'),
             Dense(1)
         ])
         self.model.compile(optimizer='adam', loss='mean_squared_error')
+        print(self.model.summary())
 
     def train(self, queue=None, quiet=False):
         _, x_train_transformed, y_train, _, _, fourier_degree = self.generate_data()
@@ -144,8 +147,7 @@ class FourierNN:
                      for x in data))
         y_test = self.model.predict(np.array(_y))
         return y_test
-
-
+    
     def synthesize(self, midi_notes, model, sample_rate=44100, duration=5.0):
         output = np.zeros(int(sample_rate * duration))
         for note in midi_notes:
@@ -158,24 +160,28 @@ class FourierNN:
         return output.astype(np.int16)
     
 
-    def convert_to_audio(self, filename='output.wav'):
-        sample_rate = 44100
+    def convert_to_audio(self, filename='./tmp/output.wav'):
+        print(self.model.summary())
+        sample_rate = self.RANGE
         duration = 5.0
         T = 1 / 440
         t = np.linspace(0, duration, int(sample_rate * duration), False)
         t_scaled = t * 2 * np.pi / T
-
-        signal = self.model.predict(
-            np.array([self.fourier_basis(x) for x in t_scaled]))
+        data=np.array([self.fourier_basis(x, self.fourier_degree) for x in t_scaled])
+        print(data.shape)
+        signal = self.model.predict(data)
         audio = (signal * 32767 / np.max(np.abs(signal))) / 2
         audio = audio.astype(np.int16)
         write(filename, sample_rate, audio)
 
-    def save_model(self, filename='model.h5'):
+    def save_model(self, filename='./tmp/model.h5'):
         self.model.save(filename)
 
-    def load_model(self, filename='model.h5'):
+    def load_model(self, filename='./tmp/model.h5'):
         self.model = tf.keras.models.load_model(filename)
+        self.model.summary()
+        print(self.model.input_shape)
+        self.fourier_degree=self.model.input_shape[1]//2
 
 # moved to ./tests/fouriernn_test.py
 # if __name__ == '__main__':
