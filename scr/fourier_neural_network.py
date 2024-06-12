@@ -57,6 +57,9 @@ class FourierNN:
             self.models.append(self.current_model)
         self.current_model=self.create_model((self.prepared_data[1].shape[1],))
 
+    def get_models(self)->list[Sequential]:
+        return self.models+[self.current_model]
+
     def update_data(self, data):
         self.prepared_data=self.prepare_data(list(data))
 
@@ -195,6 +198,7 @@ class FourierNN:
         if self.current_model:
             self.models.append(self.current_model)
         self.current_model = tf.keras.models.load_model(filename)
+        self.current_model._name = os.path.basename(filename).replace('.h5', '').replace('/', '')
         self.current_model.summary()
         print(self.current_model.input_shape)
         print(self.current_model.name)

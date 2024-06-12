@@ -21,10 +21,19 @@ if __name__ == "__main__":
         root.columnconfigure(2, weight=1)
         root.columnconfigure(3, weight=1)
         root.columnconfigure(4, weight=1)
+        #root.columnconfigure(5, weight=1)
+        #root.columnconfigure(6, weight=1)
         
 
+        list_view_graphs = tk.Listbox(root)
+        list_view_graphs.grid(row=0,column=3, rowspan=2, sticky='NSEW')
+
+        list_view_nets = tk.Listbox(root)
+        list_view_nets.grid(row=0,column=4, rowspan=2, sticky='NSEW')
+
+
         graph = GraphCanvas(root, (900, 300))
-        graph.grid(row=1,column=0, columnspan=5, sticky='NSEW')
+        graph.grid(row=1,column=0, columnspan=3, sticky='NSEW')
 
         functions = {
             'sin': np.sin,
@@ -97,23 +106,59 @@ if __name__ == "__main__":
                 if not fourier_nn:
                     fourier_nn=FourierNN(data=None)
                 fourier_nn.load_new_model_from_file(filename)
-                graph.draw_extern_graph_from_func(fourier_nn.predict, os.path.basename(filename))
+                name, color= graph.draw_extern_graph_from_func(fourier_nn.predict, os.path.basename(filename))
+                fourier_nn.update_data(graph.get_graph(name))
         
+        def create_new_net():
+            nonlocal fourier_nn
+            if fourier_nn:
+                fourier_nn.create_new_model()
+                for model in fourier_nn.get_models():
+                    print(model.name)
 
-        button= tk.Button(root, text='Train', command=train)
-        button.grid(row=2,column=0, sticky='NSEW')
+        def add_functions():
+            pass
 
-        button2= tk.Button(root, text='Musik', command=musik)
-        button2.grid(row=2,column=1, sticky='NSEW')
+        def invert_function():
+            pass
 
-        button3= tk.Button(root, text='clear', command=graph.clear)
-        button3.grid(row=2,column=2, sticky='NSEW')
+        def select_net():
+            pass
 
-        button4= tk.Button(root, text='export', command=export)
-        button4.grid(row=2,column=3, sticky='NSEW')
+        def remove_net():
+            pass
 
-        button5= tk.Button(root, text='load', command=load)
-        button5.grid(row=2,column=4, sticky='NSEW')
+
+        button_train= tk.Button(root, text='Train', command=train)
+        button_train.grid(row=2,column=0, sticky='NSEW')
+
+        button_musik= tk.Button(root, text='Musik', command=musik)
+        button_musik.grid(row=3,column=0, sticky='NSEW')
+
+        button_clear= tk.Button(root, text='clear', command=graph.clear)
+        button_clear.grid(row=2,column=1, sticky='NSEW')
+
+        button_new_net= tk.Button(root, text='create New Net', command=create_new_net)
+        button_new_net.grid(row=3,column=1, sticky='NSEW')
+
+        button_export= tk.Button(root, text='export', command=export)
+        button_export.grid(row=2,column=2, sticky='NSEW')
+
+        button_load= tk.Button(root, text='load', command=load)
+        button_load.grid(row=3,column=2, sticky='NSEW')
+
+
+        button_add_functions = tk.Button(root, text='add selected functon')
+        button_add_functions.grid(row=2,column=3, sticky='NSEW')
+
+        button_invert_function = tk.Button(root, text='invert selected function')
+        button_invert_function.grid(row=3,column=3, sticky='NSEW')
+
+        button_select_net = tk.Button(root, text='use selected Net')
+        button_select_net.grid(row=2,column=4, sticky='NSEW')
+        
+        #button_remove_net=None
+
 
         graph.draw_extern_graph_from_func(np.sin, "sine", 2, 'black')
 

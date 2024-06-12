@@ -1,6 +1,7 @@
 from copy import copy
 import tkinter as tk
 import math
+from typing import Literal
 
 import numpy as np
 
@@ -194,7 +195,10 @@ class GraphCanvas(tk.Frame):
             print(e)
             return None
         
-    def compute_extern_graph(self):
+    def get_graph(self, name):
+        return self.extern_graph[name][0]
+    
+    def compute_extern_graph(self, function:Literal['add', 'invert'], graph_names:list[str])->None:
         raise NotImplementedError()
 
 # moved to ./tests
