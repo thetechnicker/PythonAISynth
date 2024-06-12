@@ -2,10 +2,9 @@ import os
 import random
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
-from keras.models import Sequential
-from keras.layers import Dense, Input
-from keras.callbacks import Callback
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense, Input
+from tensorflow.keras.callbacks import Callback
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 from multiprocessing import Process, Queue
@@ -58,7 +57,7 @@ class FourierNN:
         self.current_model=self.create_model((self.prepared_data[1].shape[1],))
 
     def get_models(self)->list[Sequential]:
-        return self.models+[self.current_model]
+        return [self.current_model]+self.models
 
     def update_data(self, data):
         self.prepared_data=self.prepare_data(list(data))
@@ -154,12 +153,18 @@ class FourierNN:
             ax.legend()
             ax.grid()
             plt.draw()
-            plt.pause(0.1)
+            try:
+                plt.pause(0.1)
+            except:
+                pass
+                
 
         plt.ioff()
         plt.show()
 
     def predict(self, data):
+        if not hasattr(data, '__iter__'):
+            data=[data]
         _, _y = zip(*list((x, self.fourier_basis(x, self.fourier_degree))
                      for x in data))
         y_test = self.current_model.predict(np.array(_y))
@@ -192,17 +197,30 @@ class FourierNN:
         write(filename, sample_rate, audio)
 
     def save_model(self, filename='./tmp/model.h5'):
+        self.current_model._name = os.path.basename(filename).replace('/', '').split('.')[0]
         self.current_model.save(filename)
 
     def load_new_model_from_file(self, filename='./tmp/model.h5'):
         if self.current_model:
             self.models.append(self.current_model)
-        self.current_model = tf.keras.models.load_model(filename)
-        self.current_model._name = os.path.basename(filename).replace('.h5', '').replace('/', '')
+        self.current_model = tf.keras.models.load_model(filename, )
+        print(self.current_model.name)
+        self.current_model._name = os.path.basename(filename).replace('/', '').split('.')[0]
+        print(self.current_model.name)
         self.current_model.summary()
         print(self.current_model.input_shape)
-        print(self.current_model.name)
         self.fourier_degree=self.current_model.input_shape[1]//2
+
+    def change_model(self, net_no):
+        index=net_no-1
+        if index>=0:
+            new_model=self.models.pop(index)
+            if self.current_model:
+                self.models.insert(index, self.current_model)
+            self.current_model=new_model
+
+
+
 
 # moved to ./tests/fouriernn_test.py
 # if __name__ == '__main__':

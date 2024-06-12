@@ -106,7 +106,7 @@ class GraphCanvas(tk.Frame):
         self.canvas_height = event.height-self.offset*2
         self.canvas.config(width=event.width, height=event.height)
         self._draw()
-        # self.first=True # Keeping this, if it breaks again.
+        self.first=True # Keeping this, if it breaks again.
     
     def on_mouse_move_interpolate(self, event):
         new_point = (event.x, event.y)
@@ -167,10 +167,12 @@ class GraphCanvas(tk.Frame):
         self.data = [(x, self._eval_func(function, x)) for x in self.lst]
         self._draw()
 
+    def use_preconfig_drawing_parallel(self, function):
+        self.data = list(zip(self.lst,function(self.lst)))
+        self._draw()
+
     def _draw_extern_graph(self, data):
         for name, (graph, color, width) in self.extern_graph.items():
-            x, y = self.convert_graph_to_canvas_coordinates_optimized(*graph[0])
-            self.canvas.create_text(x+30, y-20, text=name, fill=color)
             for a, b in utils.pair_iterator(graph):
                 a_new=self.convert_graph_to_canvas_coordinates_optimized(*a)
                 b_new=self.convert_graph_to_canvas_coordinates_optimized(*b)
@@ -196,11 +198,13 @@ class GraphCanvas(tk.Frame):
             return None
         
     def get_graph(self, name):
-        return self.extern_graph[name][0]
+        return self.extern_graph[name]
     
     def compute_extern_graph(self, function:Literal['add', 'invert'], graph_names:list[str])->None:
         raise NotImplementedError()
-
+    
+    def get_graph_names(self):
+        return list(self.extern_graph.keys())
 # moved to ./tests
 # if __name__ == "__main__":
 #     root = tk.Tk()

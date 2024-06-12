@@ -10,7 +10,7 @@ import numpy as np
 
 from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
-
+from scr.simple_input_dialog import askStringAndSelectionDialog
 
 if __name__ == "__main__":
     def main():
@@ -21,8 +21,6 @@ if __name__ == "__main__":
         root.columnconfigure(2, weight=1)
         root.columnconfigure(3, weight=1)
         root.columnconfigure(4, weight=1)
-        #root.columnconfigure(5, weight=1)
-        #root.columnconfigure(6, weight=1)
         
 
         list_view_graphs = tk.Listbox(root)
@@ -53,11 +51,11 @@ if __name__ == "__main__":
             graph.use_preconfig_drawing(functions[n.get()])
     
         label=tk.Label(root, text='Predifined functions')
-        label.grid(row=0,column=0, columnspan=2, sticky='NSEW')
+        label.grid(row=0,column=0, sticky='NSEW')
 
-        predefined_functions_select = ttk.Combobox(root, textvariable=n)
+        predefined_functions_select = ttk.Combobox(root, textvariable=n, state="readonly")
         predefined_functions_select.bind('<<ComboboxSelected>>', predefined_functions)
-        predefined_functions_select.grid(row=0,column=2, columnspan=3, sticky='NSEW')
+        predefined_functions_select.grid(row=0,column=1, columnspan=2, sticky='NSEW')
         predefined_functions_select['values'] = list(functions.keys())
 
 
@@ -70,6 +68,7 @@ if __name__ == "__main__":
             else:
                 fourier_nn.update_data(graph.export_data())
             fourier_nn.train_and_plot()
+            update_net_list()
         
         def musik():
             nonlocal fourier_nn
@@ -77,18 +76,28 @@ if __name__ == "__main__":
                 fourier_nn.convert_to_audio()
 
         def export():
+            default_format='keras'
             nonlocal fourier_nn
             if fourier_nn:
                 path='./tmp'
                 if not os.path.exists(path):
                     os.mkdir(path)
                 i=0
-                while os.path.exists(path+f"/model{i}.h5"):
+                while os.path.exists(path+f"/model{i}.{default_format}"):
                     i+=1
-                user_input = simpledialog.askstring("Save Model", "Enter a File Name", initialvalue=f"model{i}", parent=root)
-                if not user_input:
-                    user_input = f"model{i}"
-                file=f"{path}/{user_input}.h5"
+
+                dialog = askStringAndSelectionDialog(parent=root,
+                                                         title="Save Model",
+                                                         label_str="Enter a File Name",
+                                                         default_str=f"model{i}",
+                                                         label_select="Select Format",
+                                                         default_select=default_format,
+                                                         values_to_select_from=["keras", "h5"])
+                name, file_format = dialog.result
+                if not name:
+                    name = f"model{i}"
+
+                file=f"{path}/{name}.{file_format}"
                 print(file)
                 if not os.path.exists(file):
                     try:
@@ -96,25 +105,44 @@ if __name__ == "__main__":
                     except Exception as e:
                         messagebox.showwarning("ERROR - Can't Save Model", f"{e}")
                 else:
-                    messagebox.showwarning("File already Exists", f"The selected filename {user_input} already exists.")
+                    messagebox.showwarning("File already Exists", f"The selected filename {name} already exists.")
 
         def load():
             nonlocal fourier_nn
-            filetypes = (('tmodel files', '*.h5'), ('All files', '*.*'))
+            filetypes = (('HDF5 files', '*.h5'), ('Keras files', '*.keras'), ('All files', '*.*'))
             filename = filedialog.askopenfilename(title='Open a file', initialdir='.', filetypes=filetypes, parent=root)
             if os.path.exists(filename):
                 if not fourier_nn:
                     fourier_nn=FourierNN(data=None)
                 fourier_nn.load_new_model_from_file(filename)
-                name, color= graph.draw_extern_graph_from_func(fourier_nn.predict, os.path.basename(filename))
-                fourier_nn.update_data(graph.get_graph(name))
+                name, color= graph.draw_extern_graph_from_func(fourier_nn.predict, os.path.basename(filename).split('.')[0])
+                #list_view_graphs.insert(tk.END, f"{name}")
+                fourier_nn.update_data(data=graph.get_graph(name=name)[0])
+            update_net_list()
+            update_function_list()
         
         def create_new_net():
             nonlocal fourier_nn
             if fourier_nn:
                 fourier_nn.create_new_model()
-                for model in fourier_nn.get_models():
-                    print(model.name)
+                update_net_list()
+
+
+        def update_function_list():
+            list_view_graphs.delete(0, tk.END)
+            graph_names=graph.get_graph_names()
+            for i, name in enumerate(graph_names):
+                list_view_graphs.insert(tk.END, f"{name}")
+                color=graph.get_graph(name)[1]
+                list_view_graphs.itemconfig(i, {'fg':color})
+
+        def update_net_list():
+            nonlocal fourier_nn
+            if fourier_nn:
+                list_view_nets.delete(0, tk.END)
+                for i, model in enumerate(fourier_nn.get_models()):
+                    current="(current)" if i==0 else ""
+                    list_view_nets.insert(tk.END, f"{model.name}{current}:{i}")
 
         def add_functions():
             pass
@@ -123,7 +151,12 @@ if __name__ == "__main__":
             pass
 
         def select_net():
-            pass
+            nonlocal fourier_nn
+            if fourier_nn:
+                net_name=list_view_nets.get(list_view_nets.curselection())
+                fourier_nn.change_model(int(net_name.split(':')[1]))
+                graph.use_preconfig_drawing_parallel(fourier_nn.predict)
+                update_net_list()
 
         def remove_net():
             pass
@@ -148,20 +181,21 @@ if __name__ == "__main__":
         button_load.grid(row=3,column=2, sticky='NSEW')
 
 
-        button_add_functions = tk.Button(root, text='add selected functon')
+        button_add_functions = tk.Button(root, text='add selected functon', command=add_functions)
         button_add_functions.grid(row=2,column=3, sticky='NSEW')
 
-        button_invert_function = tk.Button(root, text='invert selected function')
+        button_invert_function = tk.Button(root, text='invert selected function', command=invert_function)
         button_invert_function.grid(row=3,column=3, sticky='NSEW')
 
-        button_select_net = tk.Button(root, text='use selected Net')
+        button_select_net = tk.Button(root, text='use selected Net', command=select_net)
         button_select_net.grid(row=2,column=4, sticky='NSEW')
         
         #button_remove_net=None
 
 
-        graph.draw_extern_graph_from_func(np.sin, "sine", 2, 'black')
-
+        graph.draw_extern_graph_from_func(np.sin, "base function", width=2, color='black')
+        update_function_list()
+        update_net_list()
         root.mainloop()
 
     main()
