@@ -167,22 +167,34 @@ class GraphCanvas(tk.Frame):
         self._draw()
 
     def _draw_extern_graph(self, data):
-        for name, (graph, color) in self.extern_graph.items():
+        for name, (graph, color, width) in self.extern_graph.items():
             x, y = self.convert_graph_to_canvas_coordinates_optimized(*graph[0])
             self.canvas.create_text(x+30, y-20, text=name, fill=color)
             for a, b in utils.pair_iterator(graph):
                 a_new=self.convert_graph_to_canvas_coordinates_optimized(*a)
                 b_new=self.convert_graph_to_canvas_coordinates_optimized(*b)
-                self.canvas.create_line(*a_new,*b_new, width=self.point_radius/2, fill=color)
+                self.canvas.create_line(*a_new,*b_new, width=width, fill=color)
 
     
-    def draw_extern_graph_from_func(self, name, function):
-        data =  list(zip(self.lst,function(self.lst)))
-        if not hasattr(self, 'extern_graph'):
-            self.extern_graph={}
-        self.extern_graph[name] = (data,utils.random_color())
-        self._draw()
-
+    def draw_extern_graph_from_func(self, function, name=None, width=None, color=None):
+        if not width:
+            width=self.point_radius/2
+        if not color:
+            color=utils.get_prepared_random_color()
+        if not name:
+            name = f"funciton {len(list(self.extern_graph.keys()))}"
+        try:
+            data =  list(zip(self.lst,function(self.lst)))
+            if not hasattr(self, 'extern_graph'):
+                self.extern_graph={}
+            self.extern_graph[name] = (data,color,width)
+            self._draw()
+            return (name, color)
+        except Exception as e:
+            return None
+        
+    def compute_extern_graph(self):
+        raise NotImplementedError()
 
 # moved to ./tests
 # if __name__ == "__main__":

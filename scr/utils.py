@@ -69,9 +69,25 @@ def map_value(value, leftMin, leftMax, rightMin, rightMax):
 
 def random_hex_color():
     # Generate a random color in hexadecimal format
-    color = '{:06x}'.format(random.randint(0, 0xFFFFFF))
+    color = '{:06x}'.format(random.randint(0x111111, 0xFFFFFF))
     return '#' + color
 
 def random_color():
     colors = ["lime", "orange", "yellow", "green", "blue", "indigo", "violet"]
     return random.choice(colors)
+
+
+def get_prepared_random_color(maxColors=None):
+    if not hasattr(get_prepared_random_color, 'colors'):
+        get_prepared_random_color.colors=[]
+        for i in range(maxColors or 100):
+            while True:
+                color=random_hex_color()
+                if not color in get_prepared_random_color.colors:
+                    get_prepared_random_color.colors.append(color)
+                    break
+    random.shuffle(get_prepared_random_color.colors)
+    if len(get_prepared_random_color.colors)>0:
+        return get_prepared_random_color.colors.pop()
+    else:
+        raise Exception("No more unique values left to generate")

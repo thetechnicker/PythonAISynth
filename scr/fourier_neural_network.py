@@ -1,3 +1,4 @@
+import os
 import random
 import numpy as np
 import tensorflow as tf
@@ -46,6 +47,9 @@ class FourierNN:
         self.data = data
         self.model = None
         self.fourier_degree=self.DEFAULT_FORIER_DEGREE
+
+    def update_data(self, data):
+        self.data = data
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
@@ -178,9 +182,15 @@ class FourierNN:
         self.model.save(filename)
 
     def load_model(self, filename='./tmp/model.h5'):
+        if self.model:
+            if not hasattr(self, 'old_models'):
+                self.old_models={}
+            #name=os.path.basename(filename).replace('.h5', '')
+            #self.old_models
         self.model = tf.keras.models.load_model(filename)
         self.model.summary()
         print(self.model.input_shape)
+        print(self.model.name)
         self.fourier_degree=self.model.input_shape[1]//2
 
 # moved to ./tests/fouriernn_test.py

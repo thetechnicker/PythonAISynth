@@ -54,9 +54,12 @@ if __name__ == "__main__":
 
         fourier_nn=None
 
-        def test():
+        def train():
             nonlocal fourier_nn
-            fourier_nn=FourierNN(graph.export_data())
+            if not fourier_nn:
+                fourier_nn=FourierNN(graph.export_data())
+            else:
+                fourier_nn.update_data(graph.export_data())
             fourier_nn.train_and_plot()
         
         def musik():
@@ -94,10 +97,10 @@ if __name__ == "__main__":
                 if not fourier_nn:
                     fourier_nn=FourierNN(data=None)
                 fourier_nn.load_model(filename)
-                graph.draw_extern_graph_from_func(os.path.basename(filename), fourier_nn.predict)
+                graph.draw_extern_graph_from_func(fourier_nn.predict, os.path.basename(filename))
         
 
-        button= tk.Button(root, text='Train', command=test)
+        button= tk.Button(root, text='Train', command=train)
         button.grid(row=2,column=0, sticky='NSEW')
 
         button2= tk.Button(root, text='Musik', command=musik)
@@ -111,6 +114,8 @@ if __name__ == "__main__":
 
         button5= tk.Button(root, text='load', command=load)
         button5.grid(row=2,column=4, sticky='NSEW')
+
+        graph.draw_extern_graph_from_func(np.sin, "sine", 2, 'black')
 
         root.mainloop()
 
