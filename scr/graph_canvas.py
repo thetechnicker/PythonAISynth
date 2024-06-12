@@ -191,6 +191,7 @@ class GraphCanvas(tk.Frame):
             self._draw()
             return (name, color)
         except Exception as e:
+            print(e)
             return None
         
     def compute_extern_graph(self):

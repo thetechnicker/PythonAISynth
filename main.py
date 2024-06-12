@@ -96,7 +96,7 @@ if __name__ == "__main__":
             if os.path.exists(filename):
                 if not fourier_nn:
                     fourier_nn=FourierNN(data=None)
-                fourier_nn.load_model(filename)
+                fourier_nn.load_new_model_from_file(filename)
                 graph.draw_extern_graph_from_func(fourier_nn.predict, os.path.basename(filename))
         
 

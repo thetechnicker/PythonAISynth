@@ -43,13 +43,22 @@ class FourierNN:
     FORIER_DEGREE_DIVIDER = 100
     FORIER_DEGREE_OFFSET = 1
 
-    def __init__(self, data):
-        self.data = data
-        self.model = None
+    def __init__(self, data=None):
+        self.models:list = []
+        self.current_model = None
         self.fourier_degree=self.DEFAULT_FORIER_DEGREE
+        self.prepared_data=None
+        if data is not None:
+            self.prepared_data=self.prepare_data(list(data))
+            self.create_new_model()
+
+    def create_new_model(self):
+        if self.current_model:
+            self.models.append(self.current_model)
+        self.current_model=self.create_model((self.prepared_data[1].shape[1],))
 
     def update_data(self, data):
-        self.data = data
+        self.prepared_data=self.prepare_data(list(data))
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
@@ -62,54 +71,55 @@ class FourierNN:
         basis = [x**i / np.math.factorial(i) for i in range(n)]
         return np.array(basis)
 
-    def generate_data(self):
+    def prepare_data(self, data):
         self.fourier_degree = (
-            len(self.data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
-        actualData_x, actualData_y = zip(*self.data)
-        if len(self.data) < self.RANGE:
-            if len(self.data) == self.RANGE / 2:
-                self.data.extend(self.data)
+            len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
+        actualData_x, actualData_y = zip(*data)
+        if len(data) < self.RANGE:
+            if len(data) == self.RANGE / 2:
+                data.extend(data)
             else:
-                multi = self.RANGE // len(self.data)
-                rest = self.RANGE % len(self.data)
-                self.data.extend([(dat[0] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES),
-                                   dat[1] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES)) for dat in self.data * multi])
+                multi = self.RANGE // len(data)
+                rest = self.RANGE % len(data)
+                data.extend([(dat[0] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES),
+                                   dat[1] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES)) for dat in data * multi])
                 for i in range(rest):
                     rand_x = random.uniform(-self.SIGNED_RANDOMNES,
                                             self.SIGNED_RANDOMNES)
                     rand_y = random.uniform(-self.SIGNED_RANDOMNES,
                                             self.SIGNED_RANDOMNES)
-                    self.data.append(
-                        (self.data[i][0] + rand_x, self.data[i][1] + rand_y))
-        x_train, y_train = zip(*self.data)
+                    data.append(
+                        (data[i][0] + rand_x, data[i][1] + rand_y))
+        x_train, y_train = zip(*data)
         x_train = np.array(x_train)
         y_train = np.array(y_train)
         x_train_transformed = np.array(
             [self.fourier_basis(x, self.fourier_degree) for x in x_train])
-        return x_train, x_train_transformed, y_train, actualData_x, actualData_y, self.fourier_degree
+        return x_train, x_train_transformed, y_train, actualData_x, actualData_y
 
     def create_model(self, input_shape):
-        self.model:Sequential = Sequential([
+        model:Sequential = Sequential([
             Input(shape=input_shape),
             Dense(64, activation='relu'),
             Dense(1)
         ])
-        self.model.compile(optimizer='adam', loss='mean_squared_error')
-        print(self.model.summary())
+        model.compile(optimizer='adam', loss='mean_squared_error')
+        model.summary()
+        return model
 
     def train(self, queue=None, quiet=False):
-        _, x_train_transformed, y_train, _, _, fourier_degree = self.generate_data()
-        self.create_model((x_train_transformed.shape[1],))
+        _, x_train_transformed, y_train, _, _ = self.prepared_data
+        model=self.current_model
 
-        _x, _y = zip(*list((x, self.fourier_basis(x, fourier_degree))
+        _x, _y = zip(*list((x, self.fourier_basis(x, self.fourier_degree))
                      for x in np.linspace(-2 * np.pi, 2 * np.pi, self.RANGE)))
         _x, _y = np.array(_x), np.array(_y)
-        self.model.fit(x_train_transformed, y_train,
+        model.fit(x_train_transformed, y_train,
                        epochs=self.EPOCHS, callbacks=[MyCallback(queue, (_x, _y,),quiet)], batch_size=32, verbose=0)
 
     def train_and_plot(self):
-        x_train, x_train_transformed, y_train, actualData_x, actualData_y, fourier_degree = self.generate_data()
-        self.create_model((x_train_transformed.shape[1],))
+        x_train, x_train_transformed, y_train, actualData_x, actualData_y = self.prepared_data
+        model= self.current_model
 
         plt.ion()
         fig, ax = plt.subplots()
@@ -117,9 +127,9 @@ class FourierNN:
         ax.clear()
         ax.scatter(actualData_x, actualData_y,
                    color='blue', label='Training data')
-        _x, _y = zip(*list((x, self.fourier_basis(x, fourier_degree))
+        _x, _y = zip(*list((x, self.fourier_basis(x, self.fourier_degree))
                      for x in np.linspace(-2 * np.pi, 2 * np.pi, self.RANGE)))
-        y_test = self.model.predict(np.array(_y))
+        y_test = model.predict(np.array(_y))
         ax.plot(_x, y_test, color='red', label='Neural network approximation')
         ax.legend()
         ax.grid()
@@ -128,14 +138,14 @@ class FourierNN:
 
         for epoch in range(self.ITTERRATIONS):
             print("epoch ", epoch + 1, "/", self.ITTERRATIONS, sep="")
-            self.model.fit(x_train_transformed, y_train,
+            model.fit(x_train_transformed, y_train,
                            epochs=self.EPOCHS_PER_ITTERRATIONS, batch_size=32, verbose=0)
 
             ax.clear()
             ax.plot(_x, np.sin(_x), color='black', label='Base Frequency')
             ax.scatter(actualData_x, actualData_y,
                        color='blue', label='Training data')
-            y_test = self.model.predict(np.array(_y))
+            y_test = model.predict(np.array(_y))
             ax.plot(_x, y_test, '.-', color='red',
                     label='Neural network approximation', linewidth=2)
             ax.legend()
@@ -149,7 +159,7 @@ class FourierNN:
     def predict(self, data):
         _, _y = zip(*list((x, self.fourier_basis(x, self.fourier_degree))
                      for x in data))
-        y_test = self.model.predict(np.array(_y))
+        y_test = self.current_model.predict(np.array(_y))
         return y_test
     
     def synthesize(self, midi_notes, model, sample_rate=44100, duration=5.0):
@@ -158,14 +168,14 @@ class FourierNN:
             freq = midi_to_freq(note)
             t = np.linspace(0, duration, int(sample_rate * duration), False)
             t_scaled = t * 2 * np.pi / freq
-            signal = self.model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))
+            signal = self.models.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))
             output += signal
         output = output / np.max(np.abs(output))  # Normalize
         return output.astype(np.int16)
     
 
     def convert_to_audio(self, filename='./tmp/output.wav'):
-        print(self.model.summary())
+        print(self.models.summary())
         sample_rate = self.RANGE
         duration = 5.0
         T = 1 / 440
@@ -173,25 +183,22 @@ class FourierNN:
         t_scaled = t * 2 * np.pi / T
         data=np.array([self.fourier_basis(x, self.fourier_degree) for x in t_scaled])
         print(data.shape)
-        signal = self.model.predict(data)
+        signal = self.models.predict(data)
         audio = (signal * 32767 / np.max(np.abs(signal))) / 2
         audio = audio.astype(np.int16)
         write(filename, sample_rate, audio)
 
     def save_model(self, filename='./tmp/model.h5'):
-        self.model.save(filename)
+        self.current_model.save(filename)
 
-    def load_model(self, filename='./tmp/model.h5'):
-        if self.model:
-            if not hasattr(self, 'old_models'):
-                self.old_models={}
-            #name=os.path.basename(filename).replace('.h5', '')
-            #self.old_models
-        self.model = tf.keras.models.load_model(filename)
-        self.model.summary()
-        print(self.model.input_shape)
-        print(self.model.name)
-        self.fourier_degree=self.model.input_shape[1]//2
+    def load_new_model_from_file(self, filename='./tmp/model.h5'):
+        if self.current_model:
+            self.models.append(self.current_model)
+        self.current_model = tf.keras.models.load_model(filename)
+        self.current_model.summary()
+        print(self.current_model.input_shape)
+        print(self.current_model.name)
+        self.fourier_degree=self.current_model.input_shape[1]//2
 
 # moved to ./tests/fouriernn_test.py
 # if __name__ == '__main__':
