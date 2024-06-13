@@ -49,4 +49,3 @@ class askStringAndSelectionDialog(simpledialog.Dialog):
 
     def apply(self):
         self.result = (self.entry.get(), self.combo.get())
-

@@ -67,6 +67,23 @@ def map_value(value, leftMin, leftMax, rightMin, rightMax):
     valueScaled = float(value - leftMin) / float(leftSpan)
     return rightMin + (valueScaled * rightSpan)
 
+def map_value_old(x, a1, a2, b1, b2):
+    """
+    Maps a value from one range to another.
+
+    Parameters:
+    x (float): The value to map.
+    a1 (float): The lower bound of the original range.
+    a2 (float): The upper bound of the original range.
+    b1 (float): The lower bound of the target range.
+    b2 (float): The upper bound of the target range.
+
+    Returns:
+    float: The mapped value in the target range.
+    """
+    return b1 + ((x - a1) * (b2 - b1)) / (a2 - a1)
+
+
 def random_hex_color():
     # Generate a random color in hexadecimal format
     color = '{:06x}'.format(random.randint(0x111111, 0xFFFFFF))
@@ -75,7 +92,6 @@ def random_hex_color():
 def random_color():
     colors = ["lime", "orange", "yellow", "green", "blue", "indigo", "violet"]
     return random.choice(colors)
-
 
 def get_prepared_random_color(maxColors=None):
     if not hasattr(get_prepared_random_color, 'colors'):

@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import random
 import numpy as np
@@ -9,6 +10,7 @@ import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 from multiprocessing import Process, Queue
 
+from scr import utils
 from scr.utils import midi_to_freq
 
 class MyCallback(Callback):
@@ -24,7 +26,7 @@ class MyCallback(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         if self.queue:
-            self.queue.put(self.test_data[0], self.model.predict(self.test_data[1]))
+            self.queue.put(self.model.predict(self.test_data))
         if not self.quiet:
             print(f"EPOCHE {epoch} ENDED, Logs: {logs}")
 
@@ -35,7 +37,7 @@ class FourierNN:
     ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
-    EPOCHS = 100
+    EPOCHS = 5
 
     SIGNED_RANDOMNES = 0.000000001
     DEFAULT_FORIER_DEGREE = 10
@@ -61,6 +63,11 @@ class FourierNN:
 
     def update_data(self, data):
         self.prepared_data=self.prepare_data(list(data))
+        if not self.current_model:
+            self.create_new_model()
+
+    def get_trainings_data(self):
+        return list(zip(self.prepared_data[0], self.prepared_data[2]))
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
@@ -76,22 +83,40 @@ class FourierNN:
     def prepare_data(self, data):
         self.fourier_degree = (
             len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
+        
         actualData_x, actualData_y = zip(*data)
-        if len(data) < self.RANGE:
-            if len(data) == self.RANGE / 2:
-                data.extend(data)
-            else:
-                multi = self.RANGE // len(data)
-                rest = self.RANGE % len(data)
-                data.extend([(dat[0] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES),
-                                   dat[1] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES)) for dat in data * multi])
-                for i in range(rest):
-                    rand_x = random.uniform(-self.SIGNED_RANDOMNES,
-                                            self.SIGNED_RANDOMNES)
-                    rand_y = random.uniform(-self.SIGNED_RANDOMNES,
-                                            self.SIGNED_RANDOMNES)
-                    data.append(
-                        (data[i][0] + rand_x, data[i][1] + rand_y))
+
+        # random data filling
+        # if len(data) < self.RANGE:
+        #     if len(data) == self.RANGE / 2:
+        #         data.extend(data)
+        #     else:
+        #         multi = self.RANGE // len(data)
+        #         rest = self.RANGE % len(data)
+        #         data.extend([(dat[0] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES),
+        #                            dat[1] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES)) for dat in data * multi])
+        #         for i in range(rest):
+        #             rand_x = random.uniform(-self.SIGNED_RANDOMNES,
+        #                                     self.SIGNED_RANDOMNES)
+        #             rand_y = random.uniform(-self.SIGNED_RANDOMNES,
+        #                                     self.SIGNED_RANDOMNES)
+        #             data.append(
+        #                 (data[i][0] + rand_x, data[i][1] + rand_y))
+
+        # "math" data filling
+        while len(data) < self.RANGE:
+            for a, b in utils.pair_iterator(data):
+                new_X = b[0]-a[0]
+                new_y = b[1]-a[1]
+                
+                data.append((a[0]+(new_X/2), a[1]+(new_y/2)))
+                if len(data) == self.RANGE:
+                    break
+
+        while len(data) > self.RANGE:
+            data.pop()
+
+
         x_train, y_train = zip(*data)
         x_train = np.array(x_train)
         y_train = np.array(y_train)
@@ -109,15 +134,26 @@ class FourierNN:
         model.summary()
         return model
 
-    def train(self, queue=None, quiet=False):
+    def train(self, test_data, queue=None, quiet=False):
         _, x_train_transformed, y_train, _, _ = self.prepared_data
         model=self.current_model
 
-        _x, _y = zip(*list((x, self.fourier_basis(x, self.fourier_degree))
-                     for x in np.linspace(-2 * np.pi, 2 * np.pi, self.RANGE)))
-        _x, _y = np.array(_x), np.array(_y)
+        _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
+        _x = np.array(_x)
         model.fit(x_train_transformed, y_train,
-                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, (_x, _y,),quiet)], batch_size=32, verbose=0)
+                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, _x,quiet)], batch_size=32, verbose=0)
+        
+    
+    # def train_Process(self, test_data, queue=None, quiet=False)-> Process:
+    #     _, x_train_transformed, y_train, _, _ = self.prepared_data
+    #     model=self.current_model
+
+    #     _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
+    #     _x = np.array(_x)        
+    #     process=multiprocessing.Process(target=model.fit, args=(x_train_transformed, y_train), 
+    #                                     kwargs={'epochs':self.EPOCHS, 'callbacks':[MyCallback(queue, _x,quiet)], 'batch_size':32, 'verbose':0})
+    #     process.start()
+    #     return process
 
     def train_and_plot(self):
         x_train, x_train_transformed, y_train, actualData_x, actualData_y = self.prepared_data
