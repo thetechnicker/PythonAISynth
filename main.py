@@ -64,7 +64,8 @@ if __name__ == "__main__":
             if process.is_alive():
                 try:
                     data=queue.get_nowait()
-                    print(*[(x, y) for x, y in zip(graph.lst, data[0])], sep='\n')
+                    data=data.reshape(-1)
+                    graph.data=list(zip(graph.lst, data))
                     graph._draw()
                 except:
                     pass
@@ -84,6 +85,7 @@ if __name__ == "__main__":
                  fourier_nn=FourierNN(graph.export_data())
             process=multiprocessing.Process(target=fourier_nn.train, args=(graph.lst, queue, True))
             process.start()
+            graph.draw_extern_graph_from_data(graph.data, "orig_data")
             print(process.pid)
             root.after(10, train_update)
             atexit.register(proc_exit)
@@ -155,6 +157,11 @@ if __name__ == "__main__":
         button5= tk.Button(root, text='load', command=load)
         button5.grid(row=2,column=4, sticky='NSEW')
 
+        def init():
+            graph.use_preconfig_drawing(functions['tan'])
+            train()
+
+        root.after(500, init)
 
         try:
             root.mainloop()

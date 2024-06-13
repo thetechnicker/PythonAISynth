@@ -187,6 +187,22 @@ class GraphCanvas(tk.Frame):
             self._draw()
         except Exception as e:
             print(e)
+
+    def draw_extern_graph_from_data(self, data, name=None, width=None, color=None):
+        if not width:
+            width=self.point_radius/2
+        if not color:
+            color=utils.get_prepared_random_color()
+        if not name:
+            name = f"funciton {len(list(self.extern_graph.keys()))}"
+        try:
+            #data =  list(zip(self.lst,data))
+            if not hasattr(self, 'extern_graph'):
+                self.extern_graph={}
+            self.extern_graph[name] = (data,color,width)
+            self._draw()
+        except Exception as e:
+            print(e)
         
 
 # moved to ./tests
