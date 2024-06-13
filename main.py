@@ -64,8 +64,9 @@ if __name__ == "__main__":
             if process.is_alive():
                 try:
                     data=queue.get_nowait()
-                    data=data.reshape(-1)
-                    graph.data=list(zip(graph.lst, data))
+                    data=list(zip(graph.lst, data.reshape(-1)))
+                    #graph.data=data
+                    graph.draw_extern_graph_from_data(data, "test", color="red")
                     graph._draw()
                 except:
                     pass
@@ -83,9 +84,9 @@ if __name__ == "__main__":
                 return
             if not fourier_nn:
                  fourier_nn=FourierNN(graph.export_data())
-            process=multiprocessing.Process(target=fourier_nn.train, args=(graph.lst, queue, True))
+            process=multiprocessing.Process(target=fourier_nn.train, args=(graph.lst, queue))
             process.start()
-            graph.draw_extern_graph_from_data(graph.data, "orig_data")
+            #graph.draw_extern_graph_from_data(graph.data, "orig_data")
             print(process.pid)
             root.after(10, train_update)
             atexit.register(proc_exit)
