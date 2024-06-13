@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 from multiprocessing import Process, Queue
 
+from scr import utils
 from scr.utils import midi_to_freq
 
 class MyCallback(Callback):
@@ -36,7 +37,7 @@ class FourierNN:
     ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
-    EPOCHS = 100
+    EPOCHS = 5
 
     SIGNED_RANDOMNES = 0.000000001
     DEFAULT_FORIER_DEGREE = 10
@@ -65,6 +66,9 @@ class FourierNN:
         if not self.current_model:
             self.create_new_model()
 
+    def get_trainings_data(self):
+        return list(zip(self.prepared_data[0], self.prepared_data[2]))
+
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
         basis = [np.sin(i * x) for i in range(1, n+1)]
@@ -79,22 +83,40 @@ class FourierNN:
     def prepare_data(self, data):
         self.fourier_degree = (
             len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
+        
         actualData_x, actualData_y = zip(*data)
-        if len(data) < self.RANGE:
-            if len(data) == self.RANGE / 2:
-                data.extend(data)
-            else:
-                multi = self.RANGE // len(data)
-                rest = self.RANGE % len(data)
-                data.extend([(dat[0] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES),
-                                   dat[1] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES)) for dat in data * multi])
-                for i in range(rest):
-                    rand_x = random.uniform(-self.SIGNED_RANDOMNES,
-                                            self.SIGNED_RANDOMNES)
-                    rand_y = random.uniform(-self.SIGNED_RANDOMNES,
-                                            self.SIGNED_RANDOMNES)
-                    data.append(
-                        (data[i][0] + rand_x, data[i][1] + rand_y))
+
+        # random data filling
+        # if len(data) < self.RANGE:
+        #     if len(data) == self.RANGE / 2:
+        #         data.extend(data)
+        #     else:
+        #         multi = self.RANGE // len(data)
+        #         rest = self.RANGE % len(data)
+        #         data.extend([(dat[0] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES),
+        #                            dat[1] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES)) for dat in data * multi])
+        #         for i in range(rest):
+        #             rand_x = random.uniform(-self.SIGNED_RANDOMNES,
+        #                                     self.SIGNED_RANDOMNES)
+        #             rand_y = random.uniform(-self.SIGNED_RANDOMNES,
+        #                                     self.SIGNED_RANDOMNES)
+        #             data.append(
+        #                 (data[i][0] + rand_x, data[i][1] + rand_y))
+
+        # "math" data filling
+        while len(data) < self.RANGE:
+            for a, b in utils.pair_iterator(data):
+                new_X = b[0]-a[0]
+                new_y = b[1]-a[1]
+                
+                data.append((a[0]+(new_X/2), a[1]+(new_y/2)))
+                if len(data) == self.RANGE:
+                    break
+
+        while len(data) > self.RANGE:
+            data.pop()
+
+
         x_train, y_train = zip(*data)
         x_train = np.array(x_train)
         y_train = np.array(y_train)
