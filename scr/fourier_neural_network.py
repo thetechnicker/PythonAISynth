@@ -1,3 +1,4 @@
+from copy import copy
 import multiprocessing
 import os
 import random
@@ -37,7 +38,7 @@ class FourierNN:
     ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
-    EPOCHS = 5
+    EPOCHS = 10
 
     SIGNED_RANDOMNES = 0.000000001
     DEFAULT_FORIER_DEGREE = 10
@@ -105,16 +106,21 @@ class FourierNN:
 
         # "math" data filling
         while len(data) < self.RANGE:
-            for a, b in utils.pair_iterator(data):
+            for a, b in utils.pair_iterator(copy(data)):
                 new_X = b[0]-a[0]
                 new_y = b[1]-a[1]
-                
-                data.append((a[0]+(new_X/2), a[1]+(new_y/2)))
+                new_data=(a[0]+(new_X/2), a[1]+(new_y/2))
+                # with open("tmp/graph.dump", "a+") as f:
+                #     print(a, b, new_data, file=f, flush=True)
+                data.append(new_data)
                 if len(data) == self.RANGE:
                     break
 
         while len(data) > self.RANGE:
+            print("OOPS")
             data.pop()
+
+        data=sorted(data, key=lambda x: x[0])
 
 
         x_train, y_train = zip(*data)

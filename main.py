@@ -55,9 +55,18 @@ if __name__ == "__main__":
         graph.grid(row=1, column=0, columnspan=3, sticky='NSEW')
 
         def funny(x):
-            return np.sin(np.cos(np.tan(keras.activations.exponential(x))))
+            return np.tan(np.sin(x)*np.cos(x))
+        
+        def funny2(x):
+            return np.sin(np.cos(x) * keras.activations.elu(x))/np.cos(x)
+        
+        def funny3(x):
+            return np.sin(np.cos(x) * keras.activations.elu(x))/np.cos(1/x)
 
         functions = {
+            'funny': funny,
+            'funny2': funny2,
+            'funny3': funny3,
             'sin': np.sin,
             'cos': np.cos,
             'tan': np.tan,
@@ -68,7 +77,6 @@ if __name__ == "__main__":
             'exponential': keras.activations.exponential,
             'selu': keras.activations.selu,
             'gelu': keras.activations.gelu,
-            'funny': funny
         }
 
         n = tk.StringVar()
@@ -114,15 +122,14 @@ if __name__ == "__main__":
                     fourier_nn = FourierNN(graph.export_data())
                 else:
                     fourier_nn.update_data(graph.export_data())
-                time_stamp = time.perf_counter_ns()
+                    
                 process = multiprocessing.Process(
                     target=fourier_nn.train, args=(graph.lst, queue, True))
                 
                 graph.draw_extern_graph_from_data(fourier_nn.get_trainings_data(), "full_data")
 
-                print(time_stamp-time.perf_counter_ns())
                 process.start()
-                print(process.pid)
+
                 root.after(10, train_update)
                 atexit.register(process.kill)
             else:
@@ -220,8 +227,11 @@ if __name__ == "__main__":
         # button_new_net= tk.Button(root, text='create New Net', command=create_new_net)
         # button_new_net.grid(row=2,column=3, sticky='NSEW')
 
+        def update_2sine():
+            pass
+
         def init():
-            graph.use_preconfig_drawing(functions['tan'])
+            graph.use_preconfig_drawing(functions['funny2'])
             # train()
 
         # root.after(500, init)

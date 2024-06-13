@@ -19,8 +19,7 @@ class GraphCanvas(tk.Frame):
     lower_end_y = 1
     upper_end_y = -1
 
-    def __init__(self, master, size:tuple[int, int]=None, draw_callback=None):
-        self.draw_callback=draw_callback
+    def __init__(self, master, size:tuple[int, int]=None):
         if size:
             self.canvas_width = size[0]
             self.canvas_height = size[1]
@@ -47,8 +46,6 @@ class GraphCanvas(tk.Frame):
             self._draw_extern_graph()
 
     def motion_end(self, event):
-        if self.draw_callback:
-            self.draw_callback()
         if hasattr(self, 'old_point'):
             del self.old_point
 
@@ -169,7 +166,7 @@ class GraphCanvas(tk.Frame):
             # Draw the name of the graph
             self.canvas.create_text(legend_x + 30, legend_y + i * legend_spacing,
                                     text=name, anchor='w')
-            if graph_type:
+            if graph_type:# and False:
                 for a, b in utils.pair_iterator(graph):
                     a_new=self.convert_graph_to_canvas_coordinates_optimized(*a)
                     b_new=self.convert_graph_to_canvas_coordinates_optimized(*b)
