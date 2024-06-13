@@ -104,12 +104,13 @@ if __name__ == "__main__":
             nonlocal fourier_nn
             nonlocal process
             if not process:
-                train.training=True
                 if not fourier_nn:
                      fourier_nn=FourierNN(graph.export_data())
                 else:
                     fourier_nn.update_data(graph.export_data())
+                time_stamp=time.perf_counter_ns()
                 process=multiprocessing.Process(target=fourier_nn.train, args=(graph.lst, queue, True))
+                print(time_stamp-time.perf_counter_ns())
                 process.start()
                 #graph.draw_extern_graph_from_data(graph.data, "orig_data")
                 print(process.pid)
@@ -117,6 +118,22 @@ if __name__ == "__main__":
                 atexit.register(process.kill)
             else:
                 print('already training')
+
+        
+        # def train():
+        #     nonlocal fourier_nn
+        #     nonlocal process
+        #     if not process:
+        #         if not fourier_nn:
+        #              fourier_nn=FourierNN(graph.export_data())
+        #         else:
+        #             fourier_nn.update_data(graph.export_data())
+        #         process=fourier_nn.train_Process(graph.lst, queue, True)
+        #         print(process.pid)
+        #         root.after(10, train_update)
+        #         atexit.register(process.kill)
+        #     else:
+        #         print('already training')
         
         def musik():
             nonlocal fourier_nn
@@ -187,9 +204,9 @@ if __name__ == "__main__":
 
         def init():
             graph.use_preconfig_drawing(functions['tan'])
-            train()
+            # train()
 
-        # root.after(500, init)
+        root.after(500, init)
 
         # fourier_nn=FourierNN()
 

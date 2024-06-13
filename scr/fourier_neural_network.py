@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import random
 import numpy as np
@@ -119,6 +120,18 @@ class FourierNN:
         _x = np.array(_x)
         model.fit(x_train_transformed, y_train,
                        epochs=self.EPOCHS, callbacks=[MyCallback(queue, _x,quiet)], batch_size=32, verbose=0)
+        
+    
+    # def train_Process(self, test_data, queue=None, quiet=False)-> Process:
+    #     _, x_train_transformed, y_train, _, _ = self.prepared_data
+    #     model=self.current_model
+
+    #     _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
+    #     _x = np.array(_x)        
+    #     process=multiprocessing.Process(target=model.fit, args=(x_train_transformed, y_train), 
+    #                                     kwargs={'epochs':self.EPOCHS, 'callbacks':[MyCallback(queue, _x,quiet)], 'batch_size':32, 'verbose':0})
+    #     process.start()
+    #     return process
 
     def train_and_plot(self):
         x_train, x_train_transformed, y_train, actualData_x, actualData_y = self.prepared_data
