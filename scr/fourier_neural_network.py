@@ -1,3 +1,4 @@
+import multiprocessing
 import os
 import random
 import numpy as np
@@ -24,7 +25,7 @@ class MyCallback(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         if self.queue:
-            self.queue.put(self.test_data[0], self.model.predict(self.test_data[1]))
+            self.queue.put(self.model.predict(self.test_data))
         if not self.quiet:
             print(f"EPOCHE {epoch} ENDED, Logs: {logs}")
 
@@ -61,6 +62,8 @@ class FourierNN:
 
     def update_data(self, data):
         self.prepared_data=self.prepare_data(list(data))
+        if not self.current_model:
+            self.create_new_model()
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
@@ -109,15 +112,26 @@ class FourierNN:
         model.summary()
         return model
 
-    def train(self, queue=None, quiet=False):
+    def train(self, test_data, queue=None, quiet=False):
         _, x_train_transformed, y_train, _, _ = self.prepared_data
         model=self.current_model
 
-        _x, _y = zip(*list((x, self.fourier_basis(x, self.fourier_degree))
-                     for x in np.linspace(-2 * np.pi, 2 * np.pi, self.RANGE)))
-        _x, _y = np.array(_x), np.array(_y)
+        _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
+        _x = np.array(_x)
         model.fit(x_train_transformed, y_train,
-                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, (_x, _y,),quiet)], batch_size=32, verbose=0)
+                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, _x,quiet)], batch_size=32, verbose=0)
+        
+    
+    # def train_Process(self, test_data, queue=None, quiet=False)-> Process:
+    #     _, x_train_transformed, y_train, _, _ = self.prepared_data
+    #     model=self.current_model
+
+    #     _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
+    #     _x = np.array(_x)        
+    #     process=multiprocessing.Process(target=model.fit, args=(x_train_transformed, y_train), 
+    #                                     kwargs={'epochs':self.EPOCHS, 'callbacks':[MyCallback(queue, _x,quiet)], 'batch_size':32, 'verbose':0})
+    #     process.start()
+    #     return process
 
     def train_and_plot(self):
         x_train, x_train_transformed, y_train, actualData_x, actualData_y = self.prepared_data

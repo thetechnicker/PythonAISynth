@@ -1,5 +1,9 @@
+import atexit
+from multiprocessing import Queue
+import multiprocessing
 import os
 from threading import Thread
+import time
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
@@ -12,8 +16,27 @@ from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
 from scr.simple_input_dialog import askStringAndSelectionDialog
 
+
 if __name__ == "__main__":
     def main():
+        def DIE(process, join_timeout=30, term_iterations=50):
+            if process:
+                print("Attempting to stop process (die)", flush=True)
+                process.join(join_timeout)
+                i = 0
+                while process.is_alive() and i < term_iterations:
+                    print("Sending terminate signal (DIE)", flush=True)
+                    process.terminate()
+                    time.sleep(0.5)
+                    i += 1
+                while process.is_alive():
+                    print("Sending kill signal !!!(DIE!!!)", flush=True)
+                    process.kill()
+                    time.sleep(0.1)
+
+        process:multiprocessing.Process=None
+        queue=Queue(-1)
+
         root = tk.Tk()
         root.rowconfigure(1, weight=1)
         root.columnconfigure(0, weight=1)
@@ -21,17 +44,17 @@ if __name__ == "__main__":
         root.columnconfigure(2, weight=1)
         root.columnconfigure(3, weight=1)
         root.columnconfigure(4, weight=1)
-        
 
-        list_view_graphs = tk.Listbox(root)
-        list_view_graphs.grid(row=0,column=3, rowspan=2, sticky='NSEW')
-
-        list_view_nets = tk.Listbox(root)
-        list_view_nets.grid(row=0,column=4, rowspan=2, sticky='NSEW')
-
-
-        graph = GraphCanvas(root, (900, 300))
-        graph.grid(row=1,column=0, columnspan=3, sticky='NSEW')
+        # def draw_callback():
+        #     nonlocal process
+        #     print(process)
+        #     if process:
+        #         DIE(process)
+        #         process=None
+        #         train()
+       
+        graph = GraphCanvas(root, (900, 300)) # , draw_callback)
+        graph.grid(row=1,column=0, columnspan=5, sticky='NSEW')
 
         functions = {
             'sin': np.sin,
@@ -61,14 +84,56 @@ if __name__ == "__main__":
 
         fourier_nn=None
 
+        def train_update():
+            nonlocal process
+            if process:
+                if process.is_alive():
+                    try:
+                        data=queue.get_nowait()
+                        data=list(zip(graph.lst, data.reshape(-1)))
+                        #graph.data=data
+                        graph.draw_extern_graph_from_data(data, "training", color="red")
+                        graph._draw()
+                    except:
+                        pass
+                    root.after(500, train_update)
+                else:
+                    process=None
+
         def train():
             nonlocal fourier_nn
-            if not fourier_nn:
-                fourier_nn=FourierNN(graph.export_data())
+            nonlocal process
+            if not process:
+                if not fourier_nn:
+                     fourier_nn=FourierNN(graph.export_data())
+                else:
+                    fourier_nn.update_data(graph.export_data())
+                time_stamp=time.perf_counter_ns()
+                process=multiprocessing.Process(target=fourier_nn.train, args=(graph.lst, queue, True))
+                print(time_stamp-time.perf_counter_ns())
+                process.start()
+                #graph.draw_extern_graph_from_data(graph.data, "orig_data")
+                print(process.pid)
+                root.after(10, train_update)
+                atexit.register(process.kill)
             else:
-                fourier_nn.update_data(graph.export_data())
-            fourier_nn.train_and_plot()
-            update_net_list()
+                print('already training')
+
+        
+        # def train():
+        #     nonlocal fourier_nn
+        #     nonlocal process
+        #     if not process:
+        #         if not fourier_nn:
+        #              fourier_nn=FourierNN(graph.export_data())
+        #         else:
+        #             fourier_nn.update_data(graph.export_data())
+        #         process=fourier_nn.train_Process(graph.lst, queue, True)
+        #         print(process.pid)
+        #         root.after(10, train_update)
+        #         atexit.register(process.kill)
+        #     else:
+        #         print('already training')
         
         def musik():
             nonlocal fourier_nn
@@ -107,63 +172,23 @@ if __name__ == "__main__":
                 else:
                     messagebox.showwarning("File already Exists", f"The selected filename {name} already exists.")
 
+
         def load():
             nonlocal fourier_nn
-            filetypes = (('HDF5 files', '*.h5'), ('Keras files', '*.keras'), ('All files', '*.*'))
+            filetypes = (('Keras files', '*.keras'), ('HDF5 files', '*.h5'), ('All files', '*.*'))
             filename = filedialog.askopenfilename(title='Open a file', initialdir='.', filetypes=filetypes, parent=root)
             if os.path.exists(filename):
                 if not fourier_nn:
                     fourier_nn=FourierNN(data=None)
                 fourier_nn.load_new_model_from_file(filename)
-                name, color= graph.draw_extern_graph_from_func(fourier_nn.predict, os.path.basename(filename).split('.')[0])
-                #list_view_graphs.insert(tk.END, f"{name}")
+                name = os.path.basename(filename).split('.')[0]
+                graph.draw_extern_graph_from_func(fourier_nn.predict, name)
+                print(name)
                 fourier_nn.update_data(data=graph.get_graph(name=name)[0])
-            update_net_list()
-            update_function_list()
         
-        def create_new_net():
-            nonlocal fourier_nn
-            if fourier_nn:
-                fourier_nn.create_new_model()
-                update_net_list()
 
-
-        def update_function_list():
-            list_view_graphs.delete(0, tk.END)
-            graph_names=graph.get_graph_names()
-            for i, name in enumerate(graph_names):
-                list_view_graphs.insert(tk.END, f"{name}")
-                color=graph.get_graph(name)[1]
-                list_view_graphs.itemconfig(i, {'fg':color})
-
-        def update_net_list():
-            nonlocal fourier_nn
-            if fourier_nn:
-                list_view_nets.delete(0, tk.END)
-                for i, model in enumerate(fourier_nn.get_models()):
-                    current="(current)" if i==0 else ""
-                    list_view_nets.insert(tk.END, f"{model.name}{current}:{i}")
-
-        def add_functions():
-            pass
-
-        def invert_function():
-            pass
-
-        def select_net():
-            nonlocal fourier_nn
-            if fourier_nn:
-                net_name=list_view_nets.get(list_view_nets.curselection())
-                fourier_nn.change_model(int(net_name.split(':')[1]))
-                graph.use_preconfig_drawing_parallel(fourier_nn.predict)
-                update_net_list()
-
-        def remove_net():
-            pass
-
-
-        button_train= tk.Button(root, text='Train', command=train)
-        button_train.grid(row=2,column=0, sticky='NSEW')
+        button= tk.Button(root, text='Train', command=train)
+        button.grid(row=2,column=0, sticky='NSEW')
 
         button_musik= tk.Button(root, text='Musik', command=musik)
         button_musik.grid(row=3,column=0, sticky='NSEW')
@@ -181,21 +206,24 @@ if __name__ == "__main__":
         button_load.grid(row=3,column=2, sticky='NSEW')
 
 
-        button_add_functions = tk.Button(root, text='add selected functon', command=add_functions)
-        button_add_functions.grid(row=2,column=3, sticky='NSEW')
+        button5= tk.Button(root, text='load', command=load)
+        button5.grid(row=2,column=4, sticky='NSEW')
 
-        button_invert_function = tk.Button(root, text='invert selected function', command=invert_function)
-        button_invert_function.grid(row=3,column=3, sticky='NSEW')
+        def init():
+            graph.use_preconfig_drawing(functions['tan'])
+            # train()
 
-        button_select_net = tk.Button(root, text='use selected Net', command=select_net)
-        button_select_net.grid(row=2,column=4, sticky='NSEW')
-        
-        #button_remove_net=None
+        root.after(500, init)
+
+        # fourier_nn=FourierNN()
+
+        try:
+            root.mainloop()
+        except KeyboardInterrupt:
+            pass
+
+        DIE(process)
 
 
-        graph.draw_extern_graph_from_func(np.sin, "base function", width=2, color='black')
-        update_function_list()
-        update_net_list()
-        root.mainloop()
 
     main()
