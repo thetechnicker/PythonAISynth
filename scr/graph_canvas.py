@@ -6,22 +6,6 @@ import numpy as np
 
 from scr import utils
 
-def map_value(x, a1, a2, b1, b2):
-    """
-    Maps a value from one range to another.
-
-    Parameters:
-    x (float): The value to map.
-    a1 (float): The lower bound of the original range.
-    a2 (float): The upper bound of the original range.
-    b1 (float): The lower bound of the target range.
-    b2 (float): The upper bound of the target range.
-
-    Returns:
-    float: The mapped value in the target range.
-    """
-    return b1 + ((x - a1) * (b2 - b1)) / (a2 - a1)
-
 
 class GraphCanvas(tk.Frame):
     canvas_width = 600
@@ -59,7 +43,7 @@ class GraphCanvas(tk.Frame):
         for x, y in self.data:
             self.draw_point(x, y)
         if hasattr(self, 'extern_graph'):
-            self._draw_extern_graph(self.extern_graph)
+            self._draw_extern_graph()
 
     def motion_end(self, event):
         if hasattr(self, 'old_point'):
@@ -105,7 +89,7 @@ class GraphCanvas(tk.Frame):
         self.canvas_height = event.height-self.offset*2
         self.canvas.config(width=event.width, height=event.height)
         self._draw()
-        # self.first=True # Keeping this, if it breaks again.
+        self.first=True # Keeping this, if it breaks again.
     
     def on_mouse_move_interpolate(self, event):
         new_point = (event.x, event.y)
@@ -166,23 +150,44 @@ class GraphCanvas(tk.Frame):
         self.data = [(x, self._eval_func(function, x)) for x in self.lst]
         self._draw()
 
-    def _draw_extern_graph(self, data):
-        for name, (graph, color) in self.extern_graph.items():
-            x, y = self.convert_graph_to_canvas_coordinates_optimized(*graph[0])
-            self.canvas.create_text(x+30, y-20, text=name, fill=color)
+    def get_graph(self, name):
+        return self.extern_graph[name]
+
+    def _draw_extern_graph(self):
+        legend_x = 10  # The x-coordinate of the top-left corner of the legend
+        legend_y = 10  # The y-coordinate of the top-left corner of the legend
+        legend_spacing = 20  # The vertical spacing between items in the legend
+    
+        for i, (name, (graph, color, width)) in enumerate(self.extern_graph.items()):
+            # Draw a small line of the same color as the graph
+            self.canvas.create_line(legend_x, legend_y + i * legend_spacing,
+                                    legend_x + 20, legend_y + i * legend_spacing,
+                                    fill=color, width=2)
+            # Draw the name of the graph
+            self.canvas.create_text(legend_x + 30, legend_y + i * legend_spacing,
+                                    text=name, anchor='w')
+            
             for a, b in utils.pair_iterator(graph):
                 a_new=self.convert_graph_to_canvas_coordinates_optimized(*a)
                 b_new=self.convert_graph_to_canvas_coordinates_optimized(*b)
-                self.canvas.create_line(*a_new,*b_new, width=self.point_radius/2, fill=color)
-
+                self.canvas.create_line(*a_new,*b_new, width=width, fill=color)
     
-    def draw_extern_graph_from_func(self, name, function):
-        data =  list(zip(self.lst,function(self.lst)))
-        if not hasattr(self, 'extern_graph'):
-            self.extern_graph={}
-        self.extern_graph[name] = (data,utils.random_color())
-        self._draw()
-
+    def draw_extern_graph_from_func(self, function, name=None, width=None, color=None):
+        if not width:
+            width=self.point_radius/2
+        if not color:
+            color=utils.get_prepared_random_color()
+        if not name:
+            name = f"funciton {len(list(self.extern_graph.keys()))}"
+        try:
+            data =  list(zip(self.lst,function(self.lst)))
+            if not hasattr(self, 'extern_graph'):
+                self.extern_graph={}
+            self.extern_graph[name] = (data,color,width)
+            self._draw()
+        except Exception as e:
+            print(e)
+        
 
 # moved to ./tests
 # if __name__ == "__main__":

@@ -1,3 +1,6 @@
+import atexit
+from multiprocessing import Queue
+import multiprocessing
 import os
 from threading import Thread
 import tkinter as tk
@@ -10,10 +13,13 @@ import numpy as np
 
 from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
+from scr.simple_input_dialog import askStringAndSelectionDialog
 
 
 if __name__ == "__main__":
     def main():
+        process=None
+        queue=Queue(-1)
         root = tk.Tk()
         root.rowconfigure(1, weight=1)
         root.columnconfigure(0, weight=1)
@@ -54,10 +60,33 @@ if __name__ == "__main__":
 
         fourier_nn=None
 
-        def test():
+        def train_update():
+            if process.is_alive():
+                try:
+                    data=queue.get_nowait()
+                    print(*[(x, y) for x, y in zip(graph.lst, data[0])], sep='\n')
+                    graph._draw()
+                except:
+                    pass
+                root.after(500, train_update)
+
+        def proc_exit():
+            nonlocal process
+            if process:
+                process.kill()
+
+        def train():
             nonlocal fourier_nn
-            fourier_nn=FourierNN(graph.export_data())
-            fourier_nn.train_and_plot()
+            nonlocal process
+            if process:
+                return
+            if not fourier_nn:
+                 fourier_nn=FourierNN(graph.export_data())
+            process=multiprocessing.Process(target=fourier_nn.train, args=(graph.lst, queue, True))
+            process.start()
+            print(process.pid)
+            root.after(10, train_update)
+            atexit.register(proc_exit)
         
         def musik():
             nonlocal fourier_nn
@@ -65,18 +94,28 @@ if __name__ == "__main__":
                 fourier_nn.convert_to_audio()
 
         def export():
+            default_format='keras'
             nonlocal fourier_nn
             if fourier_nn:
                 path='./tmp'
                 if not os.path.exists(path):
                     os.mkdir(path)
                 i=0
-                while os.path.exists(path+f"/model{i}.h5"):
+                while os.path.exists(path+f"/model{i}.{default_format}"):
                     i+=1
-                user_input = simpledialog.askstring("Save Model", "Enter a File Name", initialvalue=f"model{i}", parent=root)
-                if not user_input:
-                    user_input = f"model{i}"
-                file=f"{path}/{user_input}.h5"
+
+                dialog = askStringAndSelectionDialog(parent=root,
+                                                         title="Save Model",
+                                                         label_str="Enter a File Name",
+                                                         default_str=f"model{i}",
+                                                         label_select="Select Format",
+                                                         default_select=default_format,
+                                                         values_to_select_from=["keras", "h5"])
+                name, file_format = dialog.result
+                if not name:
+                    name = f"model{i}"
+
+                file=f"{path}/{name}.{file_format}"
                 print(file)
                 if not os.path.exists(file):
                     try:
@@ -84,20 +123,24 @@ if __name__ == "__main__":
                     except Exception as e:
                         messagebox.showwarning("ERROR - Can't Save Model", f"{e}")
                 else:
-                    messagebox.showwarning("File already Exists", f"The selected filename {user_input} already exists.")
+                    messagebox.showwarning("File already Exists", f"The selected filename {name} already exists.")
+
 
         def load():
             nonlocal fourier_nn
-            filetypes = (('tmodel files', '*.h5'), ('All files', '*.*'))
+            filetypes = (('Keras files', '*.keras'), ('HDF5 files', '*.h5'), ('All files', '*.*'))
             filename = filedialog.askopenfilename(title='Open a file', initialdir='.', filetypes=filetypes, parent=root)
             if os.path.exists(filename):
                 if not fourier_nn:
                     fourier_nn=FourierNN(data=None)
-                fourier_nn.load_model(filename)
-                graph.draw_extern_graph_from_func(os.path.basename(filename), fourier_nn.predict)
+                fourier_nn.load_new_model_from_file(filename)
+                name = os.path.basename(filename).split('.')[0]
+                graph.draw_extern_graph_from_func(fourier_nn.predict, name)
+                print(name)
+                fourier_nn.update_data(data=graph.get_graph(name=name)[0])
         
 
-        button= tk.Button(root, text='Train', command=test)
+        button= tk.Button(root, text='Train', command=train)
         button.grid(row=2,column=0, sticky='NSEW')
 
         button2= tk.Button(root, text='Musik', command=musik)
@@ -112,6 +155,13 @@ if __name__ == "__main__":
         button5= tk.Button(root, text='load', command=load)
         button5.grid(row=2,column=4, sticky='NSEW')
 
-        root.mainloop()
+
+        try:
+            root.mainloop()
+        except KeyboardInterrupt:
+            if process:
+                process.join(5)
+                while process.is_alive():
+                    process.kill()
 
     main()
