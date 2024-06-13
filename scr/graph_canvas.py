@@ -6,7 +6,6 @@ import numpy as np
 
 from scr import utils
 
-
 class GraphCanvas(tk.Frame):
     canvas_width = 600
     canvas_height = 600
@@ -19,7 +18,8 @@ class GraphCanvas(tk.Frame):
     lower_end_y = 1
     upper_end_y = -1
 
-    def __init__(self, master, size:tuple[int, int]=None):
+    def __init__(self, master, size:tuple[int, int]=None, draw_callback=None):
+        self.draw_callback=draw_callback
         if size:
             self.canvas_width = size[0]
             self.canvas_height = size[1]
@@ -46,6 +46,8 @@ class GraphCanvas(tk.Frame):
             self._draw_extern_graph()
 
     def motion_end(self, event):
+        if self.draw_callback:
+            self.draw_callback()
         if hasattr(self, 'old_point'):
             del self.old_point
 

@@ -61,6 +61,8 @@ class FourierNN:
 
     def update_data(self, data):
         self.prepared_data=self.prepare_data(list(data))
+        if not self.current_model:
+            self.create_new_model()
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):

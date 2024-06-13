@@ -3,6 +3,7 @@ from multiprocessing import Queue
 import multiprocessing
 import os
 from threading import Thread
+import time
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
@@ -18,8 +19,24 @@ from scr.simple_input_dialog import askStringAndSelectionDialog
 
 if __name__ == "__main__":
     def main():
-        process=None
+        def DIE(process, join_timeout=30, term_iterations=50):
+            if process:
+                print("Attempting to stop process (die)", flush=True)
+                process.join(join_timeout)
+                i = 0
+                while process.is_alive() and i < term_iterations:
+                    print("Sending terminate signal (DIE)", flush=True)
+                    process.terminate()
+                    time.sleep(0.5)
+                    i += 1
+                while process.is_alive():
+                    print("Sending kill signal !!!(DIE!!!)", flush=True)
+                    process.kill()
+                    time.sleep(0.1)
+
+        process:multiprocessing.Process=None
         queue=Queue(-1)
+
         root = tk.Tk()
         root.rowconfigure(1, weight=1)
         root.columnconfigure(0, weight=1)
@@ -27,9 +44,16 @@ if __name__ == "__main__":
         root.columnconfigure(2, weight=1)
         root.columnconfigure(3, weight=1)
         root.columnconfigure(4, weight=1)
-        
 
-        graph = GraphCanvas(root, (900, 300))
+        # def draw_callback():
+        #     nonlocal process
+        #     print(process)
+        #     if process:
+        #         DIE(process)
+        #         process=None
+        #         train()
+       
+        graph = GraphCanvas(root, (900, 300)) # , draw_callback)
         graph.grid(row=1,column=0, columnspan=5, sticky='NSEW')
 
         functions = {
@@ -61,35 +85,38 @@ if __name__ == "__main__":
         fourier_nn=None
 
         def train_update():
-            if process.is_alive():
-                try:
-                    data=queue.get_nowait()
-                    data=list(zip(graph.lst, data.reshape(-1)))
-                    #graph.data=data
-                    graph.draw_extern_graph_from_data(data, "test", color="red")
-                    graph._draw()
-                except:
-                    pass
-                root.after(500, train_update)
-
-        def proc_exit():
             nonlocal process
             if process:
-                process.kill()
+                if process.is_alive():
+                    try:
+                        data=queue.get_nowait()
+                        data=list(zip(graph.lst, data.reshape(-1)))
+                        #graph.data=data
+                        graph.draw_extern_graph_from_data(data, "training", color="red")
+                        graph._draw()
+                    except:
+                        pass
+                    root.after(500, train_update)
+                else:
+                    process=None
 
         def train():
             nonlocal fourier_nn
             nonlocal process
-            if process:
-                return
-            if not fourier_nn:
-                 fourier_nn=FourierNN(graph.export_data())
-            process=multiprocessing.Process(target=fourier_nn.train, args=(graph.lst, queue))
-            process.start()
-            #graph.draw_extern_graph_from_data(graph.data, "orig_data")
-            print(process.pid)
-            root.after(10, train_update)
-            atexit.register(proc_exit)
+            if not process:
+                train.training=True
+                if not fourier_nn:
+                     fourier_nn=FourierNN(graph.export_data())
+                else:
+                    fourier_nn.update_data(graph.export_data())
+                process=multiprocessing.Process(target=fourier_nn.train, args=(graph.lst, queue, True))
+                process.start()
+                #graph.draw_extern_graph_from_data(graph.data, "orig_data")
+                print(process.pid)
+                root.after(10, train_update)
+                atexit.register(process.kill)
+            else:
+                print('already training')
         
         def musik():
             nonlocal fourier_nn
@@ -162,14 +189,17 @@ if __name__ == "__main__":
             graph.use_preconfig_drawing(functions['tan'])
             train()
 
-        root.after(500, init)
+        # root.after(500, init)
+
+        # fourier_nn=FourierNN()
 
         try:
             root.mainloop()
         except KeyboardInterrupt:
-            if process:
-                process.join(5)
-                while process.is_alive():
-                    process.kill()
+            pass
+
+        DIE(process)
+
+
 
     main()
