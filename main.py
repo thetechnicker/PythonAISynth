@@ -42,8 +42,6 @@ if __name__ == "__main__":
         root.columnconfigure(0, weight=1)
         root.columnconfigure(1, weight=1)
         root.columnconfigure(2, weight=1)
-        root.columnconfigure(3, weight=1)
-        root.columnconfigure(4, weight=1)
 
         # def draw_callback():
         #     nonlocal process
@@ -54,7 +52,7 @@ if __name__ == "__main__":
         #         train()
        
         graph = GraphCanvas(root, (900, 300)) # , draw_callback)
-        graph.grid(row=1,column=0, columnspan=5, sticky='NSEW')
+        graph.grid(row=1,column=0, columnspan=3, sticky='NSEW')
 
         functions = {
             'sin': np.sin,
@@ -185,35 +183,38 @@ if __name__ == "__main__":
                 graph.draw_extern_graph_from_func(fourier_nn.predict, name)
                 print(name)
                 fourier_nn.update_data(data=graph.get_graph(name=name)[0])
+
+        # def create_new_net():
+            # nonlocal fourier_nn
+            # if fourier_nn:
+                # fourier_nn.create_new_model()
+
         
 
         button= tk.Button(root, text='Train', command=train)
         button.grid(row=2,column=0, sticky='NSEW')
 
         button_musik= tk.Button(root, text='Musik', command=musik)
-        button_musik.grid(row=3,column=0, sticky='NSEW')
+        button_musik.grid(row=3,column=1, sticky='NSEW')
 
         button_clear= tk.Button(root, text='clear', command=graph.clear)
-        button_clear.grid(row=2,column=1, sticky='NSEW')
-
-        button_new_net= tk.Button(root, text='create New Net', command=create_new_net)
-        button_new_net.grid(row=3,column=1, sticky='NSEW')
+        button_clear.grid(row=2,column=2, sticky='NSEW')
 
         button_export= tk.Button(root, text='export', command=export)
-        button_export.grid(row=2,column=2, sticky='NSEW')
+        button_export.grid(row=3,column=0, sticky='NSEW')
 
         button_load= tk.Button(root, text='load', command=load)
-        button_load.grid(row=3,column=2, sticky='NSEW')
-
-
-        button5= tk.Button(root, text='load', command=load)
-        button5.grid(row=2,column=4, sticky='NSEW')
+        button_load.grid(row=2,column=1, sticky='NSEW')
+        
+        # button_new_net= tk.Button(root, text='create New Net', command=create_new_net)
+        # button_new_net.grid(row=2,column=3, sticky='NSEW')
+        
 
         def init():
             graph.use_preconfig_drawing(functions['tan'])
             # train()
 
-        root.after(500, init)
+        # root.after(500, init)
 
         # fourier_nn=FourierNN()
 
