@@ -12,6 +12,7 @@ from tkinter import messagebox
 from tensorflow import keras
 import numpy as np
 
+from scr import utils
 from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
 from scr.simple_input_dialog import askStringAndSelectionDialog
@@ -209,6 +210,19 @@ if __name__ == "__main__":
             # if fourier_nn:
                 # fourier_nn.create_new_model()
 
+        # def audio_load_test():
+        #     nonlocal fourier_nn
+        #     #filetypes = (('All files', '*.*'))
+        #     filename = filedialog.askopenfilename(
+        #         title='Open a file', initialdir='.', parent=root)
+        #     if os.path.exists(filename):
+        #         x,y=utils.process_audio(filename)
+        #         data=list(zip(list(x), list(y)))
+        #         graph.data=data
+        #         graph._draw()
+        #         if fourier_nn:
+        #             fourier_nn.update_data(graph.export_data())
+
         button = tk.Button(root, text='Train', command=train)
         button.grid(row=2, column=0, sticky='NSEW')
 
@@ -224,17 +238,18 @@ if __name__ == "__main__":
         button_load = tk.Button(root, text='load', command=load)
         button_load.grid(row=2, column=1, sticky='NSEW')
 
-        # button_new_net= tk.Button(root, text='create New Net', command=create_new_net)
-        # button_new_net.grid(row=2,column=3, sticky='NSEW')
+        # button_new_net= tk.Button(root, text='audio_load_test', command=audio_load_test)
+        # button_new_net.grid(row=3,column=2, sticky='NSEW')
 
         def update_2sine():
             pass
 
         def init():
-            graph.use_preconfig_drawing(functions['funny2'])
+            # utils.process_audio("C:/Users/lucas/Downloads/2-notes-octave-guitar-83275.mp3")
+            graph.use_preconfig_drawing(functions['funny3'])
             # train()
 
-        # root.after(500, init)
+        root.after(500, init)
 
         # fourier_nn=FourierNN()
 

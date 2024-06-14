@@ -1,5 +1,9 @@
 import random
+from matplotlib import pyplot as plt
 import numpy as np
+# import librosa
+# from scipy.fft import *
+# from scipy.io import wavfile
 
 
 def midi_to_freq(midi_note):
@@ -107,3 +111,55 @@ def get_prepared_random_color(maxColors=None):
         return get_prepared_random_color.colors.pop()
     else:
         raise Exception("No more unique values left to generate")
+
+# def get_freq(sr, data, start_time, end_time):
+
+#     # Open the file and convert to mono
+#     if data.ndim > 1:
+#         data = data[:, 0]
+#     else:
+#         pass
+
+#     # Return a slice of the data from start_time to end_time
+#     dataToRead = data[int(start_time * sr / 1000) : int(end_time * sr / 1000) + 1]
+
+#     # Fourier Transform
+#     N = len(dataToRead)
+#     yf = rfft(dataToRead)
+#     xf = rfftfreq(N, 1 / sr)
+
+#     # Uncomment these to see the frequency spectrum as a plot
+#     # plt.plot(xf, np.abs(yf))
+#     # plt.show()
+
+#     # Get the most dominant frequency and return it
+#     idx = np.argmax(np.abs(yf))
+#     freq = xf[idx]
+#     return freq
+
+# def process_audio(file_path):
+    data, sr = librosa.load(file_path)
+    start=100
+
+    freq=get_freq(sr, data, start, sr*100)
+
+    print(freq)
+
+    end=int(sr/freq)
+    print(end)
+    y=data[start:start+end]
+    # Load the audio file
+    x1 = np.linspace(-np.pi, np.pi, len(data))
+    x2 = np.linspace(-np.pi, np.pi, len(y))
+    
+    plt.plot(x1, data, label="asdf")
+    plt.plot(x2,y)
+    plt.legend()
+    plt.show()
+
+    # Map x to a range from -pi to pi
+
+    # Map y to a range of -1 to 1
+    # y = 2 * (y - np.min(y)) / np.ptp(y) - 1
+
+    return x2, y
