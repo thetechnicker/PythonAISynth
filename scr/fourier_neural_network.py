@@ -105,13 +105,12 @@ class FourierNN:
         #                 (data[i][0] + rand_x, data[i][1] + rand_y))
 
         # "math" data filling
+        data=sorted(data, key=lambda x: x[0])
         while len(data) < self.RANGE:
-            for a, b in utils.pair_iterator(copy(data)):
+            for a, b in utils.pair_iterator(sorted(copy(data), key=lambda x: x[0])):
                 new_X = b[0]-a[0]
                 new_y = b[1]-a[1]
                 new_data=(a[0]+(new_X/2), a[1]+(new_y/2))
-                # with open("tmp/graph.dump", "a+") as f:
-                #     print(a, b, new_data, file=f, flush=True)
                 data.append(new_data)
                 if len(data) == self.RANGE:
                     break

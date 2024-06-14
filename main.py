@@ -243,6 +243,6 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             pass
 
-        DIE(process)
+        DIE(process, 2)
 
     main()
