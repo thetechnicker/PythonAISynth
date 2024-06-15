@@ -2,6 +2,7 @@ from copy import copy
 import multiprocessing
 import os
 import random
+import time
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
@@ -22,14 +23,16 @@ class MyCallback(Callback):
         self.quiet = quiet
 
     def on_epoch_begin(self, epoch, logs=None):
+        self.timestamp=time.perf_counter_ns()
         if not self.quiet:
-            print(f"EPOCHE {epoch} STARTED")
+            print(f"EPOCHE {epoch+1} STARTED")
 
     def on_epoch_end(self, epoch, logs=None):
         if self.queue:
             self.queue.put(self.model.predict(self.test_data))
         if not self.quiet:
-            print(f"EPOCHE {epoch} ENDED, Logs: {logs}")
+            time_taken=time.perf_counter_ns()-self.timestamp
+            print(f"EPOCHE {epoch+1} ENDED, Logs: {logs}. Time Taken: {time_taken/1_000_000_000}s")
 
 
 class FourierNN:
@@ -38,11 +41,11 @@ class FourierNN:
     ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
-    EPOCHS = 10
+    EPOCHS = 50
 
     SIGNED_RANDOMNES = 0.000000001
     DEFAULT_FORIER_DEGREE = 10
-    FORIER_DEGREE_DIVIDER = 100
+    FORIER_DEGREE_DIVIDER = 50
     FORIER_DEGREE_OFFSET = 1
 
     def __init__(self, data=None):
@@ -149,16 +152,16 @@ class FourierNN:
                        epochs=self.EPOCHS, callbacks=[MyCallback(queue, _x,quiet)], batch_size=32, verbose=0)
         
     
-    # def train_Process(self, test_data, queue=None, quiet=False)-> Process:
-    #     _, x_train_transformed, y_train, _, _ = self.prepared_data
-    #     model=self.current_model
+    def train_Process(self, test_data, queue=None, quiet=False)-> Process:
+        _, x_train_transformed, y_train, _, _ = self.prepared_data
+        model=self.current_model
 
-    #     _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
-    #     _x = np.array(_x)        
-    #     process=multiprocessing.Process(target=model.fit, args=(x_train_transformed, y_train), 
-    #                                     kwargs={'epochs':self.EPOCHS, 'callbacks':[MyCallback(queue, _x,quiet)], 'batch_size':32, 'verbose':0})
-    #     process.start()
-    #     return process
+        _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
+        _x = np.array(_x)        
+        process=multiprocessing.Process(target=model.fit, args=(x_train_transformed, y_train), 
+                                        kwargs={'epochs':self.EPOCHS, 'callbacks':[MyCallback(queue, _x,quiet)], 'batch_size':32, 'verbose':0})
+        # process.start()
+        return process
 
     def train_and_plot(self):
         x_train, x_train_transformed, y_train, actualData_x, actualData_y = self.prepared_data

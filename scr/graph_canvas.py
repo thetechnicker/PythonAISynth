@@ -1,4 +1,5 @@
 from copy import copy
+import time
 import tkinter as tk
 import math
 from typing import Literal
@@ -8,6 +9,9 @@ import numpy as np
 from scr import utils
 
 class GraphCanvas(tk.Frame):
+    LEVEL_OF_DETAIL=500
+    INCLUDE_0 = False
+
     canvas_width = 600
     canvas_height = 600
     aspect_ratio = 1
@@ -33,17 +37,22 @@ class GraphCanvas(tk.Frame):
         self.canvas.bind('<B1-Motion>', self.on_mouse_move_interpolate)
         self.canvas.bind('<ButtonRelease-1>', self.motion_end)
         self.canvas.bind('<space>', self.on_space_press)
-        self.lst=np.linspace(-np.pi, np.pi, 100)
+        self.lst=np.linspace(-np.pi, np.pi, self.LEVEL_OF_DETAIL)
+        if 0 not in self.lst and self.INCLUDE_0:
+            self.lst=np.append(self.lst, 0)
+        self.lst=np.sort(self.lst)
         self.data: list[tuple[float, float]] = []
         self.clear()
 
     def _draw(self):
+        #timestamp=time.perf_counter_ns()
         self.canvas.delete('all')
         self.setup_axes()
         for x, y in self.data:
             self.draw_point(x, y)
         if hasattr(self, 'extern_graph'):
             self._draw_extern_graph()
+        #print(f"Time taken: {(time.perf_counter_ns()-timestamp)/1_000_000_000}s")
 
     def motion_end(self, event):
         if hasattr(self, 'old_point'):

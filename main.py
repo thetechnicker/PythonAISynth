@@ -34,6 +34,7 @@ if __name__ == "__main__":
                     print("Sending kill signal !!!(DIE!!!)", flush=True)
                     process.kill()
                     time.sleep(0.1)
+                print("Success")
 
         process: multiprocessing.Process = None
         queue = Queue(-1)
@@ -108,11 +109,11 @@ if __name__ == "__main__":
                         # graph.data=data
                         graph.draw_extern_graph_from_data(
                             data, "training", color="red")
-                        graph._draw()
                     except:
                         pass
                     root.after(500, train_update)
                 else:
+                    DIE(process)
                     process = None
 
         def train():
@@ -124,14 +125,13 @@ if __name__ == "__main__":
                 else:
                     fourier_nn.update_data(graph.export_data())
                     
-                process = multiprocessing.Process(
-                    target=fourier_nn.train, args=(graph.lst, queue, True))
-                
-                graph.draw_extern_graph_from_data(fourier_nn.get_trainings_data(), "full_data")
+                # process = multiprocessing.Process(
+                #     target=fourier_nn.train, args=(graph.lst, queue, True))
+                process = fourier_nn.train_Process(graph.lst, queue)
+                graph.draw_extern_graph_from_data(graph.export_data(), "train_data", color="blue")
 
-                process.start()
-
-                root.after(10, train_update)
+                root.after(100, process.start)
+                root.after(200, train_update)
                 atexit.register(process.kill)
             else:
                 print('already training')

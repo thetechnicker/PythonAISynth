@@ -1,10 +1,16 @@
 import random
+import time
 from matplotlib import pyplot as plt
 import numpy as np
 # import librosa
 # from scipy.fft import *
 # from scipy.io import wavfile
 
+
+def messure_time_taken(name, func, *args, **kwargs):
+    timestamp=time.perf_counter_ns()
+    func(*args, **kwargs)
+    print(f"Time taken for {name}: {(time.perf_counter_ns()-timestamp)/1_000_000_000}s")
 
 def midi_to_freq(midi_note):
     return 440.0 * np.power(2.0, (midi_note - 69) / 12.0)
