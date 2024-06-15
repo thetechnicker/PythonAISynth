@@ -2,6 +2,8 @@ import random
 import time
 from matplotlib import pyplot as plt
 import numpy as np
+from sympy.utilities.lambdify import lambdify
+from tensorflow.keras import activations
 # import librosa
 # from scipy.fft import *
 # from scipy.io import wavfile
@@ -117,6 +119,27 @@ def get_prepared_random_color(maxColors=None):
         return get_prepared_random_color.colors.pop()
     else:
         raise Exception("No more unique values left to generate")
+
+
+def create_function(formula):
+    # Define the symbols
+    x = sympy.symbols('x')
+
+    # Define a dictionary mapping activation function names to the actual functions
+    activation_funcs = {name: getattr(activations, name) for name in dir(activations) if callable(getattr(activations, name))}
+
+    # Replace activation function names in the formula with the actual functions
+    for name, func in activation_funcs.items():
+        formula = formula.replace(name, f'activation_funcs"{name}"')
+
+    # Convert the formula to a sympy expression
+    expr = sympy.sympify(formula)
+
+    # Convert the sympy expression to a Python function
+    f = lambdify(x, expr, "numpy")
+
+    # Return the created function
+    return f
 
 # def get_freq(sr, data, start_time, end_time):
 
