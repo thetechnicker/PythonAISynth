@@ -24,6 +24,11 @@ def pair_iterator(lst):
     for i in range(len(lst) - 1):
         yield lst[i], lst[i+1]
 
+def note_iterator(lst):
+    for i in range(len(lst)-1):
+        yield lst[i], lst[i+1]
+    yield lst[len(lst)-1], None
+
 def find_two_closest(num_list, x):
     # Sort the list in ascending order based on the absolute difference with x
     sorted_list = sorted(num_list, key=lambda num: abs(num - x))

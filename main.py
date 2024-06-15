@@ -2,23 +2,19 @@ import atexit
 from multiprocessing import Queue
 import multiprocessing
 import os
-from threading import Thread
 import time
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
-from tkinter import simpledialog
 from tkinter import messagebox
 from tensorflow import keras
 import numpy as np
 import sounddevice as sd
-from scipy.io.wavfile import write
 
-from scr import utils
+from scr import music
 from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
-from scr.simple_input_dialog import EntryWithPlaceholder, askStringAndSelectionDialog
-import pretty_midi
+from scr.simple_input_dialog import askStringAndSelectionDialog
 
 
 if __name__ == "__main__":
@@ -173,31 +169,6 @@ if __name__ == "__main__":
                 
                 sd.play(musik.out, 44100)
 
-        def musik_from_file():
-            nonlocal fourier_nn
-
-            midi_file=filedialog.askopenfile()
-            if not midi_file:
-                return
-            # Load MIDI file
-            midi_data = pretty_midi.PrettyMIDI(midi_file)
-
-            notes_list = []
-
-            if fourier_nn:
-                # Iterate over all instruments and notes in the MIDI file
-                for instrument in midi_data.instruments:
-                    for note in instrument.notes:
-                        # Convert MIDI note number to frequency
-                        # Calculate note duration in seconds
-                        duration = note.end - note.start
-                        # Synthesize note
-                        synthesized_note = fourier_nn.synthesize_2(midi_note=note.pitch, duration=duration, sample_rate=44100)
-                        notes_list.append(synthesized_note)
-                    break
-                # Concatenate all notes and play
-                output = np.concatenate(notes_list)
-                sd.play(output, 44100)
 
         def export():
             default_format = 'keras'
@@ -295,15 +266,15 @@ if __name__ == "__main__":
         #         for i in range(128):
         #            a.append(fourier_nn.predict(i))
 
-        # button_new_net= tk.Button(root, text='Test', command=predTest)
-        # button_new_net.grid(row=3,column=2, sticky='NSEW')
+        button_new_net= tk.Button(root, text='Test', command=lambda: music.musik_from_file(fourier_nn))
+        button_new_net.grid(row=3,column=2, sticky='NSEW')
 
         def update_2sine():
             pass
 
         def init():
             # utils.process_audio("C:/Users/lucas/Downloads/2-notes-octave-guitar-83275.mp3")
-            graph.use_preconfig_drawing(functions['funny'])
+            graph.use_preconfig_drawing(functions['sin'])
             train()
             # train()
 
