@@ -18,6 +18,7 @@ from scr import utils
 from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
 from scr.simple_input_dialog import EntryWithPlaceholder, askStringAndSelectionDialog
+import pretty_midi
 
 
 if __name__ == "__main__":
@@ -124,6 +125,8 @@ if __name__ == "__main__":
             nonlocal fourier_nn
             nonlocal process
             if not process:
+                if hasattr(musik, "out"):
+                    del musik.out
                 if not fourier_nn:
                     fourier_nn = FourierNN(graph.export_data())
                 else:
@@ -157,14 +160,44 @@ if __name__ == "__main__":
 
         def musik():
             nonlocal fourier_nn
-            midi_notes = [60, 62, 64, 65, 67, 69, 71]
-            note_durations = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0]
+
+            midi_notes = list(range(60, 72))
+            note_durations = [1]*len(midi_notes)
+
             if fourier_nn:
                 notes_list=[]
-                for i, (note, durration) in enumerate(zip(midi_notes,note_durations)):
-                    notes_list.append(fourier_nn.synthesize_2(midi_note=note, duration=durration, sample_rate=44100))
-                out=np.concatenate(notes_list)
-                sd.play(out, 44100, blocking=True)
+                if not hasattr(musik, "out"):
+                    for i, (note, durration) in enumerate(zip(midi_notes,note_durations)):
+                        notes_list.append(fourier_nn.synthesize_2(midi_note=note, duration=durration, sample_rate=44100))
+                    musik.out=np.concatenate(notes_list)
+                
+                sd.play(musik.out, 44100)
+
+        def musik_from_file():
+            nonlocal fourier_nn
+
+            midi_file=filedialog.askopenfile()
+            if not midi_file:
+                return
+            # Load MIDI file
+            midi_data = pretty_midi.PrettyMIDI(midi_file)
+
+            notes_list = []
+
+            if fourier_nn:
+                # Iterate over all instruments and notes in the MIDI file
+                for instrument in midi_data.instruments:
+                    for note in instrument.notes:
+                        # Convert MIDI note number to frequency
+                        # Calculate note duration in seconds
+                        duration = note.end - note.start
+                        # Synthesize note
+                        synthesized_note = fourier_nn.synthesize_2(midi_note=note.pitch, duration=duration, sample_rate=44100)
+                        notes_list.append(synthesized_note)
+                    break
+                # Concatenate all notes and play
+                output = np.concatenate(notes_list)
+                sd.play(output, 44100)
 
         def export():
             default_format = 'keras'
@@ -255,7 +288,14 @@ if __name__ == "__main__":
         #     func=utils.create_function(function_input.get())
         #     graph.use_preconfig_drawing(func)
 
-        # button_new_net= tk.Button(root, text='use_custom_func', command=use_custom_func)
+        # def predTest():
+        #     nonlocal fourier_nn
+        #     if fourier_nn:
+        #         a=[]
+        #         for i in range(128):
+        #            a.append(fourier_nn.predict(i))
+
+        # button_new_net= tk.Button(root, text='Test', command=predTest)
         # button_new_net.grid(row=3,column=2, sticky='NSEW')
 
         def update_2sine():
