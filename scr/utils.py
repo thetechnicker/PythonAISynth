@@ -1,7 +1,9 @@
 import random
+import re
 import time
 from matplotlib import pyplot as plt
 import numpy as np
+import sympy
 from sympy.utilities.lambdify import lambdify
 from tensorflow.keras import activations
 # import librosa
@@ -119,27 +121,30 @@ def get_prepared_random_color(maxColors=None):
         return get_prepared_random_color.colors.pop()
     else:
         raise Exception("No more unique values left to generate")
+    
+# # (sin(x * elu(x)) * relu(x)) / 1 / tan(1 / cos(1 / gelu(x)))
+# def create_function(formula):
+#     # Define the symbols
+#     x = sympy.symbols('x')
 
+#     # Define a dictionary mapping activation function names to the actual functions
+#     activation_funcs = [name for name in dir(activations) if callable(getattr(activations, name))]
 
-def create_function(formula):
-    # Define the symbols
-    x = sympy.symbols('x')
+#     # Replace activation function names in the formula with the actual functions
+#     for name in activation_funcs:
+#         # formula = formula.replace(name, f'activation_funcs["{name}"]')
+#         formula=re.sub(r'\b' + name + r'\b', f'activations.{name}', formula)
+    
+#     print(formula)
 
-    # Define a dictionary mapping activation function names to the actual functions
-    activation_funcs = {name: getattr(activations, name) for name in dir(activations) if callable(getattr(activations, name))}
+#     # Convert the formula to a sympy expression
+#     expr = sympy.sympify(formula)
 
-    # Replace activation function names in the formula with the actual functions
-    for name, func in activation_funcs.items():
-        formula = formula.replace(name, f'activation_funcs"{name}"')
+#     # Convert the sympy expression to a Python function
+#     f = lambdify(x, expr, "numpy")
 
-    # Convert the formula to a sympy expression
-    expr = sympy.sympify(formula)
-
-    # Convert the sympy expression to a Python function
-    f = lambdify(x, expr, "numpy")
-
-    # Return the created function
-    return f
+#     # Return the created function
+#     return f
 
 # def get_freq(sr, data, start_time, end_time):
 
@@ -167,28 +172,28 @@ def create_function(formula):
 #     return freq
 
 # def process_audio(file_path):
-    data, sr = librosa.load(file_path)
-    start=100
+    # data, sr = librosa.load(file_path)
+    # start=100
 
-    freq=get_freq(sr, data, start, sr*100)
+    # freq=get_freq(sr, data, start, sr*100)
 
-    print(freq)
+    # print(freq)
 
-    end=int(sr/freq)
-    print(end)
-    y=data[start:start+end]
-    # Load the audio file
-    x1 = np.linspace(-np.pi, np.pi, len(data))
-    x2 = np.linspace(-np.pi, np.pi, len(y))
+    # end=int(sr/freq)
+    # print(end)
+    # y=data[start:start+end]
+    # # Load the audio file
+    # x1 = np.linspace(-np.pi, np.pi, len(data))
+    # x2 = np.linspace(-np.pi, np.pi, len(y))
     
-    plt.plot(x1, data, label="asdf")
-    plt.plot(x2,y)
-    plt.legend()
-    plt.show()
+    # plt.plot(x1, data, label="asdf")
+    # plt.plot(x2,y)
+    # plt.legend()
+    # plt.show()
 
-    # Map x to a range from -pi to pi
+    # # Map x to a range from -pi to pi
 
-    # Map y to a range of -1 to 1
-    # y = 2 * (y - np.min(y)) / np.ptp(y) - 1
+    # # Map y to a range of -1 to 1
+    # # y = 2 * (y - np.min(y)) / np.ptp(y) - 1
 
-    return x2, y
+    # return x2, y

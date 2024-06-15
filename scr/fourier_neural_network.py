@@ -41,7 +41,7 @@ class FourierNN:
     ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
-    EPOCHS = 50
+    EPOCHS = 5
 
     SIGNED_RANDOMNES = 0.000000001
     DEFAULT_FORIER_DEGREE = 10
@@ -214,17 +214,25 @@ class FourierNN:
         y_test = self.current_model.predict(np.array(_y))
         return y_test
     
-    def synthesize(self, midi_notes, model, sample_rate=44100, duration=5.0):
-        output = np.zeros(int(sample_rate * duration))
+    def synthesize(self, midi_notes, sample_rate=44100, duration=5.0):
+        output = np.zeros(shape=int(sample_rate * duration))
         for note in midi_notes:
             freq = midi_to_freq(note)
             t = np.linspace(0, duration, int(sample_rate * duration), False)
-            t_scaled = t * 2 * np.pi / freq
-            signal = self.models.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))
+            t_scaled = t * 2 * np.pi / (1/freq)
+            signal = self.current_model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))
             output += signal
         output = output / np.max(np.abs(output))  # Normalize
         return output.astype(np.int16)
-    
+        
+    def synthesize_2(self, midi_note, duration=5.0, sample_rate=44100):
+        output = np.zeros(shape=int(sample_rate * duration))
+        freq = midi_to_freq(midi_note)
+        t = np.linspace(0, duration, int(sample_rate * duration), False)
+        t_scaled = t * 2 * np.pi / (1/freq)
+        output = self.current_model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))
+        output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
+        return output.astype(np.int16)
 
     def convert_to_audio(self, filename='./tmp/output.wav'):
         print(self.models.summary())

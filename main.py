@@ -11,11 +11,13 @@ from tkinter import simpledialog
 from tkinter import messagebox
 from tensorflow import keras
 import numpy as np
+import sounddevice as sd
+from scipy.io.wavfile import write
 
 from scr import utils
 from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
-from scr.simple_input_dialog import askStringAndSelectionDialog
+from scr.simple_input_dialog import EntryWithPlaceholder, askStringAndSelectionDialog
 
 
 if __name__ == "__main__":
@@ -115,6 +117,8 @@ if __name__ == "__main__":
                 else:
                     DIE(process)
                     process = None
+                    # musik()
+                    messagebox.showinfo("training Ended")
 
         def train():
             nonlocal fourier_nn
@@ -153,8 +157,14 @@ if __name__ == "__main__":
 
         def musik():
             nonlocal fourier_nn
+            midi_notes = [60, 62, 64, 65, 67, 69, 71]
+            note_durations = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0]
             if fourier_nn:
-                fourier_nn.convert_to_audio()
+                notes_list=[]
+                for i, (note, durration) in enumerate(zip(midi_notes,note_durations)):
+                    notes_list.append(fourier_nn.synthesize_2(midi_note=note, duration=durration, sample_rate=44100))
+                out=np.concatenate(notes_list)
+                sd.play(out, 44100, blocking=True)
 
         def export():
             default_format = 'keras'
@@ -238,7 +248,14 @@ if __name__ == "__main__":
         button_load = tk.Button(root, text='load', command=load)
         button_load.grid(row=2, column=1, sticky='NSEW')
 
-        # button_new_net= tk.Button(root, text='audio_load_test', command=audio_load_test)
+        # function_input = EntryWithPlaceholder(root, "enter formular")
+        # function_input.grid(row=4, column=0, columnspan=3, sticky='NSEW', padx=10)
+
+        # def use_custom_func():
+        #     func=utils.create_function(function_input.get())
+        #     graph.use_preconfig_drawing(func)
+
+        # button_new_net= tk.Button(root, text='use_custom_func', command=use_custom_func)
         # button_new_net.grid(row=3,column=2, sticky='NSEW')
 
         def update_2sine():
@@ -246,7 +263,8 @@ if __name__ == "__main__":
 
         def init():
             # utils.process_audio("C:/Users/lucas/Downloads/2-notes-octave-guitar-83275.mp3")
-            graph.use_preconfig_drawing(functions['funny3'])
+            graph.use_preconfig_drawing(functions['funny'])
+            train()
             # train()
 
         root.after(500, init)
