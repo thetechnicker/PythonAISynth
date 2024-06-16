@@ -14,9 +14,11 @@ from multiprocessing import Process, Queue
 
 from scr import utils
 from scr.utils import midi_to_freq
+# print(tf.__version__)
 
 class MyCallback(Callback):
     def __init__(self, queue:Queue=None, test_data=None, quiet=False):
+        # print(tf.__version__)
         super().__init__()
         self.queue:Queue = queue
         self.test_data = test_data
@@ -41,11 +43,11 @@ class FourierNN:
     ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
-    EPOCHS = 5
+    EPOCHS = 100
 
     SIGNED_RANDOMNES = 0.000000001
     DEFAULT_FORIER_DEGREE = 10
-    FORIER_DEGREE_DIVIDER = 50
+    FORIER_DEGREE_DIVIDER = 2
     FORIER_DEGREE_OFFSET = 1
 
     def __init__(self, data=None):
@@ -136,9 +138,9 @@ class FourierNN:
         model:Sequential = Sequential([
             Input(shape=input_shape),
             Dense(64, activation='relu'),
-            Dense(1)
+            Dense(1, activation='linear')
         ])
-        model.compile(optimizer='adam', loss='mean_squared_error')
+        model.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
         model.summary()
         return model
 

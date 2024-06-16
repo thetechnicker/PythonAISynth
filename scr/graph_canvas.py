@@ -9,7 +9,7 @@ import numpy as np
 from scr import utils
 
 class GraphCanvas(tk.Frame):
-    LEVEL_OF_DETAIL=500
+    LEVEL_OF_DETAIL=250
     INCLUDE_0 = False
 
     canvas_width = 600

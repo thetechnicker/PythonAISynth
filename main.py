@@ -2,6 +2,7 @@ import atexit
 from multiprocessing import Queue
 import multiprocessing
 import os
+import random
 import time
 import tkinter as tk
 from tkinter import ttk
@@ -63,11 +64,15 @@ if __name__ == "__main__":
         
         def funny3(x):
             return np.sin(np.cos(x) * keras.activations.elu(x))/np.cos(1/x)
+        
+        def my_random(x):
+            return np.tan(x*random.uniform(-1,1))
 
         functions = {
             'funny': funny,
             'funny2': funny2,
             'funny3': funny3,
+            'random': my_random,
             'sin': np.sin,
             'cos': np.cos,
             'tan': np.tan,
@@ -276,9 +281,8 @@ if __name__ == "__main__":
             # utils.process_audio("C:/Users/lucas/Downloads/2-notes-octave-guitar-83275.mp3")
             graph.use_preconfig_drawing(functions['sin'])
             train()
-            # train()
 
-        root.after(500, init)
+        # root.after(500, init)
 
         # fourier_nn=FourierNN()
 
