@@ -2,7 +2,7 @@ import mido
 
 def send_midi():
     # Open a virtual port for output
-    midiout = mido.open_output('My virtual output', virtual=True)
+    midiout = mido.open_output('My virtual port', virtual=True)
 
     while True:
         # Ask the user for the note and velocity
