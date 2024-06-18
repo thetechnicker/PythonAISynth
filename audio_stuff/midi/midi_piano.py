@@ -1,8 +1,9 @@
 import time
 import tkinter as tk
 import mido
+import locale
 
-
+octaves_to_display = 2
 # Create a new Tkinter window
 window = tk.Tk()
 
@@ -15,6 +16,7 @@ port = mido.open_output(selected_port.get())
 
 def changePort(event):
     global port
+    port.close()
     port = mido.open_output(selected_port.get())
 
 
@@ -43,9 +45,10 @@ octave_slider.pack()
 
 # Function to send MIDI messages
 
-note_states = {i: False for i in range(12)}
+note_states = {i: False for i in range(octaves_to_display*12)}
 
-def send_midi_note(note, velocity=64, type='note_on'):
+
+def send_midi_note(note, velocity=127, type='note_on'):
     global note_states
 
     if type == 'note_on':
@@ -56,11 +59,11 @@ def send_midi_note(note, velocity=64, type='note_on'):
             note_states[note] = True
     elif type == 'note_off':
         note_states[note] = False
-        #time.sleep(0.3)
+        # time.sleep(0.3)
 
-   
     channel = int(selected_channel.get()) - 1
-    msg = mido.Message(type, note=note + selected_octave.get() * 12, velocity=velocity, channel=channel)
+    msg = mido.Message(type, note=note + selected_octave.get()
+                       * 12, velocity=velocity, channel=channel)
     port.send(msg)
 
 
@@ -68,7 +71,7 @@ def send_midi_note(note, velocity=64, type='note_on'):
 keys_frame = tk.Frame(window)
 keys_frame.pack()
 
-white_keys = [0, 2, 4, 5, 7, 9, 11]
+white_keys = [0, 2, 4, 5, 7, 9, 11]  # , 12]
 black_keys = [1, 3, 6, 8, 10]
 # Define your keys for white and black buttons
 white_keys_bindings = ['a', 's', 'd', 'f', 'g', 'h', 'j']
