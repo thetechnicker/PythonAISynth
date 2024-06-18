@@ -74,34 +74,56 @@ keys_frame.pack()
 white_keys = [0, 2, 4, 5, 7, 9, 11]  # , 12]
 black_keys = [1, 3, 6, 8, 10]
 # Define your keys for white and black buttons
-white_keys_bindings = ['a', 's', 'd', 'f', 'g', 'h', 'j']
-black_keys_bindings = ['w', 'e', 'r', 't', 'y']
+white_key_note = ["C", "D", "E", "F", "G", "A", "B"]  # , "C"]
+black_key_note = ["C#", "D#", "F#", "G#", "A#"]
 
-for i in range(7):
-    button = tk.Button(keys_frame, text=' ', bg='white', width=2, height=6)
-    button.grid(row=0, column=i*2)
-    button.bind('<ButtonPress-1>', lambda event,
-                i=i: send_midi_note(white_keys[i], type='note_on'))
-    button.bind('<ButtonRelease-1>', lambda event,
-                i=i: send_midi_note(white_keys[i], type='note_off'))
-    # Bind the button to a key press event
-    window.bind('<KeyPress-%s>' % white_keys_bindings[i], lambda event,
-                i=i: send_midi_note(white_keys[i], type='note_on'))
-    window.bind('<KeyRelease-%s>' % white_keys_bindings[i], lambda event,
-                i=i: send_midi_note(white_keys[i], type='note_off'))
+white_keys_bindings_per_octaves = [
+    ['a', 's', 'd', 'f', 'g', 'h', 'j'], ['k', 'l', ';', "'", 'z', 'x', 'c']]
+black_keys_bindings_per_octaves = [
+    ['w', 'e', 'r', 't', 'y'], ['u', 'i', 'o', 'p', '[']]
 
-for i in range(5):
-    button = tk.Button(keys_frame, text=' ', bg='black', width=1, height=4)
-    button.grid(row=0, column=black_keys[i]*2-1, sticky='n')
-    button.bind('<ButtonPress-1>', lambda event,
-                i=i: send_midi_note(black_keys[i], type='note_on'))
-    button.bind('<ButtonRelease-1>', lambda event,
-                i=i: send_midi_note(black_keys[i], type='note_off'))
-    # Bind the button to a key press event
-    window.bind('<KeyPress-%s>' % black_keys_bindings[i], lambda event,
-                i=i: send_midi_note(black_keys[i], type='note_on'))
-    window.bind('<KeyRelease-%s>' % black_keys_bindings[i], lambda event,
-                i=i: send_midi_note(black_keys[i], type='note_off'))
+current_locale = locale.getlocale()
+# If the current locale is German, adjust the key bindings
+if "de_DE" in current_locale:
+    white_keys_bindings_per_octaves = [['a', 's', 'd', 'f', 'g', 'h', 'j'], [
+        'k', 'l', 'odiaeresis', 'adiaeresis', 'y', 'x', 'c']]
+    black_keys_bindings_per_octaves = [
+        ['w', 'e', 'r', 't', 'z'], ['u', 'i', 'o', 'p', 'udiaeresis']]
+
+for a in range(min(octaves_to_display, 2)):
+    white_keys_bindings = white_keys_bindings_per_octaves[a]
+    black_keys_bindings = black_keys_bindings_per_octaves[a]
+    for i in range(7):
+        button = tk.Button(
+            keys_frame, text=f'{white_key_note[i]}\n|{white_keys_bindings[i].replace("odiaeresis", "ö").replace("adiaeresis", "ä")}|', bg='white', width=2, height=6)
+        button.grid(row=0, column=white_keys[i]+a*12)
+
+        def press(event, i=i, a=a): return send_midi_note(
+            white_keys[i]+a*12, type='note_on')
+
+        def release(event, i=i, a=a): return send_midi_note(
+            white_keys[i]+a*12, type='note_off')
+        button.bind('<ButtonPress-1>', press)
+        button.bind('<ButtonRelease-1>', )
+        # Bind the button to a key press event
+        window.bind('<KeyPress-%s>' % white_keys_bindings[i], press)
+        window.bind('<KeyRelease-%s>' % white_keys_bindings[i], release)
+
+    for i in range(5):
+        button = tk.Button(
+            keys_frame, text=f'{black_key_note[i]}\n|{black_keys_bindings[i].replace("udiaeresis", "ü")}|', fg='white', bg='black', width=1, height=4)
+        button.grid(row=0, column=black_keys[i]+a*12, sticky='n')
+
+        def press(event, i=i, a=a): return send_midi_note(
+            black_keys[i]+a*12, type='note_on')
+
+        def release(event, i=i, a=a): return send_midi_note(
+            black_keys[i]+a*12, type='note_off')
+        button.bind('<ButtonPress-1>', press)
+        button.bind('<ButtonRelease-1>', )
+        # Bind the button to a key press event
+        window.bind('<KeyPress-%s>' % black_keys_bindings[i], press)
+        window.bind('<KeyRelease-%s>' % black_keys_bindings[i], release)
 
 
 # Run the Tkinter event loop
