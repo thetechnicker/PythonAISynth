@@ -2,7 +2,7 @@ import mido
 
 def listen_midi():
     # Open a virtual port for input
-    midiin = mido.open_input('Midi Through Port-0')
+    midiin = mido.open_input('TEST', virtual=True)
 
     while True:
         # Wait for a message and print it

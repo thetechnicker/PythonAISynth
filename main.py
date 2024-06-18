@@ -16,26 +16,13 @@ from scr import music
 from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
 from scr.simple_input_dialog import askStringAndSelectionDialog
+from scr.utils import DIE
+
 
 
 if __name__ == "__main__":
     def main():
-        def DIE(process, join_timeout=30, term_iterations=50):
-            if process:
-                print("Attempting to stop process (die)", flush=True)
-                process.join(join_timeout)
-                i = 0
-                while process.is_alive() and i < term_iterations:
-                    print("Sending terminate signal (DIE)", flush=True)
-                    process.terminate()
-                    time.sleep(0.5)
-                    i += 1
-                while process.is_alive():
-                    print("Sending kill signal !!!(DIE!!!)", flush=True)
-                    process.kill()
-                    time.sleep(0.1)
-                print("Success")
-
+        
         process: multiprocessing.Process = None
         queue = Queue(-1)
 
@@ -270,8 +257,9 @@ if __name__ == "__main__":
         #         a=[]
         #         for i in range(128):
         #            a.append(fourier_nn.predict(i))
-
-        button_new_net= tk.Button(root, text='Test', command=lambda: music.musik_from_file(fourier_nn))
+        # command= lambda: music.midi_to_musik_live(fourier_nn)
+        command= lambda: music.musik_from_file(fourier_nn)
+        button_new_net= tk.Button(root, text='Test', command=command)
         button_new_net.grid(row=3,column=2, sticky='NSEW')
 
         def update_2sine():

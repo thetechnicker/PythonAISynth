@@ -10,6 +10,22 @@ from tensorflow.keras import activations
 # from scipy.fft import *
 # from scipy.io import wavfile
 
+def DIE(process, join_timeout=30, term_iterations=50):
+            if process:
+                print("Attempting to stop process (die)", flush=True)
+                process.join(join_timeout)
+                i = 0
+                while process.is_alive() and i < term_iterations:
+                    print("Sending terminate signal (DIE)", flush=True)
+                    process.terminate()
+                    time.sleep(0.5)
+                    i += 1
+                while process.is_alive():
+                    print("Sending kill signal !!!(DIE!!!)", flush=True)
+                    process.kill()
+                    time.sleep(0.1)
+                print("Success")
+
 
 def messure_time_taken(name, func, *args, **kwargs):
     timestamp=time.perf_counter_ns()

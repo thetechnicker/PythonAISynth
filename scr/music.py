@@ -1,3 +1,4 @@
+import atexit
 from tkinter import filedialog
 import numpy as np
 import pretty_midi
@@ -6,6 +7,7 @@ from scipy.io.wavfile import write
 
 from scr import utils
 from scr.fourier_neural_network import FourierNN
+from multiprocessing import Process
 
 
 def musik_from_file(fourier_nn: FourierNN):
@@ -47,3 +49,31 @@ def musik_from_file(fourier_nn: FourierNN):
             break
     output = np.concatenate(notes_list)
     sd.play(output, 44100)
+
+try:
+    import mido
+    mido.open_input('TEST', virtual=True)
+    proc=None
+
+    def midi_to_musik_live(model):
+        global proc
+        if proc:
+            utils.DIE(proc)
+            proc=None
+        def midi_proc(model):
+            midiin = mido.open_input('TEST', virtual=True)
+
+            while True:
+                # Wait for a message and print it
+                msg = midiin.receive()
+                if msg.type == 'note_off':
+                    sd.stop()
+                print(msg)
+                
+                sd.play(y, 44100, blocking=False)
+
+        proc=Process(target=midi_proc, args=[model])
+        proc.start()
+        atexit.register(utils.DIE, proc)
+except:
+    pass
