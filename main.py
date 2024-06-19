@@ -16,6 +16,7 @@ from scr import music
 from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
 from scr.simple_input_dialog import askStringAndSelectionDialog
+from scr.subprocess_fourier_nn import train_async_test
 from scr.utils import DIE
 
 
@@ -120,8 +121,10 @@ if __name__ == "__main__":
                 else:
                     fourier_nn.update_data(graph.export_data())
 
+                # fourier_nn.train_and_plot()
+
                 process = multiprocessing.Process(
-                    target=fourier_nn.train, args=(graph.lst, queue))
+                    target=fourier_nn.train, args=(graph.lst, queue,))
                 # process = fourier_nn.train_Process(graph.lst, queue)
                 graph.draw_extern_graph_from_data(graph.export_data(), "train_data", color="blue")
 
@@ -270,7 +273,7 @@ if __name__ == "__main__":
             graph.use_preconfig_drawing(functions['sin'])
             train()
 
-        root.after(500, init)
+        # root.after(500, init)
 
         # fourier_nn=FourierNN()
 
