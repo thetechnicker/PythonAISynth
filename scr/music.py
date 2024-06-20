@@ -7,7 +7,7 @@ from scipy.io.wavfile import write
 
 from scr import utils
 from scr.fourier_neural_network import FourierNN
-from multiprocessing import Process
+from multiprocessing import Pool, Process
 
 
 def musik_from_file(fourier_nn: FourierNN):
@@ -52,27 +52,32 @@ def musik_from_file(fourier_nn: FourierNN):
 
 try:
     import mido
-    mido.open_input('TEST', virtual=True)
+    mido.open_input('TEST', virtual=True).close()
     proc=None
 
-    def midi_to_musik_live(model):
+
+    def midi_proc(notes):
+        print("Ready")
+        with mido.open_input('TEST', virtual=True) as midiin:
+            y=np.zeros((44100, 1,))
+            while True:
+                for msg in midiin.iter_pending():
+                    print(msg)
+                    if msg.type == 'note_off':
+                        sd.stop()
+    
+                    sd.play(notes[msg.note], 44100, blocking=False)
+
+    def midi_to_musik_live(fourier_nn:FourierNN):
         global proc
         if proc:
             utils.DIE(proc)
             proc=None
-        def midi_proc(model):
-            midiin = mido.open_input('TEST', virtual=True)
+            
+        with Pool() as pool:
+            notes = pool.map(fourier_nn.synthesize_3, range(128))
 
-            while True:
-                # Wait for a message and print it
-                msg = midiin.receive()
-                if msg.type == 'note_off':
-                    sd.stop()
-                print(msg)
-                
-                sd.play(y, 44100, blocking=False)
-
-        proc=Process(target=midi_proc, args=[model])
+        proc=Process(target=midi_proc, args=[dict(notes)])
         proc.start()
         atexit.register(utils.DIE, proc)
 except:

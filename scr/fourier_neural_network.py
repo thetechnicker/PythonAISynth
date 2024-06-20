@@ -1,5 +1,6 @@
 from copy import copy
 import multiprocessing
+from multiprocessing.pool import Pool
 import os
 import random
 import time
@@ -230,7 +231,7 @@ class FourierNN:
         output = output / np.max(np.abs(output))  # Normalize
         return output.astype(np.int16)
         
-    def synthesize_2(self, midi_note, duration=5.0, sample_rate=44100):
+    def synthesize_2(self, midi_note, duration=1.0, sample_rate=44100):
         output = np.zeros(shape=int(sample_rate * duration))
         freq = midi_to_freq(midi_note)
         t = np.linspace(0, duration, int(sample_rate * duration), False)
@@ -238,6 +239,19 @@ class FourierNN:
         output = self.current_model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         return output.astype(np.int16)
+    
+    def synthesize_3(self, midi_note, duration=1.0, sample_rate=44100):
+        print(f"begin generating sound for note: {midi_note}")
+        output = np.zeros(shape=int(sample_rate * duration))
+        freq = midi_to_freq(midi_note)
+        t = np.linspace(0, duration, int(sample_rate * duration), False)
+        t_scaled = t * 2 * np.pi / (1/freq)
+        output = self.current_model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))
+        output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
+        print(f"Generated sound for note: {midi_note}")
+        return (midi_note, output.astype(np.int16))
+    
+
 
     def convert_to_audio(self, filename='./tmp/output.wav'):
         print(self.models.summary())
@@ -267,6 +281,7 @@ class FourierNN:
         self.current_model.summary()
         print(self.current_model.input_shape)
         self.fourier_degree=self.current_model.input_shape[1]//2
+        print(self.fourier_degree)
 
     def change_model(self, net_no):
         index=net_no-1
@@ -274,6 +289,7 @@ class FourierNN:
             new_model=self.models.pop(index)
             if self.current_model:
                 self.models.insert(index, self.current_model)
+            # self.fourier_degree=
             self.current_model=new_model
 
 
