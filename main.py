@@ -105,7 +105,8 @@ if __name__ == "__main__":
                         pass
                     root.after(500, train_update)
                 else:
-                    DIE(process)
+                    exit_code=process.exitcode
+                    DIE(process) 
                     process = None
                     # musik()
                     messagebox.showinfo("training Ended", f"exit code: {process.exitcode}")
