@@ -43,7 +43,7 @@ class FourierNN:
     ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
-    EPOCHS = 100
+    EPOCHS = 10
 
     SIGNED_RANDOMNES = 0.000000001
     DEFAULT_FORIER_DEGREE = 10
@@ -151,8 +151,8 @@ class FourierNN:
         _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
         _x = np.array(_x)
         self.current_model.fit(x_train_transformed, y_train,
-                       epochs=self.EPOCHS, batch_size=32, verbose=2)
-        # callbacks=[MyCallback(queue, _x,quiet)]
+                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, _x,quiet)], batch_size=32, verbose=2)
+        
 
 
     def train_Process(self, test_data, queue=None, quiet=False)-> Process:

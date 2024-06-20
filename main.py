@@ -22,6 +22,7 @@ from scr.utils import DIE
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("spawn")
     def main():
         
         process: multiprocessing.Process = None
@@ -108,7 +109,7 @@ if __name__ == "__main__":
                     DIE(process)
                     process = None
                     # musik()
-                    messagebox.showinfo("training Ended")
+                    messagebox.showinfo("training Ended", f"exit code: {process.exitcode}")
 
         def train():
             nonlocal fourier_nn
