@@ -21,6 +21,7 @@ from scr.utils import DIE
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("spawn")
     def main():
         
         process: multiprocessing.Process = None
@@ -107,7 +108,7 @@ if __name__ == "__main__":
                     DIE(process)
                     process = None
                     # musik()
-                    messagebox.showinfo("training Ended")
+                    messagebox.showinfo("training Ended", f"exit code: {process.exitcode}")
 
         def train():
             nonlocal fourier_nn
@@ -120,9 +121,11 @@ if __name__ == "__main__":
                 else:
                     fourier_nn.update_data(graph.export_data())
 
-                process = multiprocessing.Process(
-                    target=fourier_nn.train, args=(graph.lst, queue))
-                # process = fourier_nn.train_Process(graph.lst, queue)
+                # fourier_nn.train_and_plot()
+
+                # process = multiprocessing.Process(
+                #     target=FourierNN., args=(graph.lst, queue,))
+                process = fourier_nn.train_Process(graph.lst, queue)
                 graph.draw_extern_graph_from_data(graph.export_data(), "train_data", color="blue")
 
                 root.after(100, process.start)
@@ -270,7 +273,7 @@ if __name__ == "__main__":
             graph.use_preconfig_drawing(functions['sin'])
             train()
 
-        root.after(500, init)
+        # root.after(500, init)
 
         # fourier_nn=FourierNN()
 

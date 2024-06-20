@@ -43,11 +43,11 @@ class FourierNN:
     ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
-    EPOCHS = 100
+    EPOCHS = 10
 
     SIGNED_RANDOMNES = 0.000000001
     DEFAULT_FORIER_DEGREE = 10
-    FORIER_DEGREE_DIVIDER = 2
+    FORIER_DEGREE_DIVIDER = 50
     FORIER_DEGREE_OFFSET = 1
 
     def __init__(self, data=None):
@@ -150,12 +150,13 @@ class FourierNN:
 
         _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
         _x = np.array(_x)
-        model.fit(x_train_transformed, y_train,
+        self.current_model.fit(x_train_transformed, y_train,
                        epochs=self.EPOCHS, callbacks=[MyCallback(queue, _x,quiet)], batch_size=32, verbose=2)
         
-    
+
+
     def train_Process(self, test_data, queue=None, quiet=False)-> Process:
-        tf.keras.backend.clear_session()
+        # tf.keras.backend.clear_session()
         _, x_train_transformed, y_train, _, _ = self.prepared_data
         model=self.current_model
 
