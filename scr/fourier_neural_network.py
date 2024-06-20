@@ -150,7 +150,7 @@ class FourierNN:
 
         _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
         _x = np.array(_x)
-        model.fit(x_train_transformed, y_train,
+        self.current_model.fit(x_train_transformed, y_train,
                        epochs=self.EPOCHS, batch_size=32, verbose=2)
         # callbacks=[MyCallback(queue, _x,quiet)]
 

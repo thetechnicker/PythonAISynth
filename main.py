@@ -124,7 +124,7 @@ if __name__ == "__main__":
                 # fourier_nn.train_and_plot()
 
                 process = multiprocessing.Process(
-                    target=fourier_nn.train, args=(graph.lst, queue,))
+                    target=train_async_test, args=(graph.lst, queue,), kwargs={"train_data":graph.export_data()})
                 # process = fourier_nn.train_Process(graph.lst, queue)
                 graph.draw_extern_graph_from_data(graph.export_data(), "train_data", color="blue")
 
