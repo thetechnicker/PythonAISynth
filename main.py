@@ -261,6 +261,7 @@ if __name__ == "__main__":
         #         a=[]
         #         for i in range(128):
         #            a.append(fourier_nn.predict(i))
+        
         command= lambda: music.midi_to_musik_live(fourier_nn)
         # command= lambda: music.musik_from_file(fourier_nn)
         button_new_net= tk.Button(root, text='Test', command=command)
@@ -279,7 +280,7 @@ if __name__ == "__main__":
             fourier_nn.load_new_model_from_file("tmp/tan.h5")
             graph.draw_extern_graph_from_func(fourier_nn.predict, "tan")
 
-        root.after(500, init)
+        # root.after(500, init)
 
         # fourier_nn=FourierNN()
 
