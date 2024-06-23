@@ -51,20 +51,20 @@ note_states = {i: False for i in range(octaves_to_display*12)}
 def send_midi_note(note, velocity=127, type='note_on'):
     global note_states
 
+    channel = int(selected_channel.get()) - 1
+    msg = mido.Message(type, note=note + selected_octave.get()
+                       * 12, velocity=velocity, channel=channel)
     if type == 'note_on':
         # If the note is already on, don't send another note_on message
         if note_states[note]:
             return
         else:
             note_states[note] = True
+            port.send(msg)
     elif type == 'note_off':
         note_states[note] = False
+        window.after(100000, lambda msg=msg: port.send(msg))
         # time.sleep(0.3)
-
-    channel = int(selected_channel.get()) - 1
-    msg = mido.Message(type, note=note + selected_octave.get()
-                       * 12, velocity=velocity, channel=channel)
-    port.send(msg)
 
 
 # Create piano keys
@@ -90,9 +90,14 @@ if "de_DE" in current_locale:
     black_keys_bindings_per_octaves = [
         ['w', 'e', 'r', 't', 'z'], ['u', 'i', 'o', 'p', 'udiaeresis']]
 
-for a in range(min(octaves_to_display, 2)):
-    white_keys_bindings = white_keys_bindings_per_octaves[a]
-    black_keys_bindings = black_keys_bindings_per_octaves[a]
+for a in range(octaves_to_display):
+    if a < len(white_keys_bindings_per_octaves) or a < len(black_keys_bindings_per_octaves):
+        white_keys_bindings = white_keys_bindings_per_octaves[a]
+        black_keys_bindings = black_keys_bindings_per_octaves[a]
+    else:
+        white_keys_bindings = [" "]*len(white_key_note)
+        black_keys_bindings = [" "]*len(black_key_note)
+
     for i in range(7):
         button = tk.Button(
             keys_frame, text=f'{white_key_note[i]}\n|{white_keys_bindings[i].replace("odiaeresis", "ö").replace("adiaeresis", "ä")}|', bg='white', width=2, height=6)
@@ -106,8 +111,9 @@ for a in range(min(octaves_to_display, 2)):
         button.bind('<ButtonPress-1>', press)
         button.bind('<ButtonRelease-1>', )
         # Bind the button to a key press event
-        window.bind('<KeyPress-%s>' % white_keys_bindings[i], press)
-        window.bind('<KeyRelease-%s>' % white_keys_bindings[i], release)
+        if white_keys_bindings[i] != " ":
+            window.bind('<KeyPress-%s>' % white_keys_bindings[i], press)
+            window.bind('<KeyRelease-%s>' % white_keys_bindings[i], release)
 
     for i in range(5):
         button = tk.Button(
@@ -122,8 +128,9 @@ for a in range(min(octaves_to_display, 2)):
         button.bind('<ButtonPress-1>', press)
         button.bind('<ButtonRelease-1>', )
         # Bind the button to a key press event
-        window.bind('<KeyPress-%s>' % black_keys_bindings[i], press)
-        window.bind('<KeyRelease-%s>' % black_keys_bindings[i], release)
+        if white_keys_bindings[i] != " ":
+            window.bind('<KeyPress-%s>' % black_keys_bindings[i], press)
+            window.bind('<KeyRelease-%s>' % black_keys_bindings[i], release)
 
 
 # Run the Tkinter event loop
