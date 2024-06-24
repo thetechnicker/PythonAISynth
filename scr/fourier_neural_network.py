@@ -215,8 +215,7 @@ class FourierNN:
     def predict(self, data):
         if not hasattr(data, '__iter__'):
             data=[data]
-        _, _y = zip(*list((x, self.fourier_basis(x, self.fourier_degree))
-                     for x in data))
+        _y = list(self.fourier_basis(x, self.fourier_degree) for x in data)
         y_test = self.current_model.predict(np.array(_y))
         return y_test
     

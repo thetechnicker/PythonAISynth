@@ -63,7 +63,8 @@ def send_midi_note(note, velocity=127, type='note_on'):
             port.send(msg)
     elif type == 'note_off':
         note_states[note] = False
-        window.after(100000, lambda msg=msg: port.send(msg))
+        port.send(msg)
+        # window.after(1*10**3, lambda msg=msg: port.send(msg))
         # time.sleep(0.3)
 
 
@@ -109,7 +110,7 @@ for a in range(octaves_to_display):
         def release(event, i=i, a=a): return send_midi_note(
             white_keys[i]+a*12, type='note_off')
         button.bind('<ButtonPress-1>', press)
-        button.bind('<ButtonRelease-1>', )
+        button.bind('<ButtonRelease-1>', release)
         # Bind the button to a key press event
         if white_keys_bindings[i] != " ":
             window.bind('<KeyPress-%s>' % white_keys_bindings[i], press)
@@ -126,7 +127,7 @@ for a in range(octaves_to_display):
         def release(event, i=i, a=a): return send_midi_note(
             black_keys[i]+a*12, type='note_off')
         button.bind('<ButtonPress-1>', press)
-        button.bind('<ButtonRelease-1>', )
+        button.bind('<ButtonRelease-1>', release)
         # Bind the button to a key press event
         if white_keys_bindings[i] != " ":
             window.bind('<KeyPress-%s>' % black_keys_bindings[i], press)
