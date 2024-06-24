@@ -113,8 +113,8 @@ try:
                     print(msg)
                     if msg.type == 'note_off':
                         sd.stop()
-    
-                    sd.play(notes[msg.note], 44100, blocking=False)
+                    elif msg.type == 'note_on':
+                        sd.play(notes[msg.note], 44100, blocking=False)
     
     # def synth(note, fourier_nn:FourierNN):
     #     duration=1
@@ -133,8 +133,11 @@ try:
             proc=None
             
         # notes = execute_with_progressbar(root, fourier_nn.synthesize_3, range(128))
+        timestamp=time.perf_counter_ns()
         with Pool(4) as pool:
             notes=pool.map(fourier_nn.synthesize_3, range(128))
+        time_taken=timestamp-time.perf_counter_ns()
+        print(f"time taken: {time_taken/(60*1_000)}")
 
         proc=Process(target=midi_proc, args=[dict(notes)])
         proc.start()
