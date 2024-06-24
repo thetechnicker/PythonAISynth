@@ -91,7 +91,7 @@ class FourierNN:
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
-        print("fourier_basis", x)
+        # print("fourier_basis", x)
         basis = [np.sin(i * x) for i in range(1, n+1)]
         basis += [np.cos(i * x) for i in range(1, n+1)]
         return np.array(basis)
@@ -180,17 +180,14 @@ class FourierNN:
         x_train, y_train = zip(*data)
         x_train = np.array(x_train)
         y_train = np.array(y_train)
-        x_train_transformed = np.array([self.fourier_basis(x, fourier_degree) for x in x_train])
-        return x_train_transformed, y_train, actualData_x, actualData_y, fourier_degree
         x_train_transformed = np.array(
             [self.fourier_basis(x, self.fourier_degree) for x in x_train])
         return x_train, x_train_transformed, y_train, actualData_x, actualData_y
 
     def create_model(self, input_shape):
-        self.model = Sequential([
+        model = Sequential([
             Dense(64,input_shape=input_shape),
-        model:Sequential = Sequential([
-            Input(shape=input_shape),
+            # Input(shape=input_shape),
             Dense(64, activation='relu'),
             Dense(1, activation='linear')
         ])
