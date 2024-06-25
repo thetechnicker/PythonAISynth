@@ -2,6 +2,7 @@ import atexit
 from multiprocessing import Queue
 import multiprocessing
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import random
 import time
 import tkinter as tk
@@ -106,6 +107,10 @@ if __name__ == "__main__":
                     root.after(500, train_update)
                 else:
                     exit_code=process.exitcode
+                    if exit_code == 0:
+                        fourier_nn.load_tmp_model()
+                        graph.draw_extern_graph_from_func(
+                            fourier_nn.predict, "training", color="red")
                     DIE(process) 
                     process = None
                     # musik()
@@ -124,9 +129,9 @@ if __name__ == "__main__":
 
                 # fourier_nn.train_and_plot()
 
-                # process = multiprocessing.Process(
-                #     target=FourierNN., args=(graph.lst, queue,))
-                process = fourier_nn.train_Process(graph.lst, queue)
+                process = multiprocessing.Process(
+                    target=fourier_nn.train, args=(graph.lst, queue,))
+                # process = fourier_nn.train_Process(graph.lst, queue)
                 graph.draw_extern_graph_from_data(graph.export_data(), "train_data", color="blue")
 
                 root.after(100, process.start)

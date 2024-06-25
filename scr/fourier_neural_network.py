@@ -1,14 +1,16 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from copy import copy
 import multiprocessing
 from multiprocessing.pool import Pool
-import os
 import random
 import time
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Input
-from tensorflow.keras.callbacks import Callback
+from tensorflow import keras
+from keras.models import Sequential
+from keras.layers import Dense, Input
+from keras.callbacks import Callback
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 from multiprocessing import Process, Queue
@@ -38,6 +40,7 @@ class MyCallback(Callback):
             print(f"EPOCHE {epoch+1} ENDED, Logs: {logs}. Time Taken: {time_taken/1_000_000_000}s")
 
 
+
 class FourierNN:
     RANGE = 44100
 
@@ -51,9 +54,26 @@ class FourierNN:
     FORIER_DEGREE_DIVIDER = 50
     FORIER_DEGREE_OFFSET = 1
 
+    def __getstate__(self):
+        # Save the model to a file before serialization
+        self.current_model.save('./tmp/tmp_model.keras')
+        model = self.current_model
+        del self.current_model
+        fourier_nn_dict = self.__dict__.copy()
+        self.current_model = model
+        return fourier_nn_dict
+
+    def __setstate__(self, state):
+        # Load the model from a file after deserialization
+        self.__dict__.update(state)
+        self.current_model = tf.keras.models.load_model('./tmp/tmp_model.keras')
+
+    def load_tmp_model(self):
+        self.current_model = tf.keras.models.load_model('./tmp/tmp_model.keras')
+
     def __init__(self, data=None):
         self.models:list = []
-        self.current_model = None
+        self.current_model:keras.Model = None
         self.fourier_degree=self.DEFAULT_FORIER_DEGREE
         self.prepared_data=None
         if data is not None:
@@ -136,7 +156,7 @@ class FourierNN:
         return x_train, x_train_transformed, y_train, actualData_x, actualData_y
 
     def create_model(self, input_shape):
-        model:Sequential = Sequential([
+        model:tf.keras.Model = Sequential([
             Input(shape=input_shape),
             Dense(64, activation='relu'),
             Dense(1, activation='linear')
@@ -151,8 +171,9 @@ class FourierNN:
 
         _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
         _x = np.array(_x)
-        self.current_model.fit(x_train_transformed, y_train,
-                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, _x,quiet)], batch_size=32, verbose=2)
+        model.fit(x_train_transformed, y_train,
+                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, _x,quiet)], batch_size=32, verbose=0)
+        self.current_model.save('./tmp/tmp_model.keras')
         
 
 
@@ -164,7 +185,7 @@ class FourierNN:
         _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
         _x = np.array(_x)
         process=multiprocessing.Process(target=model.fit, args=(x_train_transformed, y_train), 
-                                        kwargs={'epochs':self.EPOCHS, 'callbacks':[MyCallback(queue, _x,quiet)], 'batch_size':32, 'verbose':2})
+                                        kwargs={'epochs':self.EPOCHS, 'callbacks':[MyCallback(queue, _x,quiet)], 'batch_size':32, 'verbose':0})
         # 
         # process.start()
         return process
@@ -188,6 +209,9 @@ class FourierNN:
         plt.draw()
         plt.pause(1)
 
+        for epoch in range(self.ITTERRATIONS):
+            print("Itterration ", epoch + 1, "/", self.ITTERRATIONS, sep="")
+            self.model.fit(x_train_transformed, y_train, epochs=self.EPOCHS, batch_size=32, verbose=0)
         for epoch in range(self.ITTERRATIONS):
             print("epoch ", epoch + 1, "/", self.ITTERRATIONS, sep="")
             model.fit(x_train_transformed, y_train,
@@ -245,7 +269,7 @@ class FourierNN:
         freq = midi_to_freq(midi_note)
         t = np.linspace(0, duration, int(sample_rate * duration), False)
         t_scaled = t * 2 * np.pi / (1/freq)
-        output = self.current_model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))
+        output = self.current_model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))#, batch_size=sample_rate/100)
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         print(f"Generated sound for note: {midi_note}")
         return (midi_note, output.astype(np.int16))
@@ -269,6 +293,8 @@ class FourierNN:
     def save_model(self, filename='./tmp/model.h5'):
         self.current_model._name = os.path.basename(filename).replace('/', '').split('.')[0]
         self.current_model.save(filename)
+
+
 
     def load_new_model_from_file(self, filename='./tmp/model.h5'):
         if self.current_model:
@@ -301,3 +327,12 @@ class FourierNN:
 #             for x in np.linspace(np.pi, -np.pi, 100)]
 #     fourier_nn = FourierNN(data)
 #     fourier_nn.train()
+# if __name__ == '__main__':
+#     def relu(x):
+#         return np.maximum(0, x)
+#     # Test the class with custom data points
+#     data = np.array([(x, np.sin(x * relu(x))) for x in np.linspace(np.pi, -np.pi, 100)])
+#     fourier_nn = FourierNN(data)
+#     fourier_nn.train_and_plot()
+#     # fourier_nn.convert_to_audio()
+#     # fourier_nn.save_model()
