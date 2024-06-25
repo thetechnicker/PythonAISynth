@@ -1,6 +1,9 @@
 import atexit
+import multiprocessing
 from multiprocessing.pool import IMapIterator, MapResult
 import os
+import signal
+import sys
 import threading
 import time
 import tkinter as tk
@@ -62,13 +65,40 @@ try:
     mido.open_input('TEST', virtual=True).close()
     proc=None
 
+    def wrapper(func, param):
+        print(os.getcwd())
+        sys.stdout = open(f'tmp/process_{os.getpid()}_output.txt', 'w')
+        print("test")
+        return func(*param)
 
-    def midi_proc(notes_res):#MapResult):
-        print(notes_res)
-        return
+
+    def midi_proc(fourier_nn:FourierNN):
+        blink=True
+        notes:dict=None
+        note_list:list=[]
+        finished=0
+        with Pool(os.cpu_count()) as pool:
+            results = pool.imap_unordered(fourier_nn.synthesize_3, range(128))
+
+            while True:
+                try:
+                    result = results.next(1)
+                    note_list.append(result)
+                    finished+=1
+                except multiprocessing.TimeoutError:
+                    pass
+                except StopIteration:
+                    break
+                if blink:
+                    print(f"{finished}/128 finished. pennding".ljust(100, " "), end="\r")
+                    blink=False
+                else:
+                    print(f"{finished}/128 finished.".ljust(100, " "), end="\r")
+                    blink=True
+                   
+            notes=dict(note_list)
         print("Ready")
-        notes_res.wait()
-        notes=dict(notes_res.get())
+
         with mido.open_input('TEST', virtual=True) as midiin:
             # y=np.zeros((44100, 1,))
             while True:
@@ -78,37 +108,16 @@ try:
                         sd.stop()
                     elif msg.type == 'note_on':
                         sd.play(notes[msg.note], 44100, blocking=False)
-    
-    # def synth(note, fourier_nn:FourierNN):
-    #     duration=1
-    #     sample_rate=44100
-    #     freq = utils.midi_to_freq(note)
-    #     t = np.linspace(0, duration, int(sample_rate * duration), False)
-    #     t_scaled = t * 2 * np.pi / (1/freq)
-    #     output = fourier_nn.predict(t_scaled)
-    #     output = output / np.max(np.abs(output))  # Normalize
-    #     return (note, output.astype(np.int16))
 
     def midi_to_musik_live(root, fourier_nn:FourierNN):
         global proc
         if proc:
             utils.DIE(proc)
             proc=None
-            
-        timestamp=time.perf_counter_ns()
-        print("preparing notes")
-        with Manager() as manager:
-            with Pool(os.cpu_count()) as pool:
-                print("aaaaaaaaaaaaa")
-                # notes=pool.map_async(fourier_nn.synthesize_3, range(128))
-                result = manager.list([pool.map_async(fourier_nn.synthesize_3, range(128))])
-                print("bbbbbbbbbbbbb")
+                
+        proc=Process(target=midi_proc, args=(fourier_nn,))
+        proc.start()
+        atexit.register(utils.DIE, proc)
 
-            proc=Process(target=midi_proc, args=(result[0]),)
-            proc.start()
-            atexit.register(utils.DIE, proc)
-
-        time_taken=timestamp-time.perf_counter_ns()
-        print(f"time taken: {time_taken/(60*1_000)}")
 except:
     pass

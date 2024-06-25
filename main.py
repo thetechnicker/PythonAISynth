@@ -22,6 +22,7 @@ from scr.utils import DIE
 
 
 if __name__ == "__main__":
+
     multiprocessing.set_start_method("spawn")
     def main():
 
@@ -282,6 +283,7 @@ if __name__ == "__main__":
             # utils.process_audio("C:/Users/lucas/Downloads/2-notes-octave-guitar-83275.mp3")
             graph.use_preconfig_drawing(functions['random'])
             train()
+            # command()
             # fourier_nn.load_new_model_from_file("tmp/tan.h5")
             # graph.draw_extern_graph_from_func(fourier_nn.predict, "tan")
 
