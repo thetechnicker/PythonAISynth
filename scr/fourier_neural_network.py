@@ -1,3 +1,4 @@
+import gc
 import os
 import sys
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -265,9 +266,9 @@ class FourierNN:
         return output.astype(np.int16)
     
     def synthesize_3(self, midi_note, duration=1.0, sample_rate=44100):
-        sys.stdout = open(f'tmp/process_{os.getpid()}_output.txt', 'w', buffering=1)
-        sys.stderr = open(f'tmp/process_{os.getpid()}_err.txt', 'w', buffering=1)
-        print(f"begin generating sound for note: {midi_note}")
+        sys.stdout = open(f'tmp/process_{os.getpid()}_output.txt', 'w')
+        sys.stderr = open(f'tmp/process_{os.getpid()}_err.txt', 'w')
+        print(f"begin generating sound for note: {midi_note}", flush=True)
         output = np.zeros(shape=int(sample_rate * duration))
         freq = midi_to_freq(midi_note)
         t = np.linspace(0, duration, int(sample_rate * duration), False)
@@ -275,6 +276,7 @@ class FourierNN:
         output = self.current_model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))#, batch_size=sample_rate/100)
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         print(f"Generated sound for note: {midi_note}")
+        # gc.collect()
         return (midi_note, output.astype(np.int16))
     
 

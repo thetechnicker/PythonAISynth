@@ -1,4 +1,5 @@
 import atexit
+import gc
 from multiprocessing import Queue
 import multiprocessing
 import os
@@ -43,6 +44,12 @@ if __name__ == "__main__":
         #         process=None
         #         train()
 
+        def stupid_but_ram():
+            nonlocal root
+            gc.collect()
+            root.after(5*1000, stupid_but_ram)
+
+
         graph = GraphCanvas(root, (900, 300))  # , draw_callback)
         graph.grid(row=1, column=0, columnspan=3, sticky='NSEW')
 
@@ -56,7 +63,7 @@ if __name__ == "__main__":
             return np.sin(np.cos(x) * keras.activations.elu(x))/np.cos(1/x)
         
         def my_random(x):
-            return np.tan(x*random.uniform(-1,1))
+            return np.sin(x*random.uniform(-1,1))
 
         functions = {
             'funny': funny,
@@ -282,12 +289,13 @@ if __name__ == "__main__":
             #     fourier_nn=FourierNN()
             # utils.process_audio("C:/Users/lucas/Downloads/2-notes-octave-guitar-83275.mp3")
             graph.use_preconfig_drawing(functions['random'])
-            train()
+            # train()
             # command()
             # fourier_nn.load_new_model_from_file("tmp/tan.h5")
             # graph.draw_extern_graph_from_func(fourier_nn.predict, "tan")
 
         root.after(500, init)
+        # root.after(5*1000, stupid_but_ram)
 
         # fourier_nn=FourierNN()
 

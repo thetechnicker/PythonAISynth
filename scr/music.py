@@ -77,25 +77,26 @@ try:
         notes:dict=None
         note_list:list=[]
         finished=0
-        with Pool(os.cpu_count()) as pool:
-            results = pool.imap_unordered(fourier_nn.synthesize_3, range(128))
+        with Pool() as pool:#os.cpu_count()
+            # results = pool.imap_unordered(fourier_nn.synthesize_3, range(128))
+            note_list = pool.map(fourier_nn.synthesize_3, range(128))
 
-            while True:
-                try:
-                    result = results.next(1)
-                    note_list.append(result)
-                    finished+=1
-                except multiprocessing.TimeoutError:
-                    pass
-                except StopIteration:
-                    break
-                if blink:
-                    print(f"{finished}/128 finished. pennding".ljust(100, " "), end="\r")
-                    blink=False
-                else:
-                    print(f"{finished}/128 finished.".ljust(100, " "), end="\r")
-                    blink=True
-                   
+            # while True:
+            #     try:
+            #         result = results.next(1)
+            #         note_list.append(result)
+            #         finished+=1
+            #     except multiprocessing.TimeoutError:
+            #         pass
+            #     except StopIteration:
+            #         break
+            #     if blink:
+            #         print(f"{finished}/128 finished. pennding".ljust(100, " "))
+            #         blink=False
+            #     else:
+            #         print(f"{finished}/128 finished.".ljust(100, " "))
+            #         blink=True
+            #     print("#################################", len(note_list))
             notes=dict(note_list)
         print("Ready")
 
