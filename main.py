@@ -136,7 +136,8 @@ if __name__ == "__main__":
                     fourier_nn.update_data(graph.export_data())
 
                 # fourier_nn.train_and_plot()
-
+                
+                fourier_nn.save_tmp_model()
                 process = multiprocessing.Process(
                     target=fourier_nn.train, args=(graph.lst, queue,))
                 # process = fourier_nn.train_Process(graph.lst, queue)
@@ -286,7 +287,7 @@ if __name__ == "__main__":
         def init():
             # nonlocal fourier_nn
             # if not fourier_nn:
-            #     fourier_nn=FourierNN()
+            #     fourier_nn=FourierNN() 
             # utils.process_audio("C:/Users/lucas/Downloads/2-notes-octave-guitar-83275.mp3")
             graph.use_preconfig_drawing(functions['random'])
             # train()

@@ -58,7 +58,7 @@ class FourierNN:
 
     def __getstate__(self):
         # Save the model to a file before serialization
-        self.current_model.save('./tmp/tmp_model.keras')
+        # self.current_model.save('./tmp/tmp_model.keras')
         model = self.current_model
         del self.current_model
         fourier_nn_dict = self.__dict__.copy()
@@ -69,9 +69,12 @@ class FourierNN:
         # Load the model from a file after deserialization
         self.__dict__.update(state)
         self.current_model = tf.keras.models.load_model('./tmp/tmp_model.keras')
-
+    
     def load_tmp_model(self):
         self.current_model = tf.keras.models.load_model('./tmp/tmp_model.keras')
+
+    def save_tmp_model(self):
+        self.current_model.save('./tmp/tmp_model.keras')
 
     def __init__(self, data=None):
         self.models:list = []
@@ -266,14 +269,14 @@ class FourierNN:
         return output.astype(np.int16)
     
     def synthesize_3(self, midi_note, duration=1.0, sample_rate=44100):
-        sys.stdout = open(f'tmp/process_{os.getpid()}_output.txt', 'w')
-        sys.stderr = open(f'tmp/process_{os.getpid()}_err.txt', 'w')
+        # sys.stdout = open(f'tmp/process_{os.getpid()}_output.txt', 'w')
         print(f"begin generating sound for note: {midi_note}", flush=True)
         output = np.zeros(shape=int(sample_rate * duration))
         freq = midi_to_freq(midi_note)
         t = np.linspace(0, duration, int(sample_rate * duration), False)
         t_scaled = t * 2 * np.pi / (1/freq)
-        output = self.current_model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]))#, batch_size=sample_rate/100)
+        batch_size=sample_rate//1
+        output = self.current_model.predict(np.array([self.fourier_basis(x,self.fourier_degree) for x in t_scaled]), batch_size=batch_size)
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         print(f"Generated sound for note: {midi_note}")
         # gc.collect()

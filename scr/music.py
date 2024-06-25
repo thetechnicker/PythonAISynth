@@ -1,6 +1,7 @@
 import atexit
 import multiprocessing
 from multiprocessing.pool import IMapIterator, MapResult
+from multiprocessing import Manager, Pool, Process
 import os
 import signal
 import sys
@@ -15,7 +16,6 @@ from scipy.io.wavfile import write
 
 from scr import utils
 from scr.fourier_neural_network import FourierNN
-from multiprocessing import Manager, Pool, Process
 
 
 def musik_from_file(fourier_nn: FourierNN):
@@ -71,33 +71,49 @@ try:
         print("test")
         return func(*param)
 
+    def init_worker():
+        # Ignore the SIGINT signal in worker processes, to handle it in the parent
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     def midi_proc(fourier_nn:FourierNN):
         blink=True
         notes:dict=None
         note_list:list=[]
         finished=0
-        with Pool() as pool:#os.cpu_count()
-            # results = pool.imap_unordered(fourier_nn.synthesize_3, range(128))
-            note_list = pool.map(fourier_nn.synthesize_3, range(128))
+        original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        try:
+            with multiprocessing.Pool(initializer=init_worker, processes=os.cpu_count()) as pool:
+                signal.signal(signal.SIGINT, original_sigint_handler)
+                note_list = pool.map(fourier_nn.synthesize_3, range(21,128))
+        except KeyboardInterrupt:
+            print("Caught KeyboardInterrupt, terminating workers")
+            pool.terminate()
+            pool.join()
+            return
+        
+        notes=dict(note_list)
+        # with Pool(processes=os.cpu_count()) as pool:
+        #     note_list = pool.map(fourier_nn.synthesize_3, range(21,128))
+        #     # results = pool.imap_unordered(fourier_nn.synthesize_3, range(128))
 
-            # while True:
-            #     try:
-            #         result = results.next(1)
-            #         note_list.append(result)
-            #         finished+=1
-            #     except multiprocessing.TimeoutError:
-            #         pass
-            #     except StopIteration:
-            #         break
-            #     if blink:
-            #         print(f"{finished}/128 finished. pennding".ljust(100, " "))
-            #         blink=False
-            #     else:
-            #         print(f"{finished}/128 finished.".ljust(100, " "))
-            #         blink=True
-            #     print("#################################", len(note_list))
-            notes=dict(note_list)
+        #     # while True:
+        #     #     try:
+        #     #         result = results.next(1)
+        #     #         note_list.append(result)
+        #     #         finished+=1
+        #     #     except multiprocessing.TimeoutError:
+        #     #         pass
+        #     #     except StopIteration:
+        #     #         break
+        #     #     if blink:
+        #     #         print(f"{finished}/128 finished. pennding".ljust(100, " "))
+        #     #         blink=False
+        #     #     else:
+        #     #         print(f"{finished}/128 finished.".ljust(100, " "))
+        #     #         blink=True
+        #     #     print("#################################", len(note_list))
+
+        #     notes=dict(note_list)
         print("Ready")
 
         with mido.open_input('TEST', virtual=True) as midiin:
@@ -115,7 +131,7 @@ try:
         if proc:
             utils.DIE(proc)
             proc=None
-                
+        fourier_nn.save_tmp_model()
         proc=Process(target=midi_proc, args=(fourier_nn,))
         proc.start()
         atexit.register(utils.DIE, proc)
