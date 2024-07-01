@@ -126,13 +126,26 @@ try:
                     elif msg.type == 'note_on':
                         sd.play(notes[msg.note], 44100, blocking=False)
 
+    def midi_proc_2(fourier_nn:FourierNN):
+        with mido.open_input('TEST', virtual=True) as midiin:
+            print("Ready")
+            # y=np.zeros((44100, 1,))
+            while True:
+                for msg in midiin.iter_pending():
+                    print(msg)
+                    if msg.type == 'note_off':
+                        sd.stop()
+                    elif msg.type == 'note_on':
+                        sd.play(fourier_nn.synthesize_2(msg.note), 44100, blocking=False)
+
+
     def midi_to_musik_live(root, fourier_nn:FourierNN):
         global proc
         if proc:
             utils.DIE(proc)
             proc=None
         fourier_nn.save_tmp_model()
-        proc=Process(target=midi_proc, args=(fourier_nn,))
+        proc=Process(target=midi_proc_2, args=(fourier_nn,))
         proc.start()
         atexit.register(utils.DIE, proc)
 
