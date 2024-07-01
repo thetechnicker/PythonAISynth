@@ -125,18 +125,58 @@ try:
                         sd.stop()
                     elif msg.type == 'note_on':
                         sd.play(notes[msg.note], 44100, blocking=False)
+                        active_notes = {}
+
+    active_notes = {}
 
     def midi_proc_2(fourier_nn:FourierNN):
         with mido.open_input('TEST', virtual=True) as midiin:
             print("Ready")
-            # y=np.zeros((44100, 1,))
+
+            fs = 44100  # Sample rate
+            f1 = 440  # Frequency of the "duuu" sound (in Hz)
+            f2 = 880  # Frequency of the "dib" sound (in Hz)
+            t1 = 0.8  # Duration of the "duuu" sound (in seconds)
+            t2 = 0.2  # Duration of the "dib" sound (in seconds)
+            t3 = 0.1
+
+            # Generate the "duuu" sound
+            t = np.arange(int(t1 * fs)) / fs
+            sound1 = 0.5 * np.sin(2 * np.pi * f1 * t)
+
+            # Generate the "dib" sound
+            t = np.arange(int(t2 * fs)) / fs
+            sound2 = 0.5 * np.sin(2 * np.pi * f2 * t)
+
+            # Concatenate the two sounds
+            sounds = np.concatenate([sound1, sound2])
+            sd.play(sounds, fs, blocking=True)
+            sounds=np.zeros(shape=(fs*t3, 1))
             while True:
+                i=0
                 for msg in midiin.iter_pending():
-                    print(msg)
+                    print("new msg", msg, i)
                     if msg.type == 'note_off':
-                        sd.stop()
+                        # When a note is released, stop playing it
+                        if msg.note in active_notes:
+                            del active_notes[msg.note]
+                            sd.stop()
                     elif msg.type == 'note_on':
-                        sd.play(fourier_nn.synthesize_2(msg.note), 44100, blocking=False)
+                        # When a note is pressed, start playing it
+                        active_notes[msg.note] = fourier_nn.synthesize_2(msg.note, t3)
+                    
+                    for note, sound in list(active_notes.items()):
+                        sounds += sound
+
+                    sounds = (sounds * 32767 / np.max(np.abs(sounds))) / 2
+
+                    sd.play(sounds, fs, blocking=False)
+                    
+                    i+=1
+
+                # Sleep for a while to reduce CPU usage
+                time.sleep(0.01)
+        
 
 
     def midi_to_musik_live(root, fourier_nn:FourierNN):
