@@ -197,7 +197,7 @@ if __name__ == "__main__":
                                                      default_str=f"model{i}",
                                                      label_select="Select Format",
                                                      default_select=default_format,
-                                                     values_to_select_from=["keras", "h5"])
+                                                     values_to_select_from=["keras", "h5", ""])
                 name, file_format = dialog.result
                 if not name:
                     name = f"model{i}"
