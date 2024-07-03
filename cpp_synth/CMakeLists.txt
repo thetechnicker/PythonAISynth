@@ -1,5 +1,7 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 project(cpp_synth)
+
+set(CMAKE_CXX_STANDARD 14)
 
 # TENSORFLOW C API
 set(TENSORFLOW_API_PATH $ENV{TENSORFLOW_API_PATH})
