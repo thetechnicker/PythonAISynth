@@ -10,6 +10,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
+import tensorflow as tf
 from tensorflow import keras
 import numpy as np
 import sounddevice as sd
@@ -197,11 +198,16 @@ if __name__ == "__main__":
                                                      default_str=f"model{i}",
                                                      label_select="Select Format",
                                                      default_select=default_format,
-                                                     values_to_select_from=["keras", "h5", ""])
+                                                     values_to_select_from=["keras", "h5", "other"])
+                if not dialog.result:
+                    return
                 name, file_format = dialog.result
+                if file_format == "other":
+                    tf.saved_model.save(fourier_nn.current_model, f"./tmp/{name}")
+                    return
                 if not name:
                     name = f"model{i}"
-
+                
                 file = f"{path}/{name}.{file_format}"
                 print(file)
                 if not os.path.exists(file):

@@ -10,3 +10,10 @@ link_directories(${TENSORFLOW_API_PATH}/lib)
 
 add_executable(cpp_synth src/main.cpp)
 target_link_libraries(cpp_synth tensorflow)
+
+if(MSYS)
+    add_custom_command(TARGET cpp_synth POST_BUILD
+                       COMMAND ${CMAKE_COMMAND} -E copy
+                       ${TENSORFLOW_API_PATH}/lib/tensorflow.dll
+                       $<TARGET_FILE_DIR:cpp_synth>)
+endif()

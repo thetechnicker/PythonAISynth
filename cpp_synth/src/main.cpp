@@ -73,7 +73,7 @@ int main()
     {
       printf("Operation: %s\n", TF_OperationName(oper));
     }
-    TF_Operation *input_op = TF_GraphOperationByName(graph, "serving_default_input_1");
+    TF_Operation *input_op = TF_GraphOperationByName(graph, "serving_default_inputs");
     TF_Output input = {input_op, 0};
     int num_dims = TF_GraphGetTensorNumDims(graph, input, status);
     int64_t *dims = (int64_t *)malloc(num_dims * sizeof(int));
