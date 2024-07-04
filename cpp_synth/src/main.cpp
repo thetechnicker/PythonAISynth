@@ -6,8 +6,18 @@
 #include <time.h>
 #include <iostream>
 #include <bitset>
+#include <math.h>
+#include <signal.h>
 
 #define DEFAULT_FORIER_DEGREE 10
+
+volatile sig_atomic_t flag = 0;
+
+void handle_interrupt(int signal)
+{
+  printf("adsfsa\n");
+  flag = 1;
+}
 
 int fourier_degree;
 
@@ -40,6 +50,7 @@ double *create_array(int n, double x, double y)
 
 int main()
 {
+  signal(SIGINT, handle_interrupt);
   // Initialize a TensorFlow session.
   TF_Status *status = TF_NewStatus();
   TF_SessionOptions *options = TF_NewSessionOptions();
@@ -101,8 +112,10 @@ int main()
     start = clock();
 
     int n = fourier_degree;
-    for (int freq = 1; freq < 1000; freq++)
+    float **notes = (float **)malloc(128 * sizeof(float *));
+    for (int midi = 0; midi < 128; midi++)
     {
+      float freq = 440 * pow(2, ((midi - 69) / 12));
       int x_length = (int)(44100 / freq);
       double *x = create_array(x_length, -M_1_PI, M_1_PI); // replace with your array
       double **basis = (double **)malloc(x_length * sizeof(double *));
@@ -158,18 +171,32 @@ int main()
       }
 
       int num_elements = TF_TensorElementCount(output_tensor);
-      float *test = (float *)malloc(num_elements * sizeof(float));
+      notes[midi] = (float *)malloc(44100 * sizeof(float));
       for (int i = 0; i < num_elements; ++i)
       {
-        test[i] = (float)(((float *)output_data)[i]);
-        printf("%f\t%f\n", ((float *)output_data)[i], test[i]);
+        printf("%f\n", ((float *)output_data)[i]);
       }
+      for (int i = 0; i < 44100; ++i)
+      {
+        notes[midi][i] = (float)(((float *)output_data)[i % num_elements]);
+      }
+
       printf("########\n");
 
       free(flat_array);
     }
     cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
     printf("The code took %f seconds to execute.\n", cpu_time_used);
+    while (!flag)
+    {
+      /* code */
+    }
+
+    for (int i = 0; i < 128; i++)
+    {
+      free(notes[i]);
+    }
+    free(notes);
   }
   else
   {
