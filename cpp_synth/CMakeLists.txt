@@ -3,9 +3,6 @@ project(cpp_synth)
 
 set(CMAKE_CXX_STANDARD 14)
 
-
-
-
 # TENSORFLOW C API
 include_directories($ENV{TENSORFLOW_API_PATH}/include)
 link_directories($ENV{TENSORFLOW_API_PATH}/lib)
@@ -25,6 +22,6 @@ target_link_libraries(cpp_synth rtmidi)
 if(MSYS)
     add_custom_command(TARGET cpp_synth POST_BUILD
                        COMMAND ${CMAKE_COMMAND} -E copy
-                       ${TENSORFLOW_API_PATH}/lib/tensorflow.dll
+                       $ENV{TENSORFLOW_API_PATH}/lib/tensorflow.dll
                        $<TARGET_FILE_DIR:cpp_synth>)
 endif()
