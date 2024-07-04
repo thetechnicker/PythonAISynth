@@ -1,7 +1,11 @@
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <stdio.h>
+#include <stdlib.h>
 #include <tensorflow/c/c_api.h>
 #include <math.h>
-#include <stdlib.h>
+#include <time.h>
+#include <iostream>
+#include <bitset>
 
 #define DEFAULT_FORIER_DEGREE 10
 
@@ -21,32 +25,17 @@ void fourier_basis(double *x, int x_length, int n, double **basis)
   }
 }
 
-void fourier_test()
+double *create_array(int n, double x, double y)
 {
+  double *array = (double *)malloc(n * sizeof(double));
+  double step = (y - x) / (n - 1);
 
-  int n = fourier_degree;
-  double x[] = {0.1, 0.2, 0.3, 0.4, 0.5}; // replace with your array
-  int x_length = sizeof(x) / sizeof(x[0]);
-  double **basis = (double **)malloc(x_length * sizeof(double *));
-
-  fourier_basis(x, x_length, n, basis);
-
-  for (int i = 0; i < x_length; ++i)
+  for (int i = 0; i < n; i++)
   {
-    printf("Basis for x[%d] = %f:\n", i, x[i]);
-    for (int j = 0; j < 2 * n; ++j)
-    {
-      printf("%f ", basis[i][j]);
-    }
-    printf("\n");
+    array[i] = x + i * step;
   }
 
-  // Don't forget to free the allocated memory when you're done.
-  for (int i = 0; i < x_length; ++i)
-  {
-    free(basis[i]);
-  }
-  free(basis);
+  return array;
 }
 
 int main()
@@ -69,13 +58,28 @@ int main()
     // Assume 'graph' is your TF_Graph object
     size_t pos = 0;
     TF_Operation *oper;
+    char *input_name;
     while ((oper = TF_GraphNextOperation(graph, &pos)) != NULL)
     {
-      printf("Operation: %s\n", TF_OperationName(oper));
+      printf("Operation: %s\t", TF_OperationName(oper));
+      const char *result = strstr(TF_OperationName(oper), "input");
+
+      if (result != NULL)
+      {
+        int size = 0;
+        while (TF_OperationName(oper)[size] != '\0')
+        {
+          size++;
+        }
+        input_name = (char *)malloc(size * sizeof(char *));
+        memcpy(input_name, TF_OperationName(oper), size * sizeof(char *));
+      }
+      printf("\n");
     }
 
+    printf("\nInput Layer: %s\n\n", input_name);
     {
-      TF_Operation *input_op_test = TF_GraphOperationByName(graph, "serving_default_inputs");
+      TF_Operation *input_op_test = TF_GraphOperationByName(graph, input_name);
       TF_Output input = {input_op_test, 0};
       int num_dims = TF_GraphGetTensorNumDims(graph, input, status);
       int64_t *dims = (int64_t *)malloc(num_dims * sizeof(int));
@@ -90,68 +94,82 @@ int main()
       }
     }
 
-    fourier_test();
-
     printf("\n");
 
+    clock_t start, end;
+    double cpu_time_used;
+    start = clock();
+
     int n = fourier_degree;
-    double x[] = {0.1, 0.2, 0.3, 0.4, 0.5}; // replace with your array
-    int x_length = sizeof(x) / sizeof(x[0]);
-    double **basis = (double **)malloc(x_length * sizeof(double *));
-
-    fourier_basis(x, x_length, n, basis);
-    int y_length = 2 * n;
-
-    float *flat_array = (float *)malloc(x_length * y_length * sizeof(float));
-    for (int i = 0; i < x_length; ++i)
+    for (int freq = 1; freq < 1000; freq++)
     {
-      for (int j = 0; j < y_length; ++j)
+      int x_length = (int)(44100 / freq);
+      double *x = create_array(x_length, -M_1_PI, M_1_PI); // replace with your array
+      double **basis = (double **)malloc(x_length * sizeof(double *));
+
+      fourier_basis(x, x_length, n, basis);
+      int y_length = 2 * n;
+
+      float *flat_array = (float *)malloc(x_length * y_length * sizeof(float));
+      for (int i = 0; i < x_length; ++i)
       {
-        flat_array[i * y_length + j] = (float)basis[i][j];
+        for (int j = 0; j < y_length; ++j)
+        {
+          flat_array[i * y_length + j] = (float)basis[i][j];
+        }
       }
+      for (int i = 0; i < x_length; ++i)
+      {
+        free(basis[i]);
+      }
+      free(basis);
+
+      int64_t dims[] = {x_length, y_length};
+      size_t num_bytes = x_length * y_length * sizeof(float);
+      TF_Tensor *tensor = TF_AllocateTensor(TF_FLOAT, dims, 2, num_bytes);
+      memcpy(TF_TensorData(tensor), flat_array, num_bytes);
+
+      TF_Output input_op = {TF_GraphOperationByName(graph, input_name), 0};
+      TF_Output output_op = {TF_GraphOperationByName(graph, "StatefulPartitionedCall"), 0};
+
+      TF_Tensor *output_tensor = NULL;
+
+      if (TF_GetCode(status) != TF_OK)
+      {
+        fprintf(stderr, "Error running session: %s\n", TF_Message(status));
+        goto exit_label;
+      }
+
+      TF_SessionRun(session, NULL, &input_op, &tensor, 1, &output_op, &output_tensor, 1, NULL, 0, NULL, status);
+
+      // printf("\nout_tensor %u\n", output_tensor);
+      if (TF_GetCode(status) != TF_OK)
+      {
+        fprintf(stderr, "Error running session: %s\n", TF_Message(status));
+        goto exit_label;
+      }
+
+      end = clock();
+
+      void *output_data = TF_TensorData(output_tensor);
+      if (!output_data)
+      {
+        goto exit_label;
+      }
+
+      int num_elements = TF_TensorElementCount(output_tensor);
+      float *test = (float *)malloc(num_elements * sizeof(float));
+      for (int i = 0; i < num_elements; ++i)
+      {
+        test[i] = (float)(((float *)output_data)[i]);
+        printf("%f\t%f\n", ((float *)output_data)[i], test[i]);
+      }
+      printf("########\n");
+
+      free(flat_array);
     }
-    for (int i = 0; i < x_length; ++i)
-    {
-      free(basis[i]);
-    }
-    free(basis);
-
-    int64_t dims[] = {x_length, y_length};
-    size_t num_bytes = x_length * y_length * sizeof(float);
-    TF_Tensor *tensor = TF_AllocateTensor(TF_FLOAT, dims, 2, num_bytes);
-    memcpy(TF_TensorData(tensor), flat_array, num_bytes);
-
-    TF_Output input_op = {TF_GraphOperationByName(graph, "serving_default_inputs"), 0};
-    TF_Output output_op = {TF_GraphOperationByName(graph, "StatefulPartitionedCall"), 0};
-
-    TF_Tensor *output_tensor = NULL;
-
-    TF_SessionRun(session, NULL, &input_op, &tensor, 1, &output_op, &output_tensor, 1, NULL, 0, NULL, status);
-
-
-    printf("\nout_tensor %d\n", output_tensor);
-    if (TF_GetCode(status) != TF_OK)
-    {
-      fprintf(stderr, "Error running session: %s\n", TF_Message(status));
-      goto exit_label;
-    }
-    void *output_data = TF_TensorData(output_tensor);
-    // if (output_data!= NULL)
-    // {
-    //   printf("YEAH\n");
-    // }
-    // else
-    // {
-    //   printf("NOOO\n");
-    // }
-    // int num_elements = TF_TensorElementCount(output_tensor);
-
-    // for (int i = 0; i < num_elements; ++i)
-    // {
-    //   printf("%f\n", output_data[i]);
-    // }
-
-    free(flat_array);
+    cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
+    printf("The code took %f seconds to execute.\n", cpu_time_used);
   }
   else
   {
