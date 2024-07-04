@@ -8,6 +8,8 @@
 #include <bitset>
 #include <math.h>
 #include <signal.h>
+#include <rtmidi/rtmidi_c.h>
+// #include <rtmidi/RtMidi.h>
 
 #define DEFAULT_FORIER_DEGREE 10
 
@@ -15,7 +17,6 @@ volatile sig_atomic_t flag = 0;
 
 void handle_interrupt(int signal)
 {
-  printf("adsfsa\n");
   flag = 1;
 }
 
@@ -187,10 +188,30 @@ int main()
     }
     cpu_time_used = ((double)(end - start)) / CLOCKS_PER_SEC;
     printf("The code took %f seconds to execute.\n", cpu_time_used);
+
+    RtMidiInPtr midiin = rtmidi_in_create_default();
+    rtmidi_open_port(midiin, 0, "My Client");
+
     while (!flag)
     {
-      /* code */
+      // Check for MIDI messages
+      unsigned char *message;
+      size_t size;
+      rtmidi_in_get_message(midiin, message, &size);
+      while (size > 0)
+      {
+        printf("ok ");
+        for (size_t i = 0; i < size; i++)
+        {
+          printf("%x ", message[i]);
+        }
+        printf("\n");
+
+        rtmidi_in_get_message(midiin, message, &size);
+      }
     }
+    rtmidi_close_port(midiin);
+    rtmidi_in_free(midiin);
 
     for (int i = 0; i < 128; i++)
     {

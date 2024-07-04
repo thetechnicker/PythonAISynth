@@ -18,6 +18,7 @@ link_directories($ENV{TENSORFLOW_API_PATH}/lib)
 
 add_executable(cpp_synth src/main.cpp)
 target_link_libraries(cpp_synth tensorflow)
+target_link_libraries(cpp_synth rtmidi)
 # target_link_libraries(cpp_synth Python3::Python)
 
 
