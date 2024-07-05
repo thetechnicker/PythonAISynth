@@ -10,7 +10,7 @@ window = tk.Tk()
 # Create a variable to store the selected MIDI port
 selected_port = tk.StringVar(window)
 selected_port.set(mido.get_output_names()[0])  # default value
-# print(mido.get_output_names()[0])#Microsoft GS Wavetable Synth 0
+print(selected_port.get())#Microsoft GS Wavetable Synth 0
 port = mido.open_output(selected_port.get())
 
 

@@ -3,20 +3,20 @@ project(cpp_synth)
 
 set(CMAKE_CXX_STANDARD 14)
 
+
 # TENSORFLOW C API
 include_directories($ENV{TENSORFLOW_API_PATH}/include)
+include_directories(include/)
 link_directories($ENV{TENSORFLOW_API_PATH}/lib)
 
+file(GLOB SOURCES src/*.c*)
+add_executable(cpp_synth ${SOURCES})
 
-# PYTHON dep for numpy
-# set(CMAKE_PREFIX_PATH $ENV{CONDA_ENV_PATH})
-# find_package(Python3 REQUIRED COMPONENTS Development Interpreter NumPy REQUIRED)
-# include_directories(${Python3_INCLUDE_DIRS} ${Python3_NumPy_INCLUDE_DIRS})
-
-add_executable(cpp_synth src/main.cpp)
 target_link_libraries(cpp_synth tensorflow)
 target_link_libraries(cpp_synth rtmidi)
-# target_link_libraries(cpp_synth Python3::Python)
+
+find_package(SFML 2.5 COMPONENTS graphics audio REQUIRED)
+target_link_libraries(cpp_synth sfml-graphics sfml-audio)
 
 
 if(MSYS)
