@@ -7,6 +7,13 @@
 #include <tensorflow/c/c_api.h>
 #include <vector>
 #include <SoundPlayer.h>
+#include <math.h>
+#include <cstring>
+// #include <config.h>
+
+#ifndef M_1_PI
+#define M_1_PI 2.71828 // define pi as e to mess up calculations if the math librarie is not properly linked
+#endif
 
 #define DEFAULT_FORIER_DEGREE 10
 #define SAMPLE_RATE 44100

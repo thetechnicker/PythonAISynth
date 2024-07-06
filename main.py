@@ -1,5 +1,6 @@
 import atexit
 import gc
+import math
 from multiprocessing import Queue
 import multiprocessing
 import os
@@ -113,18 +114,25 @@ if __name__ == "__main__":
                             data, "training", color="red")
                     except:
                         pass
-                    root.after(500, train_update)
+                    root.after(10, train_update)
                 else:
                     exit_code=process.exitcode
                     if exit_code == 0:
                         fourier_nn.load_tmp_model()
                         graph.draw_extern_graph_from_func(
-                            fourier_nn.predict, "training", color="red")
+                            fourier_nn.predict, "training", color="red", graph_type='cracy')
+                        # use to check if model is overfitting `graph_type='cracy'`
                     DIE(process) 
                     process = None
                     # musik()
                     messagebox.showinfo("training Ended", f"exit code: {exit_code}")
 
+        def down_sample():
+            nonlocal fourier_nn
+            if fourier_nn:
+                 graph.draw_extern_graph_from_func(
+                     fourier_nn.predict, "training", color="red")
+        
         def train():
             nonlocal fourier_nn
             nonlocal process
@@ -165,6 +173,7 @@ if __name__ == "__main__":
         #     else:
         #         print('already training')
 
+
         def musik():
             nonlocal fourier_nn
 
@@ -203,7 +212,8 @@ if __name__ == "__main__":
                     return
                 name, file_format = dialog.result
                 if file_format == "other":
-                    tf.saved_model.save(fourier_nn.current_model, f"./tmp/{name}")
+                    # tf.saved_model.save(fourier_nn.current_model, f"./tmp/{name}")
+                    fourier_nn.current_model.save(f"./tmp/{name}", save_format='tf')
                     return
                 if not name:
                     name = f"model{i}"
@@ -282,8 +292,8 @@ if __name__ == "__main__":
         #         for i in range(128):
         #            a.append(fourier_nn.predict(i))
         
-        command= lambda: music.midi_to_musik_live(root, fourier_nn)
-        # command= lambda: music.musik_from_file(fourier_nn)
+        # command= lambda: music.midi_to_musik_live(root, fourier_nn)
+        command= lambda: music.musik_from_file(fourier_nn)
         button_new_net= tk.Button(root, text='Test', command=command)
         button_new_net.grid(row=3,column=2, sticky='NSEW')
 

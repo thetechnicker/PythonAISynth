@@ -193,7 +193,11 @@ class GraphCanvas(tk.Frame):
         if not name:
             name = f"funciton {len(list(self.extern_graph.keys()))}"
         try:
-            data =  list(zip(self.lst,function(self.lst)))
+            x=self.lst #
+            if graph_type=="cracy":
+                x=np.linspace(self.lower_end_x, self.upper_end_x, 44100)
+                graph_type="line"
+            data =  list(zip(x,function(x)))
             if not hasattr(self, 'extern_graph'):
                 self.extern_graph={}
             self.extern_graph[name] = (data,color,width,graph_type)
