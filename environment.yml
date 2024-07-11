@@ -1,9 +1,12 @@
-name: ai_synth_main
+name: ai_synth_env
 channels:
   - defaults
 dependencies:
   - python==3.11
-  - matplotlib
   - tensorflow
+  - sounddevice
+  - pretty_midi
   - scipy
-  - numpy
+  - matplotlib
+  - sympy
+  - pygame
