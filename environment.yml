@@ -3,10 +3,12 @@ channels:
   - defaults
 dependencies:
   - python==3.11
-  - tensorflow
-  - sounddevice
-  - pretty_midi
-  - scipy
-  - matplotlib
-  - sympy
-  - pygame
+  - pip:
+    - tensorflow
+    - sounddevice
+    - pretty_midi
+    - scipy
+    - matplotlib
+    - sympy
+    - pygame
+    - rtmidi

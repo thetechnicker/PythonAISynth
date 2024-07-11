@@ -13,6 +13,7 @@ from tensorflow import keras
 from keras.models import Sequential
 from keras.layers import Dense, Input
 from keras.callbacks import Callback
+from tensorflow.keras.callbacks import EarlyStopping, CSVLogger
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
 from multiprocessing import Process, Queue
@@ -36,25 +37,26 @@ class MyCallback(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         if self.queue:
-            self.queue.put(self.model.predict(self.test_data))
+            self.queue.put(self.model.predict(self.test_data, batch_size=len(self.test_data)))
         if not self.quiet:
             time_taken=time.perf_counter_ns()-self.timestamp
-            print(f"EPOCHE {epoch+1} ENDED, Logs: {logs}. Time Taken: {time_taken/1_000_000_000}s")
+            print(f"EPOCHE {epoch+1} ENDED, loss: {logs['loss']}, val_loss: {logs['val_loss']}. Time Taken: {time_taken/1_000_000_000}s")
 
 
 
 class FourierNN:
-    RANGE = 44100
+    SAMPLES = 44100//2
 
     ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
-    EPOCHS = 10
+    EPOCHS = 500
 
     SIGNED_RANDOMNES = 0.000000001
-    DEFAULT_FORIER_DEGREE = 10
-    FORIER_DEGREE_DIVIDER = 50
-    FORIER_DEGREE_OFFSET = 1
+
+    DEFAULT_FORIER_DEGREE = 250
+    FORIER_DEGREE_DIVIDER = 1
+    FORIER_DEGREE_OFFSET = 0
 
     def __getstate__(self):
         # Save the model to a file before serialization
@@ -113,18 +115,18 @@ class FourierNN:
         return np.array(basis)
 
     def prepare_data(self, data):
-        self.fourier_degree = (
-            len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
+        self.fourier_degree = self.DEFAULT_FORIER_DEGREE
+        # (len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
         
         actualData_x, actualData_y = zip(*data)
 
         # random data filling
-        # if len(data) < self.RANGE:
-        #     if len(data) == self.RANGE / 2:
+        # if len(data) < self.SAMPLES:
+        #     if len(data) == self.SAMPLES / 2:
         #         data.extend(data)
         #     else:
-        #         multi = self.RANGE // len(data)
-        #         rest = self.RANGE % len(data)
+        #         multi = self.SAMPLES // len(data)
+        #         rest = self.SAMPLES % len(data)
         #         data.extend([(dat[0] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES),
         #                            dat[1] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES)) for dat in data * multi])
         #         for i in range(rest):
@@ -136,29 +138,47 @@ class FourierNN:
         #                 (data[i][0] + rand_x, data[i][1] + rand_y))
 
         # "math" data filling
+        test_data=[]
         data=sorted(data, key=lambda x: x[0])
-        while len(data) < self.RANGE:
+        while len(data) < self.SAMPLES:
             for a, b in utils.pair_iterator(sorted(copy(data), key=lambda x: x[0])):
                 new_X = b[0]-a[0]
                 new_y = b[1]-a[1]
                 new_data=(a[0]+(new_X/2), a[1]+(new_y/2))
                 data.append(new_data)
-                if len(data) == self.RANGE:
+                if len(data) == self.SAMPLES:
                     break
 
-        while len(data) > self.RANGE:
+        while len(data) > self.SAMPLES:
             print("OOPS")
             data.pop()
 
         data=sorted(data, key=lambda x: x[0])
 
+        while len(test_data) < self.SAMPLES:
+            for a, b in utils.pair_iterator(sorted(copy(data), key=lambda x: x[0])):
+                new_X = b[0]-a[0]
+                new_y = b[1]-a[1]
+                new_data=(a[0]+(new_X/2), a[1]+(new_y/2))
+                test_data.append(new_data)
+                if len(data) == self.SAMPLES:
+                    break
+        
+        test_data=sorted(test_data, key=lambda x:x[0])
+        while len(test_data) > self.SAMPLES:
+            print("OOPS")
+            test_data.pop()
 
         x_train, y_train = zip(*data)
+        x_test, y_test = zip(*test_data)
         x_train = np.array(x_train)
         y_train = np.array(y_train)
+        x_test = np.array(x_test)
+        y_test = np.array(y_test)
         x_train_transformed = np.array(
             [self.fourier_basis(x, self.fourier_degree) for x in x_train])
-        return x_train, x_train_transformed, y_train, actualData_x, actualData_y
+        return (x_train, x_train_transformed, y_train, actualData_x, actualData_y,
+                np.array([self.fourier_basis(x, self.fourier_degree) for x in y_test]), y_test)
 
     def create_model(self, input_shape):
         model:tf.keras.Model = Sequential([
@@ -166,20 +186,34 @@ class FourierNN:
             Dense(64, activation='relu'),
             Dense(1, activation='linear')
         ])
-        model.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
-        model.summary()
+        model.compile(optimizer='sgd', 
+              loss=tf.keras.losses.MeanSquaredError(),
+              metrics=[
+                  'accuracy',
+                  tf.keras.metrics.MeanSquaredError(),
+                  tf.keras.metrics.MeanAbsoluteError(),
+                  tf.keras.metrics.RootMeanSquaredError(),
+                  tf.keras.metrics.CosineSimilarity()
+              ])
         return model
 
     def train(self, test_data, queue=None, quiet=False):
-        _, x_train_transformed, y_train, _, _ = self.prepared_data
+        _, x_train_transformed, y_train, _, _, test_x, test_y = self.prepared_data
         model=self.current_model
 
         _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
         _x = np.array(_x)
+        early_stopping = EarlyStopping(monitor='val_loss', patience=50)
+        csvlogger=CSVLogger("./tmp/training.csv")
         model.fit(x_train_transformed, y_train,
-                       epochs=self.EPOCHS, callbacks=[MyCallback(queue, _x,quiet)], batch_size=32, verbose=0)
+                       epochs=self.EPOCHS, validation_data=(test_x, test_y),
+                       callbacks=[
+                           MyCallback(queue, _x,quiet),
+                           early_stopping,
+                           csvlogger,
+                           ],
+                        batch_size=int(self.SAMPLES/2), verbose=0)
         self.current_model.save('./tmp/tmp_model.keras')
-        
 
 
     def train_Process(self, test_data, queue=None, quiet=False)-> Process:
@@ -206,7 +240,7 @@ class FourierNN:
         ax.scatter(actualData_x, actualData_y,
                    color='blue', label='Training data')
         _x, _y = zip(*list((x, self.fourier_basis(x, self.fourier_degree))
-                     for x in np.linspace(-2 * np.pi, 2 * np.pi, self.RANGE)))
+                     for x in np.linspace(-2 * np.pi, 2 * np.pi, self.SAMPLES)))
         y_test = model.predict(np.array(_y))
         ax.plot(_x, y_test, color='red', label='Neural network approximation')
         ax.legend()
@@ -245,7 +279,7 @@ class FourierNN:
         if not hasattr(data, '__iter__'):
             data=[data]
         _y = list(self.fourier_basis(x, self.fourier_degree) for x in data)
-        y_test = self.current_model.predict(np.array(_y))
+        y_test = self.current_model.predict(np.array(_y), batch_size=len(data))
         return y_test
     
     def synthesize(self, midi_notes, sample_rate=44100, duration=5.0):
@@ -287,7 +321,7 @@ class FourierNN:
 
     def convert_to_audio(self, filename='./tmp/output.wav'):
         print(self.models.summary())
-        sample_rate = self.RANGE
+        sample_rate = self.SAMPLES
         duration = 5.0
         T = 1 / 440
         t = np.linspace(0, duration, int(sample_rate * duration), False)

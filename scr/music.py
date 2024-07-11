@@ -68,9 +68,11 @@ try:
     try:
         mido.open_input(port_name, virtual=virtual).close()
     except:
+        print("test loopBe midi")
         port_name="LoopBe Internal MIDI 0"
         virtual=False
         mido.open_input(port_name, virtual=virtual).close()
+        print("loopbe works")
     proc=None
 
     def wrapper(func, param):
@@ -101,13 +103,41 @@ try:
             return
         
         notes=dict(note_list)
-        pygame.mixer.init(frequency=44100, size=-16, channels=2)
+        print(notes.keys)
+        pygame.init()
+        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
 
+        # Set the number of channels to 20
+        pygame.mixer.set_num_channels(20)
+
+        
+
+        fs = 44100  # Sample rate
+        f1 = 440  # Frequency of the "duuu" sound (in Hz)
+        f2 = 880  # Frequency of the "dib" sound (in Hz)
+        t1 = 0.8  # Duration of the "duuu" sound (in seconds)
+        t2 = 0.2  # Duration of the "dib" sound (in seconds)
+
+        # Generate the "duuu" sound
+        t = np.arange(int(t1 * fs)) / fs
+        sound1 = 0.5 * np.sin(2 * np.pi * f1 * t)
+
+        # Generate the "dib" sound
+        t = np.arange(int(t2 * fs)) / fs
+        sound2 = 0.5 * np.sin(2 * np.pi * f2 * t)
+
+        # Concatenate the two sounds
+        audio = np.concatenate([sound1, sound2])
+        stereo_sine_wave = np.repeat(audio.reshape(-1, 1), 2, axis=1)
+        sound = pygame.sndarray.make_sound(stereo_sine_wave)
+
+        # Play the sound on a specific channel
+        channel = pygame.mixer.Channel(0)
+        channel.play(sound)
         
         print("Ready")
 
         with mido.open_input(port_name, virtual=virtual) as midiin:
-            # y=np.zeros((44100, 1,))
             while True:
                 for msg in midiin.iter_pending():
                     print(msg)
@@ -178,5 +208,5 @@ try:
         proc.start()
         atexit.register(utils.DIE, proc)
     print("live music possible")
-except:
-    print("live music NOT possible")
+except Exception as e:
+    print("live music NOT possible", e, sep="\n")

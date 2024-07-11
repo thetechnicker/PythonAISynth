@@ -4,6 +4,8 @@ from multiprocessing import Queue
 import multiprocessing
 import os
 import sys
+
+from scr import utils
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import random
 import time
@@ -29,7 +31,7 @@ if __name__ == "__main__":
     multiprocessing.set_start_method("spawn")
     def main():
 
-        process: multiprocessing.Process = None
+        trainings_process: multiprocessing.Process = None
         queue = Queue(-1)
 
         root = tk.Tk()
@@ -66,12 +68,53 @@ if __name__ == "__main__":
         
         def my_random(x):
             return np.sin(x*random.uniform(-1,1))
+        
+        def my_complex_function(x):
+            if x>0:
+                return np.sin(x) * (np.sin(np.tan(x) * keras.activations.relu(x)) / np.cos(random.uniform(-1, 1) * x))
+            else:
+                x=-x
+                return -np.sin(x) * (np.sin(np.tan(x) * keras.activations.relu(x)) / np.cos(random.uniform(-1, 1) * x))
+            
+        def nice(x):
+            x_greater_pi=False
+            x=utils.map_value(x, -np.pi, np.pi, 0, 2*np.pi)
+            if x>=np.pi:
+                x_greater_pi=True
+                x=x-np.pi
+
+            if x>(np.pi/2):
+                y= np.sin(np.tan(x))
+            elif 0<x and x<(np.pi/2):
+                y= np.cos(-np.tan(x))
+            elif (-np.pi/2)<x and x<0:
+                y= np.cos(np.tan(x))
+            else:
+                y= np.sin(-np.tan(x))
+            
+            if x_greater_pi:
+                return -y
+            return y
+            
+        def my_generated_function(x):
+            if x > np.pi:
+                return np.sin(np.tan(x) * keras.activations.softplus(x)) / np.sin(random.uniform(-1, 1) * x)
+            elif 0 < x and x <= np.pi:
+                return np.cos(np.sin(x) * keras.activations.softplus(-x)) / np.cos(random.uniform(-1, 1) * x)
+            elif -np.pi < x and x <= 0:
+                return np.cos(np.sin(x) * keras.activations.softplus(x)) / np.sin(random.uniform(-1, 1) * x)
+            else:
+                return np.sin(np.tan(-x) * keras.activations.softplus(x)) / np.cos(random.uniform(-1, 1) * x)
+
 
         functions = {
             'funny': funny,
             'funny2': funny2,
             'funny3': funny3,
             'random': my_random,
+            'cool':my_complex_function,
+            'bing':my_generated_function,
+            'nice':nice,
             'sin': np.sin,
             'cos': np.cos,
             'tan': np.tan,
@@ -103,9 +146,9 @@ if __name__ == "__main__":
         fourier_nn = None
 
         def train_update():
-            nonlocal process
-            if process:
-                if process.is_alive():
+            nonlocal trainings_process
+            if trainings_process:
+                if trainings_process.is_alive():
                     try:
                         data = queue.get_nowait()
                         data = list(zip(graph.lst, data.reshape(-1)))
@@ -114,42 +157,44 @@ if __name__ == "__main__":
                             data, "training", color="red")
                     except:
                         pass
-                    root.after(500, train_update)
+                    root.after(10, train_update)
                 else:
-                    exit_code=process.exitcode
+                    exit_code=trainings_process.exitcode
                     if exit_code == 0:
                         fourier_nn.load_tmp_model()
                         graph.draw_extern_graph_from_func(
-                            fourier_nn.predict, "training", color="red")
-                    DIE(process) 
-                    process = None
+                            fourier_nn.predict, "training", color="red", graph_type='crazy')
+                    DIE(trainings_process) 
+                    trainings_process = None
                     # musik()
                     messagebox.showinfo("training Ended", f"exit code: {exit_code}")
 
         def train():
             nonlocal fourier_nn
-            nonlocal process
-            if not process:
-                if hasattr(musik, "out"):
-                    del musik.out
-                if not fourier_nn:
-                    fourier_nn = FourierNN(graph.export_data())
-                else:
-                    fourier_nn.update_data(graph.export_data())
+            nonlocal trainings_process
 
-                # fourier_nn.train_and_plot()
-                
-                fourier_nn.save_tmp_model()
-                process = multiprocessing.Process(
-                    target=fourier_nn.train, args=(graph.lst, queue,))
-                # process = fourier_nn.train_Process(graph.lst, queue)
-                graph.draw_extern_graph_from_data(graph.export_data(), "train_data", color="blue")
-
-                root.after(100, process.start)
-                root.after(200, train_update)
-                atexit.register(process.kill)
-            else:
+            if trainings_process!=None:
                 print('already training')
+                return
+            
+            if hasattr(musik, "out"):
+                del musik.out
+            if not fourier_nn:
+                fourier_nn = FourierNN(graph.export_data())
+            else:
+                fourier_nn.update_data(graph.export_data())
+
+            # fourier_nn.train_and_plot()
+            
+            fourier_nn.save_tmp_model()
+            trainings_process = multiprocessing.Process(
+                target=fourier_nn.train, args=(graph.lst, queue,))
+            # process = fourier_nn.train_Process(graph.lst, queue)
+            graph.draw_extern_graph_from_data(graph.export_data(), "train_data", color="blue", prio=1)
+
+            root.after(100, trainings_process.start)
+            root.after(200, train_update)
+            atexit.register(trainings_process.kill)
 
         # def train():
         #     nonlocal fourier_nn
@@ -278,9 +323,14 @@ if __name__ == "__main__":
         #         for i in range(128):
         #            a.append(fourier_nn.predict(i))
         
-        command= lambda: music.midi_to_musik_live(root, fourier_nn)
+        # command= lambda: music.midi_to_musik_live(root, fourier_nn)
         # command= lambda: music.musik_from_file(fourier_nn)
-        button_new_net= tk.Button(root, text='Test', command=command)
+        def clear():
+            nonlocal fourier_nn
+            if fourier_nn:
+                graph.draw_extern_graph_from_func(
+                            fourier_nn.predict, "training", color="red")
+        button_new_net= tk.Button(root, text='Test', command=clear)
         button_new_net.grid(row=3,column=2, sticky='NSEW')
 
         def update_2sine():
@@ -291,13 +341,13 @@ if __name__ == "__main__":
             # if not fourier_nn:
             #     fourier_nn=FourierNN() 
             # utils.process_audio("C:/Users/lucas/Downloads/2-notes-octave-guitar-83275.mp3")
-            graph.use_preconfig_drawing(functions['random'])
+            graph.use_preconfig_drawing(functions['cool'])
             train()
             # command()
             # fourier_nn.load_new_model_from_file("tmp/tan.h5")
             # graph.draw_extern_graph_from_func(fourier_nn.predict, "tan")
 
-        root.after(500, init)
+        # root.after(500, init)
         # root.after(5*1000, stupid_but_ram)
 
         # fourier_nn=FourierNN()
@@ -307,7 +357,7 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             pass
 
-        if process:
-            DIE(process, 2)
+        if trainings_process:
+            DIE(trainings_process, 2)
 
     main()

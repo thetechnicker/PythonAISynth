@@ -166,8 +166,11 @@ class GraphCanvas(tk.Frame):
         legend_x = 10  # The x-coordinate of the top-left corner of the legend
         legend_y = 10  # The y-coordinate of the top-left corner of the legend
         legend_spacing = 20  # The vertical spacing between items in the legend
-    
-        for i, (name, (graph, color, width, graph_type)) in enumerate(self.extern_graph.items()):
+        later_1=[]
+        for i, (name, (graph, color, width, graph_type, prio)) in enumerate(self.extern_graph.items()):
+            if prio==1:
+                later_1.append((i, (name, (graph, color, width, graph_type, prio))))
+                continue
             # Draw a small line of the same color as the graph
             self.canvas.create_line(legend_x, legend_y + i * legend_spacing,
                                     legend_x + 20, legend_y + i * legend_spacing,
@@ -175,7 +178,7 @@ class GraphCanvas(tk.Frame):
             # Draw the name of the graph
             self.canvas.create_text(legend_x + 30, legend_y + i * legend_spacing,
                                     text=name, anchor='w')
-            if graph_type:# and False:
+            if graph_type=="line":# and False:
                 for a, b in utils.pair_iterator(graph):
                     a_new=self.convert_graph_to_canvas_coordinates_optimized(*a)
                     b_new=self.convert_graph_to_canvas_coordinates_optimized(*b)
@@ -184,8 +187,27 @@ class GraphCanvas(tk.Frame):
                 for a in graph:
                     x,y=self.convert_graph_to_canvas_coordinates_optimized(*a)
                     self.canvas.create_oval(x-width/2, y-width/2, x+width/2, y+width/2)
+        
+        for i, (name, (graph, color, width, graph_type, prio)) in later_1:
+            # Draw a small line of the same color as the graph
+            self.canvas.create_line(legend_x, legend_y + i * legend_spacing,
+                                    legend_x + 20, legend_y + i * legend_spacing,
+                                    fill=color, width=2)
+            # Draw the name of the graph
+            self.canvas.create_text(legend_x + 30, legend_y + i * legend_spacing,
+                                    text=name, anchor='w')
+            if graph_type=="line":# and False:
+                for a, b in utils.pair_iterator(graph):
+                    a_new=self.convert_graph_to_canvas_coordinates_optimized(*a)
+                    b_new=self.convert_graph_to_canvas_coordinates_optimized(*b)
+                    self.canvas.create_line(*a_new,*b_new, width=width, fill=color)
+            else:
+                for a in graph:
+                    x,y=self.convert_graph_to_canvas_coordinates_optimized(*a)
+                    self.canvas.create_oval(x-width/2, y-width/2, x+width/2, y+width/2)
+        
     
-    def draw_extern_graph_from_func(self, function, name=None, width=None, color=None, graph_type='line'):
+    def draw_extern_graph_from_func(self, function, name=None, width=None, color=None, graph_type='line', prio=0):
         if not width:
             width=self.point_radius/2
         if not color:
@@ -193,15 +215,19 @@ class GraphCanvas(tk.Frame):
         if not name:
             name = f"funciton {len(list(self.extern_graph.keys()))}"
         try:
-            data =  list(zip(self.lst,function(self.lst)))
+            x=self.lst #
+            if graph_type=="crazy":
+                x=np.linspace(self.lower_end_x, self.upper_end_x, 44100)
+                graph_type="line"
+            data =  list(zip(x,function(x)))
             if not hasattr(self, 'extern_graph'):
                 self.extern_graph={}
-            self.extern_graph[name] = (data,color,width,graph_type)
+            self.extern_graph[name] = (data,color,width,graph_type,prio)
             self._draw()
         except Exception as e:
             print(e)
 
-    def draw_extern_graph_from_data(self, data, name=None, width=None, color=None, graph_type='line'):
+    def draw_extern_graph_from_data(self, data, name=None, width=None, color=None, graph_type='line',prio=0):
         if not width:
             width=self.point_radius/2
         if not color:
@@ -212,7 +238,7 @@ class GraphCanvas(tk.Frame):
             #data =  list(zip(self.lst,data))
             if not hasattr(self, 'extern_graph'):
                 self.extern_graph={}
-            self.extern_graph[name] = (data,color,width,graph_type)
+            self.extern_graph[name] = (data,color,width,graph_type,prio)
             self._draw()
         except Exception as e:
             print(e)
