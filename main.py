@@ -3,6 +3,7 @@ import gc
 from multiprocessing import Queue
 import multiprocessing
 import os
+import sys
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import random
 import time
@@ -13,6 +14,7 @@ from tkinter import messagebox
 from tensorflow import keras
 import numpy as np
 import sounddevice as sd
+
 
 from scr import music
 from scr.fourier_neural_network import FourierNN

@@ -13,6 +13,7 @@ import numpy as np
 import pretty_midi
 import sounddevice as sd
 from scipy.io.wavfile import write
+import pygame
 
 from scr import utils
 from scr.fourier_neural_network import FourierNN
@@ -62,7 +63,14 @@ def musik_from_file(fourier_nn: FourierNN):
 
 try:
     import mido
-    mido.open_input('TEST', virtual=True).close()
+    port_name='AI_SYNTH'
+    virtual=True
+    try:
+        mido.open_input(port_name, virtual=virtual).close()
+    except:
+        port_name="LoopBe Internal MIDI 0"
+        virtual=False
+        mido.open_input(port_name, virtual=virtual).close()
     proc=None
 
     def wrapper(func, param):
@@ -80,6 +88,7 @@ try:
         notes:dict=None
         note_list:list=[]
         finished=0
+        notes_to_play=[]
         original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
         try:
             with multiprocessing.Pool(initializer=init_worker, processes=os.cpu_count()) as pool:
@@ -92,45 +101,26 @@ try:
             return
         
         notes=dict(note_list)
-        # with Pool(processes=os.cpu_count()) as pool:
-        #     note_list = pool.map(fourier_nn.synthesize_3, range(21,128))
-        #     # results = pool.imap_unordered(fourier_nn.synthesize_3, range(128))
+        pygame.mixer.init(frequency=44100, size=-16, channels=2)
 
-        #     # while True:
-        #     #     try:
-        #     #         result = results.next(1)
-        #     #         note_list.append(result)
-        #     #         finished+=1
-        #     #     except multiprocessing.TimeoutError:
-        #     #         pass
-        #     #     except StopIteration:
-        #     #         break
-        #     #     if blink:
-        #     #         print(f"{finished}/128 finished. pennding".ljust(100, " "))
-        #     #         blink=False
-        #     #     else:
-        #     #         print(f"{finished}/128 finished.".ljust(100, " "))
-        #     #         blink=True
-        #     #     print("#################################", len(note_list))
-
-        #     notes=dict(note_list)
+        
         print("Ready")
 
-        with mido.open_input('TEST', virtual=True) as midiin:
+        with mido.open_input(port_name, virtual=virtual) as midiin:
             # y=np.zeros((44100, 1,))
             while True:
                 for msg in midiin.iter_pending():
                     print(msg)
                     if msg.type == 'note_off':
-                        sd.stop()
+                        pass
                     elif msg.type == 'note_on':
-                        sd.play(notes[msg.note], 44100, blocking=False)
-                        active_notes = {}
+                        pass
+
 
     active_notes = {}
 
     def midi_proc_2(fourier_nn:FourierNN):
-        with mido.open_input('TEST', virtual=True) as midiin:
+        with mido.open_input(port_name, virtual=virtual) as midiin:
             print("Ready")
 
             fs = 44100  # Sample rate
@@ -138,7 +128,7 @@ try:
             f2 = 880  # Frequency of the "dib" sound (in Hz)
             t1 = 0.8  # Duration of the "duuu" sound (in seconds)
             t2 = 0.2  # Duration of the "dib" sound (in seconds)
-            t3 = 0.1
+            t3 = 1.0
 
             # Generate the "duuu" sound
             t = np.arange(int(t1 * fs)) / fs
@@ -151,7 +141,7 @@ try:
             # Concatenate the two sounds
             sounds = np.concatenate([sound1, sound2])
             sd.play(sounds, fs, blocking=True)
-            sounds=np.zeros(shape=(fs*t3, 1))
+            sounds=np.zeros(shape=(int(fs*t3), 1))
             while True:
                 i=0
                 for msg in midiin.iter_pending():
@@ -160,7 +150,6 @@ try:
                         # When a note is released, stop playing it
                         if msg.note in active_notes:
                             del active_notes[msg.note]
-                            sd.stop()
                     elif msg.type == 'note_on':
                         # When a note is pressed, start playing it
                         active_notes[msg.note] = fourier_nn.synthesize_2(msg.note, t3)
@@ -169,7 +158,7 @@ try:
                         sounds += sound
 
                     sounds = (sounds * 32767 / np.max(np.abs(sounds))) / 2
-
+                    sd.stop()
                     sd.play(sounds, fs, blocking=False)
                     
                     i+=1
@@ -185,9 +174,9 @@ try:
             utils.DIE(proc)
             proc=None
         fourier_nn.save_tmp_model()
-        proc=Process(target=midi_proc_2, args=(fourier_nn,))
+        proc=Process(target=midi_proc, args=(fourier_nn,))
         proc.start()
         atexit.register(utils.DIE, proc)
-
+    print("live music possible")
 except:
-    pass
+    print("live music NOT possible")
