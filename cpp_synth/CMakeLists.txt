@@ -31,8 +31,8 @@ if(MSYS OR WIN32)
                        COMMAND ${CMAKE_COMMAND} -E copy_directory
                        $ENV{SFML_API_PATH}/SFML-2.6.1/bin/
                        $<TARGET_FILE_DIR:cpp_synth>)
-elseif(EXISTS "/mnt/c/Windows/System32")
-
+elseif(EXISTS "/mnt/c/Windows/System32" OR UNIX)
+    #using WSL
     find_package(TensorFlow CONFIG REQUIRED)
     target_link_libraries(cpp_synth TensorFlow::TensorFlow)
 

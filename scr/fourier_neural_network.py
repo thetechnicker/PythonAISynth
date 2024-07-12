@@ -1,3 +1,4 @@
+from datetime import datetime
 import gc
 import os
 import sys
@@ -181,7 +182,7 @@ class FourierNN:
             Dense(64, activation='relu'),
             Dense(1, activation='linear')
         ])
-        model.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError())
+        model.compile(optimizer='adam', loss=tf.keras.losses.MeanSquaredError(), metrics=['accuracy'])
         model.summary()
         return model
 
@@ -191,9 +192,15 @@ class FourierNN:
 
         _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
         _x = np.array(_x)
+
+        logdir="logs/fit/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+        tensorboard_callback = keras.callbacks.TensorBoard(log_dir=logdir)
+        
         early_stopping = EarlyStopping(monitor='val_loss', patience=10)
         model.fit(x_train_transformed, y_train,
-                       epochs=self.EPOCHS, validation_data=(test_x, test_y), callbacks=[MyCallback(queue, _x,quiet),early_stopping], batch_size=32, verbose=0)
+                       epochs=self.EPOCHS, validation_data=(test_x, test_y),
+                       callbacks=[MyCallback(queue, _x,quiet),early_stopping,tensorboard_callback],
+                       batch_size=32, verbose=0)
         self.current_model.save('./tmp/tmp_model.keras')
         
 

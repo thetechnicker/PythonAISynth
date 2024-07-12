@@ -120,7 +120,7 @@ if __name__ == "__main__":
                     if exit_code == 0:
                         fourier_nn.load_tmp_model()
                         graph.draw_extern_graph_from_func(
-                            fourier_nn.predict, "training", color="red", graph_type='cracy')
+                            fourier_nn.predict, "training", color="red")#, graph_type='cracy')
                         # use to check if model is overfitting `graph_type='cracy'`
                     DIE(process) 
                     process = None
@@ -212,8 +212,8 @@ if __name__ == "__main__":
                     return
                 name, file_format = dialog.result
                 if file_format == "other":
-                    # tf.saved_model.save(fourier_nn.current_model, f"./tmp/{name}")
-                    fourier_nn.current_model.save(f"./tmp/{name}", save_format='tf')
+                    tf.saved_model.save(fourier_nn.current_model, f"./tmp/{name}")
+                    # fourier_nn.current_model.save(f"./tmp/{name}", save_format='tf')
                     return
                 if not name:
                     name = f"model{i}"
