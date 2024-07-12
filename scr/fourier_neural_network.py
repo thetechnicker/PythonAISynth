@@ -105,6 +105,7 @@ class FourierNN:
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
+        # print(f"generate foureir_basis for {x}")
         basis = [np.sin(i * x) for i in range(1, n+1)]
         basis += [np.cos(i * x) for i in range(1, n+1)]
         return np.array(basis)
@@ -178,7 +179,7 @@ class FourierNN:
         x_train_transformed = np.array(
             [self.fourier_basis(x, self.fourier_degree) for x in x_train])
         return (x_train, x_train_transformed, y_train, actualData_x, actualData_y,
-                np.array([self.fourier_basis(x, self.fourier_degree) for x in y_test]), y_test)
+                np.array([self.fourier_basis(x, self.fourier_degree) for x in x_test]), y_test)
 
     def create_model(self, input_shape):
         model:tf.keras.Model = Sequential([
@@ -186,8 +187,8 @@ class FourierNN:
             Dense(64, activation='relu'),
             Dense(1, activation='linear')
         ])
-        model.compile(optimizer='sgd', 
-              loss=tf.keras.losses.MeanSquaredError(),
+        model.compile(optimizer='adam', 
+              loss=tf.keras.losses.Huber(),
               metrics=[
                   'accuracy',
                   tf.keras.metrics.MeanSquaredError(),

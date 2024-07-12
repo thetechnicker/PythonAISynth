@@ -164,3 +164,4 @@ tmp/
 .vscode/
 build*/
 condaenv*txt
+logs/

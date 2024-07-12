@@ -1,12 +1,15 @@
 import atexit
 import gc
-from multiprocessing import Queue
 import multiprocessing
+if __name__=='__main__':
+    multiprocessing.set_start_method("spawn")
+from multiprocessing import Queue
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
+from threading import Thread
 
 from scr import utils
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import random
 import time
 import tkinter as tk
@@ -17,6 +20,35 @@ from tensorflow import keras
 import numpy as np
 import sounddevice as sd
 
+# class AsyncBuffer:
+#     def __init__(self):
+#         self.queue = Queue()
+#         self.thread = Thread(target=self._monitor_queue, daemon=True)
+#         self.thread.start()
+
+#     def _monitor_queue(self):
+#         while True:
+#             item:str = self.queue.get()
+#             item=item.replace("\n", "")
+#             if item is None:
+#                 break
+#             if item=='':
+#                 continue
+#             print(item, file=sys.__stdout__, end="\n")  # print to the real stdout
+
+#     def write(self, data):
+#         self.queue.put(data)
+    
+#     def flush(self):
+#         pass
+
+#     def exit(self):
+#         sys.stdout=sys.__stdout__
+#         self.queue.put(None)
+#         self.thread.join()
+
+# sys.stdout=AsyncBuffer()
+
 
 from scr import music
 from scr.fourier_neural_network import FourierNN
@@ -24,11 +56,7 @@ from scr.graph_canvas import GraphCanvas
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.utils import DIE
 
-
-
 if __name__ == "__main__":
-
-    multiprocessing.set_start_method("spawn")
     def main():
 
         trainings_process: multiprocessing.Process = None
@@ -79,7 +107,7 @@ if __name__ == "__main__":
         def nice(x):
             x_greater_pi=False
             x=utils.map_value(x, -np.pi, np.pi, 0, 2*np.pi)
-            if x>=np.pi:
+            if x>=2*np.pi:
                 x_greater_pi=True
                 x=x-np.pi
 
@@ -359,5 +387,7 @@ if __name__ == "__main__":
 
         if trainings_process:
             DIE(trainings_process, 2)
+        
+        # sys.stdout.exit()
 
     main()

@@ -3,6 +3,7 @@ channels:
   - defaults
 dependencies:
   - python==3.11
+  - pip
   - pip:
     - tensorflow
     - sounddevice
@@ -11,4 +12,4 @@ dependencies:
     - matplotlib
     - sympy
     - pygame
-    - rtmidi
+    - python-rtmidi

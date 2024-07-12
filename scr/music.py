@@ -65,9 +65,10 @@ try:
     import mido
     port_name='AI_SYNTH'
     virtual=True
+
     try:
         mido.open_input(port_name, virtual=virtual).close()
-    except:
+    except NotImplementedError:
         print("test loopBe midi")
         port_name="LoopBe Internal MIDI 0"
         virtual=False
@@ -85,7 +86,7 @@ try:
         # Ignore the SIGINT signal in worker processes, to handle it in the parent
         signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-    def midi_proc(fourier_nn:FourierNN):
+    def midi_proc(fourier_nn:FourierNN, stdout):
         blink=True
         notes:dict=None
         note_list:list=[]
