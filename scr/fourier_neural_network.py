@@ -49,7 +49,7 @@ class FourierNN:
     ITTERRATIONS = 5
     EPOCHS_PER_ITTERRATIONS = 1
 
-    EPOCHS = 500
+    EPOCHS = 100
 
     SIGNED_RANDOMNES = 0.000000001
 
@@ -74,11 +74,14 @@ class FourierNN:
     
     def load_tmp_model(self):
         self.current_model = tf.keras.models.load_model('./tmp/tmp_model.keras')
+        self.current_model.summary()
 
     def save_tmp_model(self):
         self.current_model.save('./tmp/tmp_model.keras')
 
     def __init__(self, data=None):
+        if os.path.exists('./tmp/tmp_model.keras'):
+            os.remove('./tmp/tmp_model.keras')
         self.models:list = []
         self.current_model:keras.Model = None
         self.fourier_degree=self.DEFAULT_FORIER_DEGREE

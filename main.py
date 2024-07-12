@@ -156,10 +156,12 @@ if __name__ == "__main__":
                 else:
                     exit_code=trainings_process.exitcode
                     if exit_code == 0:
+                        print("loading trained model")
                         fourier_nn.load_tmp_model()
+                        print("model loaded")
                         graph.draw_extern_graph_from_func(
                             fourier_nn.predict, "training", color="red", width=graph.point_radius/4)#, graph_type='crazy'
-                    DIE(trainings_process) 
+                    DIE(trainings_process)
                     trainings_process = None
                     messagebox.showinfo("training Ended", f"exit code: {exit_code}")
 
@@ -171,7 +173,7 @@ if __name__ == "__main__":
             if trainings_process:
                 print('already training')
                 return
-            
+
             if not fourier_nn:
                 fourier_nn = FourierNN(graph.export_data())
             else:
