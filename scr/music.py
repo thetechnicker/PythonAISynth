@@ -1,19 +1,13 @@
 import atexit
 import multiprocessing
-from multiprocessing.pool import IMapIterator, MapResult
-from multiprocessing import Manager, Pool, Process
+from multiprocessing import Process
 import os
 import signal
 import sys
-import threading
-import time
-import tkinter as tk
-from tkinter import filedialog, ttk
+from tkinter import filedialog
 import numpy as np
 import pretty_midi
 import sounddevice as sd
-from scipy.io.wavfile import write
-import pygame
 
 from scr import utils
 from scr.fourier_neural_network import FourierNN
@@ -61,105 +55,68 @@ def musik_from_file(fourier_nn: FourierNN):
 
 
 
-try:
-    import mido
-    port_name='AI_SYNTH'
-    virtual=True
-
+if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play')=='true'):
     try:
-        mido.open_input(port_name, virtual=virtual).close()
-    except NotImplementedError:
-        print("test loopBe midi")
-        port_name="LoopBe Internal MIDI 0"
-        virtual=False
-        mido.open_input(port_name, virtual=virtual).close()
-        print("loopbe works")
-    proc=None
+        import pygame
+        import mido
+        port_name='AI_SYNTH'
+        virtual=True
+        if not os.getenv('HAS_RUN_INIT'):
+            try:
+                mido.open_input(port_name, virtual=virtual).close()
+            except NotImplementedError:
+                print("test loopBe midi")
+                port_name="LoopBe Internal MIDI 0"
+                virtual=False
+                mido.open_input(port_name, virtual=virtual).close()
+                print("loopbe works")
+        proc=None
 
-    def wrapper(func, param):
-        print(os.getcwd())
-        sys.stdout = open(f'tmp/process_{os.getpid()}_output.txt', 'w')
-        print("test")
-        return func(*param)
+        def wrapper(func, param):
+            print(os.getcwd())
+            sys.stdout = open(f'tmp/process_{os.getpid()}_output.txt', 'w')
+            print("test")
+            return func(*param)
 
-    def init_worker():
-        # Ignore the SIGINT signal in worker processes, to handle it in the parent
-        signal.signal(signal.SIGINT, signal.SIG_IGN)
-
-    def midi_proc(fourier_nn:FourierNN, stdout):
-        blink=True
-        notes:dict=None
-        note_list:list=[]
-        finished=0
-        notes_to_play=[]
-        original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        try:
-            with multiprocessing.Pool(initializer=init_worker, processes=os.cpu_count()) as pool:
-                signal.signal(signal.SIGINT, original_sigint_handler)
-                note_list = pool.map(fourier_nn.synthesize_3, range(21,128))
-        except KeyboardInterrupt:
-            print("Caught KeyboardInterrupt, terminating workers")
-            pool.terminate()
-            pool.join()
-            return
-        
-        notes=dict(note_list)
-        print(notes.keys)
-        pygame.init()
-        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
-
-        # Set the number of channels to 20
-        pygame.mixer.set_num_channels(20)
+        def init_worker():
+            # Ignore the SIGINT signal in worker processes, to handle it in the parent
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         
+        def midi_proc(fourier_nn:FourierNN, virtual:bool):
+            pygame.init()
+            pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
+            os.environ['play']='true'
+            notes:dict={}
+            note_list:list=[]
+            original_sigint_handler = signal.signal(signal.SIGINT, signal.SIG_IGN)
+            try:
+                with multiprocessing.Pool(initializer=init_worker, processes=os.cpu_count()) as pool:
+                    signal.signal(signal.SIGINT, handler=original_sigint_handler)
+                    note_list = pool.map(fourier_nn.synthesize_3, range(128))
+            except KeyboardInterrupt:
+                print("Caught KeyboardInterrupt, terminating workers")
+                pool.terminate()
+                pool.join()
+                return
+            # note_list=[create_pygame_sound(fourier_nn, i)  for i in range(128)]
+            for note, sound in note_list:
+                stereo = np.repeat(sound.reshape(-1, 1), 2, axis=1)
+                stereo_sound = pygame.sndarray.make_sound(stereo)
+                notes[note]=stereo_sound
 
-        fs = 44100  # Sample rate
-        f1 = 440  # Frequency of the "duuu" sound (in Hz)
-        f2 = 880  # Frequency of the "dib" sound (in Hz)
-        t1 = 0.8  # Duration of the "duuu" sound (in seconds)
-        t2 = 0.2  # Duration of the "dib" sound (in seconds)
+            print(notes.keys())
 
-        # Generate the "duuu" sound
-        t = np.arange(int(t1 * fs)) / fs
-        sound1 = 0.5 * np.sin(2 * np.pi * f1 * t)
-
-        # Generate the "dib" sound
-        t = np.arange(int(t2 * fs)) / fs
-        sound2 = 0.5 * np.sin(2 * np.pi * f2 * t)
-
-        # Concatenate the two sounds
-        audio = np.concatenate([sound1, sound2])
-        stereo_sine_wave = np.repeat(audio.reshape(-1, 1), 2, axis=1)
-        sound = pygame.sndarray.make_sound(stereo_sine_wave)
-
-        # Play the sound on a specific channel
-        channel = pygame.mixer.Channel(0)
-        channel.play(sound)
-        
-        print("Ready")
-
-        with mido.open_input(port_name, virtual=virtual) as midiin:
-            while True:
-                for msg in midiin.iter_pending():
-                    print(msg)
-                    if msg.type == 'note_off':
-                        pass
-                    elif msg.type == 'note_on':
-                        pass
+            # Set the number of channels to 20
+            pygame.mixer.set_num_channels(20)
 
 
-    active_notes = {}
-
-    def midi_proc_2(fourier_nn:FourierNN):
-        with mido.open_input(port_name, virtual=virtual) as midiin:
-            print("Ready")
 
             fs = 44100  # Sample rate
             f1 = 440  # Frequency of the "duuu" sound (in Hz)
             f2 = 880  # Frequency of the "dib" sound (in Hz)
             t1 = 0.8  # Duration of the "duuu" sound (in seconds)
             t2 = 0.2  # Duration of the "dib" sound (in seconds)
-            t3 = 1.0
 
             # Generate the "duuu" sound
             t = np.arange(int(t1 * fs)) / fs
@@ -170,44 +127,45 @@ try:
             sound2 = 0.5 * np.sin(2 * np.pi * f2 * t)
 
             # Concatenate the two sounds
-            sounds = np.concatenate([sound1, sound2])
-            sd.play(sounds, fs, blocking=True)
-            sounds=np.zeros(shape=(int(fs*t3), 1))
-            while True:
-                i=0
-                for msg in midiin.iter_pending():
-                    print("new msg", msg, i)
-                    if msg.type == 'note_off':
-                        # When a note is released, stop playing it
-                        if msg.note in active_notes:
-                            del active_notes[msg.note]
-                    elif msg.type == 'note_on':
-                        # When a note is pressed, start playing it
-                        active_notes[msg.note] = fourier_nn.synthesize_2(msg.note, t3)
-                    
-                    for note, sound in list(active_notes.items()):
-                        sounds += sound
+            audio = np.concatenate([sound1, sound2])
+            output = np.array(audio * 32767 / np.max(np.abs(audio)) / 2).astype(np.int16)
+            stereo_sine_wave = np.repeat(output.reshape(-1, 1), 2, axis=1)
+            sound = pygame.sndarray.make_sound(stereo_sine_wave)
 
-                    sounds = (sounds * 32767 / np.max(np.abs(sounds))) / 2
-                    sd.stop()
-                    sd.play(sounds, fs, blocking=False)
-                    
-                    i+=1
-
-                # Sleep for a while to reduce CPU usage
-                time.sleep(0.01)
-        
+            # Play the sound on a specific channel
+            running_channels:dict[str, tuple[int, pygame.mixer.Channel]] = {}
+            free_channel_ids=list(range(20))
+            channel=pygame.mixer.Channel(0)
+            channel.play(sound)
+            while(channel.get_busy()):
+                pass
+            print("Ready")
+            with mido.open_input(port_name, virtual=virtual) as midiin:
+                while True:
+                    for msg in midiin.iter_pending():
+                        print(msg)
+                        if msg.type == 'note_off':
+                            free_channel_ids.append(running_channels[notes[msg.note]][0])
+                            running_channels[notes[msg.note]][1].stop()
+                        elif msg.type == 'note_on':
+                            id=free_channel_ids.pop()
+                            channel=pygame.mixer.Channel()
+                            channel.play(notes[msg.note])
+                            running_channels[notes[msg.note]]=(id, channel,)
 
 
-    def midi_to_musik_live(root, fourier_nn:FourierNN):
-        global proc
-        if proc:
-            utils.DIE(proc)
-            proc=None
-        fourier_nn.save_tmp_model()
-        proc=Process(target=midi_proc, args=(fourier_nn,))
-        proc.start()
-        atexit.register(utils.DIE, proc)
-    print("live music possible")
-except Exception as e:
-    print("live music NOT possible", e, sep="\n")
+        def midi_to_musik_live(root, fourier_nn:FourierNN):
+            os.environ['play']='true'
+            global proc
+            if proc:
+                utils.DIE(proc)
+                proc=None
+            fourier_nn.save_tmp_model()
+            proc=Process(target=midi_proc, args=(fourier_nn,virtual,))
+            proc.start()
+            atexit.register(utils.DIE, proc)
+    
+        if not os.getenv('HAS_RUN_INIT'):
+            print("live music possible")
+    except Exception as e:
+        print("live music NOT possible", e, sep="\n")

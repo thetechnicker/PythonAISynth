@@ -1,54 +1,17 @@
 import atexit
 import gc
 import multiprocessing
-if __name__=='__main__':
-    multiprocessing.set_start_method("spawn")
 from multiprocessing import Queue
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import sys
-from threading import Thread
 
 from scr import utils
 import random
-import time
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 from tensorflow import keras
 import numpy as np
-import sounddevice as sd
-
-# class AsyncBuffer:
-#     def __init__(self):
-#         self.queue = Queue()
-#         self.thread = Thread(target=self._monitor_queue, daemon=True)
-#         self.thread.start()
-
-#     def _monitor_queue(self):
-#         while True:
-#             item:str = self.queue.get()
-#             item=item.replace("\n", "")
-#             if item is None:
-#                 break
-#             if item=='':
-#                 continue
-#             print(item, file=sys.__stdout__, end="\n")  # print to the real stdout
-
-#     def write(self, data):
-#         self.queue.put(data)
-    
-#     def flush(self):
-#         pass
-
-#     def exit(self):
-#         sys.stdout=sys.__stdout__
-#         self.queue.put(None)
-#         self.thread.join()
-
-# sys.stdout=AsyncBuffer()
-
 
 from scr import music
 from scr.fourier_neural_network import FourierNN
@@ -57,6 +20,10 @@ from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.utils import DIE
 
 if __name__ == "__main__":
+    os.environ['HAS_RUN_INIT']='True'
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    multiprocessing.set_start_method("spawn")
+
     def main():
 
         trainings_process: multiprocessing.Process = None
@@ -182,78 +149,44 @@ if __name__ == "__main__":
                         data = list(zip(graph.lst, data.reshape(-1)))
                         # graph.data=data
                         graph.draw_extern_graph_from_data(
-                            data, "training", color="red")
+                            data, "training", color="red", width=graph.point_radius/4)
                     except:
                         pass
-                    root.after(10, train_update)
+                    root.after(100, train_update)
                 else:
                     exit_code=trainings_process.exitcode
                     if exit_code == 0:
                         fourier_nn.load_tmp_model()
                         graph.draw_extern_graph_from_func(
-                            fourier_nn.predict, "training", color="red", graph_type='crazy')
+                            fourier_nn.predict, "training", color="red", width=graph.point_radius/4)#, graph_type='crazy'
                     DIE(trainings_process) 
                     trainings_process = None
-                    # musik()
                     messagebox.showinfo("training Ended", f"exit code: {exit_code}")
 
         def train():
             nonlocal fourier_nn
             nonlocal trainings_process
+            
 
-            if trainings_process!=None:
+            if trainings_process:
                 print('already training')
                 return
             
-            if hasattr(musik, "out"):
-                del musik.out
             if not fourier_nn:
                 fourier_nn = FourierNN(graph.export_data())
             else:
                 fourier_nn.update_data(graph.export_data())
-
-            # fourier_nn.train_and_plot()
             
             fourier_nn.save_tmp_model()
+            
             trainings_process = multiprocessing.Process(
                 target=fourier_nn.train, args=(graph.lst, queue,))
-            # process = fourier_nn.train_Process(graph.lst, queue)
-            graph.draw_extern_graph_from_data(graph.export_data(), "train_data", color="blue", prio=1)
+            
+            graph.draw_extern_graph_from_data(graph.export_data(), "train_data", color="blue")
 
             root.after(100, trainings_process.start)
             root.after(200, train_update)
             atexit.register(trainings_process.kill)
-
-        # def train():
-        #     nonlocal fourier_nn
-        #     nonlocal process
-        #     if not process:
-        #         if not fourier_nn:
-        #              fourier_nn=FourierNN(graph.export_data())
-        #         else:
-        #             fourier_nn.update_data(graph.export_data())
-        #         process=fourier_nn.train_Process(graph.lst, queue, True)
-        #         print(process.pid)
-        #         root.after(10, train_update)
-        #         atexit.register(process.kill)
-        #     else:
-        #         print('already training')
-
-        def musik():
-            nonlocal fourier_nn
-
-            midi_notes = list(range(60, 72))
-            note_durations = [1]*len(midi_notes)
-
-            if fourier_nn:
-                notes_list=[]
-                if not hasattr(musik, "out"):
-                    for i, (note, durration) in enumerate(zip(midi_notes,note_durations)):
-                        notes_list.append(fourier_nn.synthesize_2(midi_note=note, duration=durration, sample_rate=44100))
-                    musik.out=np.concatenate(notes_list)
-                
-                sd.play(musik.out, 44100)
-
 
         def export():
             default_format = 'keras'
@@ -304,28 +237,12 @@ if __name__ == "__main__":
                 print(name)
                 fourier_nn.update_data(data=graph.get_graph(name=name)[0])
 
-        # def create_new_net():
-            # nonlocal fourier_nn
-            # if fourier_nn:
-                # fourier_nn.create_new_model()
-
-        # def audio_load_test():
-        #     nonlocal fourier_nn
-        #     #filetypes = (('All files', '*.*'))
-        #     filename = filedialog.askopenfilename(
-        #         title='Open a file', initialdir='.', parent=root)
-        #     if os.path.exists(filename):
-        #         x,y=utils.process_audio(filename)
-        #         data=list(zip(list(x), list(y)))
-        #         graph.data=data
-        #         graph._draw()
-        #         if fourier_nn:
-        #             fourier_nn.update_data(graph.export_data())
 
         button = tk.Button(root, text='Train', command=train)
         button.grid(row=2, column=0, sticky='NSEW')
 
-        button_musik = tk.Button(root, text='Musik', command=musik)
+        command= lambda: music.midi_to_musik_live(root, fourier_nn)
+        button_musik = tk.Button(root, text='Musik', command=command)
         button_musik.grid(row=3, column=1, sticky='NSEW')
 
         button_clear = tk.Button(root, text='clear', command=graph.clear)
@@ -336,49 +253,20 @@ if __name__ == "__main__":
 
         button_load = tk.Button(root, text='load', command=load)
         button_load.grid(row=2, column=1, sticky='NSEW')
-
-        # function_input = EntryWithPlaceholder(root, "enter formular")
-        # function_input.grid(row=4, column=0, columnspan=3, sticky='NSEW', padx=10)
-
-        # def use_custom_func():
-        #     func=utils.create_function(function_input.get())
-        #     graph.use_preconfig_drawing(func)
-
-        # def predTest():
-        #     nonlocal fourier_nn
-        #     if fourier_nn:
-        #         a=[]
-        #         for i in range(128):
-        #            a.append(fourier_nn.predict(i))
         
-        # command= lambda: music.midi_to_musik_live(root, fourier_nn)
-        # command= lambda: music.musik_from_file(fourier_nn)
         def clear():
             nonlocal fourier_nn
             if fourier_nn:
                 graph.draw_extern_graph_from_func(
-                            fourier_nn.predict, "training", color="red")
+                            fourier_nn.predict, "training", color="red", width=graph.point_radius/4)
         button_new_net= tk.Button(root, text='Test', command=clear)
         button_new_net.grid(row=3,column=2, sticky='NSEW')
 
-        def update_2sine():
-            pass
-
         def init():
-            # nonlocal fourier_nn
-            # if not fourier_nn:
-            #     fourier_nn=FourierNN() 
-            # utils.process_audio("C:/Users/lucas/Downloads/2-notes-octave-guitar-83275.mp3")
-            graph.use_preconfig_drawing(functions['cool'])
+            graph.use_preconfig_drawing(functions['random'])
             train()
-            # command()
-            # fourier_nn.load_new_model_from_file("tmp/tan.h5")
-            # graph.draw_extern_graph_from_func(fourier_nn.predict, "tan")
 
-        # root.after(500, init)
-        # root.after(5*1000, stupid_but_ram)
-
-        # fourier_nn=FourierNN()
+        root.after(500, init)
 
         try:
             root.mainloop()
@@ -388,6 +276,5 @@ if __name__ == "__main__":
         if trainings_process:
             DIE(trainings_process, 2)
         
-        # sys.stdout.exit()
 
     main()

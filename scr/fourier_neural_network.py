@@ -1,7 +1,6 @@
 import gc
 import os
 import sys
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from copy import copy
 import multiprocessing
 from multiprocessing.pool import Pool
@@ -70,7 +69,8 @@ class FourierNN:
     def __setstate__(self, state):
         # Load the model from a file after deserialization
         self.__dict__.update(state)
-        self.current_model = tf.keras.models.load_model('./tmp/tmp_model.keras')
+        if os.path.exists('./tmp/tmp_model.keras'):
+            self.current_model = tf.keras.models.load_model('./tmp/tmp_model.keras')
     
     def load_tmp_model(self):
         self.current_model = tf.keras.models.load_model('./tmp/tmp_model.keras')
@@ -105,7 +105,7 @@ class FourierNN:
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
-        # print(f"generate foureir_basis for {x}")
+        # print(f"generate foureir basis for {x}")
         basis = [np.sin(i * x) for i in range(1, n+1)]
         basis += [np.cos(i * x) for i in range(1, n+1)]
         return np.array(basis)
@@ -120,24 +120,7 @@ class FourierNN:
         # (len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
         
         actualData_x, actualData_y = zip(*data)
-
-        # random data filling
-        # if len(data) < self.SAMPLES:
-        #     if len(data) == self.SAMPLES / 2:
-        #         data.extend(data)
-        #     else:
-        #         multi = self.SAMPLES // len(data)
-        #         rest = self.SAMPLES % len(data)
-        #         data.extend([(dat[0] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES),
-        #                            dat[1] + random.uniform(-self.SIGNED_RANDOMNES, self.SIGNED_RANDOMNES)) for dat in data * multi])
-        #         for i in range(rest):
-        #             rand_x = random.uniform(-self.SIGNED_RANDOMNES,
-        #                                     self.SIGNED_RANDOMNES)
-        #             rand_y = random.uniform(-self.SIGNED_RANDOMNES,
-        #                                     self.SIGNED_RANDOMNES)
-        #             data.append(
-        #                 (data[i][0] + rand_x, data[i][1] + rand_y))
-
+        
         # "math" data filling
         test_data=[]
         data=sorted(data, key=lambda x: x[0])
@@ -147,27 +130,26 @@ class FourierNN:
                 new_y = b[1]-a[1]
                 new_data=(a[0]+(new_X/2), a[1]+(new_y/2))
                 data.append(new_data)
-                if len(data) == self.SAMPLES:
+                if len(data) >= self.SAMPLES:
                     break
 
         while len(data) > self.SAMPLES:
-            print("OOPS")
             data.pop()
 
         data=sorted(data, key=lambda x: x[0])
 
-        while len(test_data) < self.SAMPLES:
+        test_samples=self.SAMPLES/2
+        while len(test_data) < test_samples:
             for a, b in utils.pair_iterator(sorted(copy(data), key=lambda x: x[0])):
                 new_X = b[0]-a[0]
                 new_y = b[1]-a[1]
                 new_data=(a[0]+(new_X/2), a[1]+(new_y/2))
                 test_data.append(new_data)
-                if len(data) == self.SAMPLES:
+                if len(test_data) >= test_samples:
                     break
         
         test_data=sorted(test_data, key=lambda x:x[0])
-        while len(test_data) > self.SAMPLES:
-            print("OOPS")
+        while len(test_data) > test_samples:
             test_data.pop()
 
         x_train, y_train = zip(*data)
@@ -176,10 +158,16 @@ class FourierNN:
         y_train = np.array(y_train)
         x_test = np.array(x_test)
         y_test = np.array(y_test)
-        x_train_transformed = np.array(
-            [self.fourier_basis(x, self.fourier_degree) for x in x_train])
-        return (x_train, x_train_transformed, y_train, actualData_x, actualData_y,
-                np.array([self.fourier_basis(x, self.fourier_degree) for x in x_test]), y_test)
+        
+        with multiprocessing.Pool(processes=os.cpu_count()) as pool:
+            result_a=pool.starmap(FourierNN.fourier_basis, zip(x_train, (self.fourier_degree for i in range(len(x_train)))))
+        x_train_transformed=np.array(result_a)
+        
+        with multiprocessing.Pool(processes=os.cpu_count()) as pool:
+            result_b=pool.starmap(FourierNN.fourier_basis, zip(x_train, (self.fourier_degree for i in range(len(x_test)))))
+        x_test_transformed=np.array(result_b)
+
+        return (x_train, x_train_transformed, y_train, actualData_x, actualData_y, x_test_transformed, y_test)
 
     def create_model(self, input_shape):
         model:tf.keras.Model = Sequential([
@@ -194,8 +182,8 @@ class FourierNN:
                   tf.keras.metrics.MeanSquaredError(),
                   tf.keras.metrics.MeanAbsoluteError(),
                   tf.keras.metrics.RootMeanSquaredError(),
-                  tf.keras.metrics.CosineSimilarity()
               ])
+        model.summary()
         return model
 
     def train(self, test_data, queue=None, quiet=False):
@@ -204,7 +192,7 @@ class FourierNN:
 
         _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
         _x = np.array(_x)
-        early_stopping = EarlyStopping(monitor='val_loss', patience=50)
+        early_stopping = EarlyStopping(monitor='val_loss', patience=10)
         csvlogger=CSVLogger("./tmp/training.csv")
         model.fit(x_train_transformed, y_train,
                        epochs=self.EPOCHS, validation_data=(test_x, test_y),

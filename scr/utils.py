@@ -32,6 +32,9 @@ def messure_time_taken(name, func, *args, **kwargs):
     func(*args, **kwargs)
     print(f"Time taken for {name}: {(time.perf_counter_ns()-timestamp)/1_000_000_000}s")
 
+def run_multi_arg_func(func, *args, **kwargs):
+    func(*args, **kwargs)
+
 def midi_to_freq(midi_note):
     return 440.0 * np.power(2.0, (midi_note - 69) / 12.0)
 
@@ -143,78 +146,9 @@ def get_prepared_random_color(maxColors=None):
     else:
         raise Exception("No more unique values left to generate")
     
-# # (sin(x * elu(x)) * relu(x)) / 1 / tan(1 / cos(1 / gelu(x)))
-# def create_function(formula):
-#     # Define the symbols
-#     x = sympy.symbols('x')
-
-#     # Define a dictionary mapping activation function names to the actual functions
-#     activation_funcs = [name for name in dir(activations) if callable(getattr(activations, name))]
-
-#     # Replace activation function names in the formula with the actual functions
-#     for name in activation_funcs:
-#         # formula = formula.replace(name, f'activation_funcs["{name}"]')
-#         formula=re.sub(r'\b' + name + r'\b', f'activations.{name}', formula)
-    
-#     print(formula)
-
-#     # Convert the formula to a sympy expression
-#     expr = sympy.sympify(formula)
-
-#     # Convert the sympy expression to a Python function
-#     f = lambdify(x, expr, "numpy")
-
-#     # Return the created function
-#     return f
-
-# def get_freq(sr, data, start_time, end_time):
-
-#     # Open the file and convert to mono
-#     if data.ndim > 1:
-#         data = data[:, 0]
-#     else:
-#         pass
-
-#     # Return a slice of the data from start_time to end_time
-#     dataToRead = data[int(start_time * sr / 1000) : int(end_time * sr / 1000) + 1]
-
-#     # Fourier Transform
-#     N = len(dataToRead)
-#     yf = rfft(dataToRead)
-#     xf = rfftfreq(N, 1 / sr)
-
-#     # Uncomment these to see the frequency spectrum as a plot
-#     # plt.plot(xf, np.abs(yf))
-#     # plt.show()
-
-#     # Get the most dominant frequency and return it
-#     idx = np.argmax(np.abs(yf))
-#     freq = xf[idx]
-#     return freq
-
-# def process_audio(file_path):
-    # data, sr = librosa.load(file_path)
-    # start=100
-
-    # freq=get_freq(sr, data, start, sr*100)
-
-    # print(freq)
-
-    # end=int(sr/freq)
-    # print(end)
-    # y=data[start:start+end]
-    # # Load the audio file
-    # x1 = np.linspace(-np.pi, np.pi, len(data))
-    # x2 = np.linspace(-np.pi, np.pi, len(y))
-    
-    # plt.plot(x1, data, label="asdf")
-    # plt.plot(x2,y)
-    # plt.legend()
-    # plt.show()
-
-    # # Map x to a range from -pi to pi
-
-    # # Map y to a range of -1 to 1
-    # # y = 2 * (y - np.min(y)) / np.ptp(y) - 1
-
-    # return x2, y
+def lighten_color(r, g, b, percent):
+    """Lighten a color by a certain percentage."""
+    r_lighter = min(255, int(r + (255 - r) * percent))
+    g_lighter = min(255, int(g + (255 - g) * percent))
+    b_lighter = min(255, int(b + (255 - b) * percent))
+    return r_lighter, g_lighter, b_lighter
