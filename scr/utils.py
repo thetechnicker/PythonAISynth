@@ -1,6 +1,39 @@
 import random
+import re
+import time
+from matplotlib import pyplot as plt
 import numpy as np
+import sympy
+from sympy.utilities.lambdify import lambdify
+from tensorflow.keras import activations
+# import librosa
+# from scipy.fft import *
+# from scipy.io import wavfile
 
+def DIE(process, join_timeout=30, term_iterations=50):
+            if process:
+                print("Attempting to stop process (die)", flush=True)
+                process.join(join_timeout)
+                i = 0
+                while process.is_alive() and i < term_iterations:
+                    print("Sending terminate signal (DIE)", flush=True)
+                    process.terminate()
+                    time.sleep(0.5)
+                    i += 1
+                while process.is_alive():
+                    print("Sending kill signal !!!(DIE!!!)", flush=True)
+                    process.kill()
+                    time.sleep(0.1)
+                print("Success")
+
+
+def messure_time_taken(name, func, *args, **kwargs):
+    timestamp=time.perf_counter_ns()
+    func(*args, **kwargs)
+    print(f"Time taken for {name}: {(time.perf_counter_ns()-timestamp)/1_000_000_000}s")
+
+def run_multi_arg_func(func, *args, **kwargs):
+    func(*args, **kwargs)
 
 def midi_to_freq(midi_note):
     return 440.0 * np.power(2.0, (midi_note - 69) / 12.0)
@@ -9,6 +42,11 @@ def midi_to_freq(midi_note):
 def pair_iterator(lst):
     for i in range(len(lst) - 1):
         yield lst[i], lst[i+1]
+
+def note_iterator(lst):
+    for i in range(len(lst)-1):
+        yield lst[i], lst[i+1]
+    yield lst[len(lst)-1], None
 
 def find_two_closest(num_list, x):
     # Sort the list in ascending order based on the absolute difference with x
@@ -67,11 +105,50 @@ def map_value(value, leftMin, leftMax, rightMin, rightMax):
     valueScaled = float(value - leftMin) / float(leftSpan)
     return rightMin + (valueScaled * rightSpan)
 
+def map_value_old(x, a1, a2, b1, b2):
+    """
+    Maps a value from one range to another.
+
+    Parameters:
+    x (float): The value to map.
+    a1 (float): The lower bound of the original range.
+    a2 (float): The upper bound of the original range.
+    b1 (float): The lower bound of the target range.
+    b2 (float): The upper bound of the target range.
+
+    Returns:
+    float: The mapped value in the target range.
+    """
+    return b1 + ((x - a1) * (b2 - b1)) / (a2 - a1)
+
+
 def random_hex_color():
     # Generate a random color in hexadecimal format
-    color = '{:06x}'.format(random.randint(0, 0xFFFFFF))
+    color = '{:06x}'.format(random.randint(0x111111, 0xFFFFFF))
     return '#' + color
 
 def random_color():
     colors = ["lime", "orange", "yellow", "green", "blue", "indigo", "violet"]
     return random.choice(colors)
+
+def get_prepared_random_color(maxColors=None):
+    if not hasattr(get_prepared_random_color, 'colors'):
+        get_prepared_random_color.colors=[]
+        for i in range(maxColors or 100):
+            while True:
+                color=random_hex_color()
+                if not color in get_prepared_random_color.colors:
+                    get_prepared_random_color.colors.append(color)
+                    break
+    random.shuffle(get_prepared_random_color.colors)
+    if len(get_prepared_random_color.colors)>0:
+        return get_prepared_random_color.colors.pop()
+    else:
+        raise Exception("No more unique values left to generate")
+    
+def lighten_color(r, g, b, percent):
+    """Lighten a color by a certain percentage."""
+    r_lighter = min(255, int(r + (255 - r) * percent))
+    g_lighter = min(255, int(g + (255 - g) * percent))
+    b_lighter = min(255, int(b + (255 - b) * percent))
+    return r_lighter, g_lighter, b_lighter
