@@ -237,20 +237,20 @@ def main():
             fourier_nn.update_data(data=graph.get_graph(name=name)[0])
 
 
-    button = tk.Button(root, text='Train', command=train)
+    button = tk.Button(root, text='start training', command=train)
     button.grid(row=2, column=0, sticky='NSEW')
 
     command= lambda: music.midi_to_musik_live(root, fourier_nn)
-    button_musik = tk.Button(root, text='Musik', command=command)
+    button_musik = tk.Button(root, text='play music from midi', command=command)
     button_musik.grid(row=3, column=1, sticky='NSEW')
 
-    button_clear = tk.Button(root, text='clear', command=graph.clear)
+    button_clear = tk.Button(root, text='clear graph', command=graph.clear)
     button_clear.grid(row=2, column=2, sticky='NSEW')
 
-    button_export = tk.Button(root, text='export', command=export)
+    button_export = tk.Button(root, text='export neural net', command=export)
     button_export.grid(row=3, column=0, sticky='NSEW')
 
-    button_load = tk.Button(root, text='load', command=load)
+    button_load = tk.Button(root, text='load neural net', command=load)
     button_load.grid(row=2, column=1, sticky='NSEW')
     
     def clear():
@@ -258,7 +258,7 @@ def main():
         if fourier_nn:
             graph.draw_extern_graph_from_func(
                         fourier_nn.predict, "training", color="red", width=graph.point_radius/4)
-    button_new_net= tk.Button(root, text='Test', command=clear)
+    button_new_net= tk.Button(root, text='redraw graph from neural net', command=clear)
     button_new_net.grid(row=3,column=2, sticky='NSEW')
 
     def init():
