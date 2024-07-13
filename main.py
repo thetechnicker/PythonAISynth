@@ -259,7 +259,7 @@ def main():
         if fourier_nn:
             graph.draw_extern_graph_from_func(
                         fourier_nn.predict, "training", color="red", width=graph.point_radius/4)
-    button_new_net= tk.Button(root, text='redraw graph from neural net', command=clear)
+    button_new_net= tk.Button(root, text='redraw graph from neural net', command=clear) # button can be used for other things
     button_new_net.grid(row=3,column=2, sticky='NSEW')
 
     def init():
