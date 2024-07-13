@@ -18,6 +18,7 @@ from scr.fourier_neural_network import FourierNN
 from scr.graph_canvas import GraphCanvas
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.utils import DIE
+
 from _version import version
 
 def main():
@@ -279,5 +280,5 @@ if __name__ == "__main__":
     os.environ['HAS_RUN_INIT']='True'
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     multiprocessing.set_start_method("spawn")
-
+    
     main()
