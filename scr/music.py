@@ -8,13 +8,13 @@ from threading import Thread
 from tkinter import filedialog
 import numpy as np
 import pretty_midi
-import sounddevice as sd
 
 from scr import utils
 from scr.fourier_neural_network import FourierNN
 
 
 def musik_from_file(fourier_nn: FourierNN):
+    import sounddevice as sd
     midi_file = filedialog.askopenfilename()
     if not midi_file:
         return
