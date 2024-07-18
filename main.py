@@ -141,19 +141,23 @@ class MainGUI(tk.Tk):
         self.menu_bar.add_cascade(label=name, menu=menu)
 
     def train_update(self):
-        if self.trainings_process:
+        # print("!!!check!!!")
+        if self.trainings_process and self.training_started:
             if self.trainings_process.is_alive():
                 try:
                     data = self.queue.get_nowait()
+                    print("!!!check!!!")
                     data = list(zip(self.graph.lst, data.reshape(-1)))
                     # graph.data=data
                     self.graph.draw_extern_graph_from_data(
                         data, "training", color="red", width=self.graph.point_radius/4)
                 except:
                     pass
-                self.after(100, self.train_update)
             else:
                 exit_code = self.trainings_process.exitcode
+                if exit_code == None:
+                    self.after(100, self.train_update)
+                    return
                 if exit_code == 0:
                     print("loading trained model")
                     self.fourier_nn.load_tmp_model()
@@ -165,6 +169,8 @@ class MainGUI(tk.Tk):
                 self.training_started = False
                 messagebox.showinfo(
                     "training Ended", f"exit code: {exit_code}")
+                return
+        self.after(100, self.train_update)
 
     def init_or_update_nn(self):
         if not self.fourier_nn:
@@ -172,10 +178,9 @@ class MainGUI(tk.Tk):
         else:
             self.fourier_nn.update_data(self.graph.export_data())
         self.fourier_nn.save_tmp_model()
-        trainings_process = multiprocessing.Process(
+        self.trainings_process = multiprocessing.Process(
             target=self.fourier_nn.train, args=(self.graph.lst, self.queue,))
-        self.after(100, trainings_process.start)
-        self.after(200, self.train_update)
+        self.trainings_process.start()
 
     # Define your functions here
 
@@ -188,6 +193,7 @@ class MainGUI(tk.Tk):
         t = Thread(target=self.init_or_update_nn)
         t.daemon = True
         t.start()
+        self.train_update()
         atexit.register(DIE, self.trainings_process)
         self.graph.draw_extern_graph_from_data(
             self.graph.export_data(), "train_data", color="blue")
