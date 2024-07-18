@@ -6,6 +6,8 @@ import numpy as np
 p = pyaudio.PyAudio()
 
 # The callback function that will be called when audio is available
+
+
 def callback(in_data, frame_count, time_info, status):
     # Convert the input data to a NumPy array
     audio_data = np.frombuffer(in_data, dtype=np.float32)
@@ -15,6 +17,7 @@ def callback(in_data, frame_count, time_info, status):
     out_data = audio_data.tobytes()
 
     return (out_data, pyaudio.paContinue)
+
 
 # Open a new audio stream
 stream = p.open(format=pyaudio.paFloat32,

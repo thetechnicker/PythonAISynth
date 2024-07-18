@@ -4,11 +4,11 @@ dependencies:
   - python==3.11
   - pip
   - pip:
-    - tensorflow
-    - sounddevice
-    - pretty_midi
-    - scipy
-    - matplotlib
-    - sympy
-    - pygame
-    - python-rtmidi
+      - tensorflow
+      - sounddevice
+      - pretty_midi
+      - scipy
+      - matplotlib
+      - sympy
+      - pygame
+      - python-rtmidi

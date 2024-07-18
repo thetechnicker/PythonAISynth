@@ -6,7 +6,7 @@ class NeuralNetworkGUI(tk.Frame):
     def __init__(self, parent=None, defaults: dict = None, callback=None, **kwargs):
         tk.Frame.__init__(self, parent, **kwargs)
         # self.grid(sticky='NSEW')
-        self.on_change_callback=callback
+        self.on_change_callback = callback
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
 
@@ -16,7 +16,7 @@ class NeuralNetworkGUI(tk.Frame):
 
         self.optimizers_list = [opt for opt in dir(
             optimizers) if not opt.startswith('_') and isinstance(getattr(optimizers, opt), type)]
-        
+
         # print(self.loss_functions, self.optimizers_list, sep='\n-------------------------------\n')
 
         # Create labels and entry fields for the parameters
@@ -28,7 +28,7 @@ class NeuralNetworkGUI(tk.Frame):
             label.grid(row=i, column=0, sticky='NSEW')
             default = defaults.get(
                 param, 0 if param != 'CALC_FOURIER_DEGREE_BY_DATA_LENGTH' else False)
-            var = tk.BooleanVar(self, value=default) if param == 'CALC_FOURIER_DEGREE_BY_DATA_LENGTH'  else tk.StringVar(self, value=default) if param in ['OPTIMIZER', 'LOSS_FUNCTION'] else tk.IntVar(
+            var = tk.BooleanVar(self, value=default) if param == 'CALC_FOURIER_DEGREE_BY_DATA_LENGTH' else tk.StringVar(self, value=default) if param in ['OPTIMIZER', 'LOSS_FUNCTION'] else tk.IntVar(
                 self, value=default)
             var.trace_add('write', lambda *args, key=param,
                           var=var: self.on_change(key, var.get()))
@@ -56,7 +56,7 @@ class NeuralNetworkGUI(tk.Frame):
                 self.on_change_callback(name, value)
 
     def set_on_change(self, func):
-        self.on_change_callback=func
+        self.on_change_callback = func
 
 
 if __name__ == "__main__":

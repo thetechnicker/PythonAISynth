@@ -4,7 +4,7 @@ import time
 import numpy as np
 
 
-def DIE(process:Process, join_timeout=30, term_iterations=50):
+def DIE(process: Process, join_timeout=30, term_iterations=50):
     if process:
         if not process.is_alive():
             return

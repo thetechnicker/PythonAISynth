@@ -40,7 +40,6 @@ def main():
     root.columnconfigure(2, weight=1)
     root.columnconfigure(3, weight=1)
 
-
     # def draw_callback():
     #     nonlocal process
     #     print(process)

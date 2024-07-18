@@ -135,11 +135,10 @@ class FourierNN:
         return [self.current_model]+self.models
 
     def update_data(self, data):
-        
+
         self.prepared_data = self.prepare_data(list(data))
         if not self.current_model:
             self.create_new_model()
-       
 
     def get_trainings_data(self):
         return list(zip(self.prepared_data[0], self.prepared_data[2]))

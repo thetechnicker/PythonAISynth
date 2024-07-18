@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import simpledialog, ttk
 
+
 class EntryWithPlaceholder(tk.Entry):
     def __init__(self, master=None, placeholder="PLACEHOLDER", color='grey'):
         super().__init__(master)
@@ -25,6 +26,7 @@ class EntryWithPlaceholder(tk.Entry):
     def foc_out(self, *args):
         if not self.get():
             self.put_placeholder()
+
 
 class askStringAndSelectionDialog(simpledialog.Dialog):
     def __init__(self, parent, title=None, label_str='', default_str='', label_select='', default_select='', values_to_select_from=[]):

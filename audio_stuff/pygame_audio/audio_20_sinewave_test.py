@@ -12,10 +12,13 @@ pygame.mixer.init(frequency=44100, size=-16, channels=1, buffer=1024)
 pygame.mixer.set_num_channels(20)
 
 # Function to generate a sine wave
+
+
 def generate_sine_wave(frequency, duration, sample_rate=44100, amplitude=4096):
     t = np.linspace(0, duration, int(sample_rate * duration), False)
     sine_wave = amplitude * np.sin(frequency * t * 2 * np.pi)
     return sine_wave.astype(np.int16)
+
 
 # Generate and play 20 sine waves
 for i in range(20):
@@ -35,12 +38,12 @@ for i in range(20):
     channel = pygame.mixer.Channel(i)
     channel.play(sound)
 
-channel_running:list[bool]=[True]*20
+channel_running: list[bool] = [True]*20
 try:
     while any(channel_running):
         for i in range(20):
             if not pygame.mixer.Channel(i).get_busy():
-                channel_running[i]=False
+                channel_running[i] = False
         print(f"{sum(channel_running)}/20 still running")
 except KeyboardInterrupt:
     pass
