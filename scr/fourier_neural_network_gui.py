@@ -45,6 +45,9 @@ class NeuralNetworkGUI(tk.Frame):
                 dropdown = tk.OptionMenu(
                     self, var, *(used_list))
                 dropdown.grid(row=i, column=1, sticky='NSEW')
+            elif param == 'CALC_FOURIER_DEGREE_BY_DATA_LENGTH':
+                entry = tk.Checkbutton(self, variable=var)
+                entry.grid(row=i, column=1, sticky='NSEW')
             else:
                 entry = tk.Entry(self, textvariable=var)
                 entry.grid(row=i, column=1, sticky='NSEW')
