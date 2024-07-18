@@ -159,7 +159,7 @@ class FourierNN:
     def prepare_data(self, data):
 
         self.fourier_degree = ((len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
-                               if self.CALC_FOURIER_DEGREE_BY_DATA_LENGHT
+                               if self.CALC_FOURIER_DEGREE_BY_DATA_LENGTH
                                else self.DEFAULT_FORIER_DEGREE)
 
         actualData_x, actualData_y = zip(*data)

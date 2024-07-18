@@ -25,7 +25,7 @@ class NeuralNetworkGUI(tk.Frame):
         for i, param in enumerate(self.params):
             # self.rowconfigure(i, weight=1)
             label = tk.Label(self, text=param)
-            label.grid(row=i, column=0, sticky='NSEW')
+            label.grid(row=i, column=0, sticky='NSW')
             default = defaults.get(
                 param, 0 if param != 'CALC_FOURIER_DEGREE_BY_DATA_LENGTH' else False)
             var = tk.BooleanVar(self, value=default) if param == 'CALC_FOURIER_DEGREE_BY_DATA_LENGTH' else tk.StringVar(self, value=default) if param in ['OPTIMIZER', 'LOSS_FUNCTION'] else tk.IntVar(
