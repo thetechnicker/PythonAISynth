@@ -1,39 +1,40 @@
+from multiprocessing import Process
 import random
-import re
 import time
-from matplotlib import pyplot as plt
 import numpy as np
-import sympy
-from sympy.utilities.lambdify import lambdify
-from tensorflow.keras import activations
-# import librosa
-# from scipy.fft import *
-# from scipy.io import wavfile
 
-def DIE(process, join_timeout=30, term_iterations=50):
-            if process:
-                print("Attempting to stop process (die)", flush=True)
-                process.join(join_timeout)
-                i = 0
-                while process.is_alive() and i < term_iterations:
-                    print("Sending terminate signal (DIE)", flush=True)
-                    process.terminate()
-                    time.sleep(0.5)
-                    i += 1
-                while process.is_alive():
-                    print("Sending kill signal !!!(DIE!!!)", flush=True)
-                    process.kill()
-                    time.sleep(0.1)
-                print("Success")
+
+def DIE(process: Process, join_timeout=30, term_iterations=50):
+    if process:
+        if not process.is_alive():
+            return
+        print("Attempting to stop process (die)", flush=True)
+        process.join(join_timeout)
+        i = 0
+        while process.is_alive() and i < term_iterations:
+            print("Sending terminate signal (DIE)", flush=True)
+            process.terminate()
+            time.sleep(0.5)
+            i += 1
+        while process.is_alive():
+            print("Sending kill signal !!!(DIE!!!)", flush=True)
+            process.kill()
+            time.sleep(0.1)
+        print("Success")
 
 
 def messure_time_taken(name, func, *args, **kwargs):
-    timestamp=time.perf_counter_ns()
-    func(*args, **kwargs)
-    print(f"Time taken for {name}: {(time.perf_counter_ns()-timestamp)/1_000_000_000}s")
+    timestamp = time.perf_counter_ns()
+    result = func(*args, **kwargs)
+    print(
+        f"Time taken for {name}: {(time.perf_counter_ns()-timestamp)/1_000_000_000}s")
+    input("paused")
+    return result
+
 
 def run_multi_arg_func(func, *args, **kwargs):
     func(*args, **kwargs)
+
 
 def midi_to_freq(midi_note):
     return 440.0 * np.power(2.0, (midi_note - 69) / 12.0)
@@ -43,19 +44,22 @@ def pair_iterator(lst):
     for i in range(len(lst) - 1):
         yield lst[i], lst[i+1]
 
+
 def note_iterator(lst):
     for i in range(len(lst)-1):
         yield lst[i], lst[i+1]
     yield lst[len(lst)-1], None
 
+
 def find_two_closest(num_list, x):
     # Sort the list in ascending order based on the absolute difference with x
     sorted_list = sorted(num_list, key=lambda num: abs(num - x))
-    
+
     # Return the first two elements from the sorted list
     return sorted_list[:2]
 
-def interpolate(point1, point2, t):
+
+def interpolate(point1, point2, t=0.5):
     """
     Interpolate between two 2D points.
 
@@ -74,6 +78,7 @@ def interpolate(point1, point2, t):
     y = y1 * (1 - t) + y2 * t
 
     return (x, y)
+
 
 def interpolate_vectorized(point1, point2, t_values):
     """
@@ -94,16 +99,19 @@ def interpolate_vectorized(point1, point2, t_values):
 
     return points
 
+
 def is_in_interval(value, a, b):
     lower_bound = min(a, b)
     upper_bound = max(a, b)
     return lower_bound <= value <= upper_bound
+
 
 def map_value(value, leftMin, leftMax, rightMin, rightMax):
     leftSpan = leftMax - leftMin
     rightSpan = rightMax - rightMin
     valueScaled = float(value - leftMin) / float(leftSpan)
     return rightMin + (valueScaled * rightSpan)
+
 
 def map_value_old(x, a1, a2, b1, b2):
     """
@@ -127,25 +135,28 @@ def random_hex_color():
     color = '{:06x}'.format(random.randint(0x111111, 0xFFFFFF))
     return '#' + color
 
+
 def random_color():
     colors = ["lime", "orange", "yellow", "green", "blue", "indigo", "violet"]
     return random.choice(colors)
 
+
 def get_prepared_random_color(maxColors=None):
     if not hasattr(get_prepared_random_color, 'colors'):
-        get_prepared_random_color.colors=[]
+        get_prepared_random_color.colors = []
         for i in range(maxColors or 100):
             while True:
-                color=random_hex_color()
+                color = random_hex_color()
                 if not color in get_prepared_random_color.colors:
                     get_prepared_random_color.colors.append(color)
                     break
     random.shuffle(get_prepared_random_color.colors)
-    if len(get_prepared_random_color.colors)>0:
+    if len(get_prepared_random_color.colors) > 0:
         return get_prepared_random_color.colors.pop()
     else:
         raise Exception("No more unique values left to generate")
-    
+
+
 def lighten_color(r, g, b, percent):
     """Lighten a color by a certain percentage."""
     r_lighter = min(255, int(r + (255 - r) * percent))

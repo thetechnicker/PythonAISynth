@@ -8,45 +8,46 @@ import numpy as np
 
 from scr import utils
 
+
 class GraphCanvas(tk.Frame):
-    LEVEL_OF_DETAIL=250
+    LEVEL_OF_DETAIL = 250
     INCLUDE_0 = False
 
     canvas_width = 600
     canvas_height = 600
     aspect_ratio = 1
     offset = 10
-    point_radius=5
+    point_radius = 5
 
-    lower_end_x= -math.pi
-    upper_end_x= math.pi
+    lower_end_x = -math.pi
+    upper_end_x = math.pi
     lower_end_y = 1
     upper_end_y = -1
 
-    def __init__(self, master, size:tuple[int, int]=None):
+    def __init__(self, master, size: tuple[int, int] = None):
         if size:
             self.canvas_width = size[0]
             self.canvas_height = size[1]
-            self.aspect_ratio=self.canvas_width/self.canvas_height
+            self.aspect_ratio = self.canvas_width/self.canvas_height
         super().__init__(master)
-        self.master=master
+        self.master = master
         self.canvas = tk.Canvas(self, width=self.canvas_width+self.offset*2,
                                 height=self.canvas_height+self.offset*2, bg='white')
         self.canvas.pack(fill=tk.BOTH, expand=True)
         self.canvas.bind('<Configure>', self.resize)
-        
+
         self.canvas.bind('<B1-Motion>', self.on_mouse_move_interpolate)
         self.canvas.bind('<ButtonRelease-1>', self.motion_end)
         self.canvas.bind('<space>', self.on_space_press)
-        self.lst=np.linspace(-np.pi, np.pi, self.LEVEL_OF_DETAIL)
+        self.lst = np.linspace(-np.pi, np.pi, self.LEVEL_OF_DETAIL)
         if 0 not in self.lst and self.INCLUDE_0:
-            self.lst=np.append(self.lst, 0)
-        self.lst=np.sort(self.lst)
+            self.lst = np.append(self.lst, 0)
+        self.lst = np.sort(self.lst)
         self.data: list[tuple[float, float]] = []
         self.clear()
 
     def _draw(self):
-        #timestamp=time.perf_counter_ns()
+        # timestamp=time.perf_counter_ns()
         self.canvas.delete('all')
         self.setup_axes()
         # for x, y in utils.pair_iterator(self.data):
@@ -55,13 +56,12 @@ class GraphCanvas(tk.Frame):
             self.draw_point(x, y)
         if hasattr(self, 'extern_graph'):
             self._draw_extern_graph()
-        #print(f"Time taken: {(time.perf_counter_ns()-timestamp)/1_000_000_000}s")
+        # print(f"Time taken: {(time.perf_counter_ns()-timestamp)/1_000_000_000}s")
 
     def motion_end(self, event):
         if hasattr(self, 'old_point'):
             del self.old_point
 
-    
     def clear(self):
         self.data = [(x, 0) for x in self.lst]
         self._draw()
@@ -101,8 +101,8 @@ class GraphCanvas(tk.Frame):
         self.canvas_height = event.height-self.offset*2
         self.canvas.config(width=event.width, height=event.height)
         self._draw()
-        self.first=True # Keeping this, if it breaks again.
-    
+        self.first = True  # Keeping this, if it breaks again.
+
     def on_mouse_move_interpolate(self, event):
         new_point = (event.x, event.y)
         if hasattr(self, 'old_point'):
@@ -110,7 +110,8 @@ class GraphCanvas(tk.Frame):
             dist = abs(new_point[0] - old_point[0])
             if dist > 2:
                 t_values = np.arange(dist) / dist
-                points = utils.interpolate_vectorized(old_point, new_point, t_values)
+                points = utils.interpolate_vectorized(
+                    old_point, new_point, t_values)
                 for point in points:
                     interpolate_event = copy(event)
                     interpolate_event.x, interpolate_event.y = point
@@ -124,49 +125,55 @@ class GraphCanvas(tk.Frame):
         self.old_point = new_point
 
     def eval_mouse_move_event(self, event):
-        x, y = self.convert_canvas_to_graph_coordinates_optimized(event.x, event.y)
+        x, y = self.convert_canvas_to_graph_coordinates_optimized(
+            event.x, event.y)
         x = min(self.lst, key=lambda _y: abs(x - _y))
 
-        if  utils.is_in_interval(y, self.lower_end_y, self.upper_end_y) and utils.is_in_interval(x, self.lower_end_x, self.upper_end_x):
+        if utils.is_in_interval(y, self.lower_end_y, self.upper_end_y) and utils.is_in_interval(x, self.lower_end_x, self.upper_end_x):
             data_dict = dict(self.data)
             data_dict[x] = y
             self.data = list(data_dict.items())
 
-
     def draw_point(self, x, y):
         cx, cy = self.convert_graph_to_canvas_coordinates_optimized(x, y)
-        self.canvas.create_oval(cx-self.point_radius, cy-self.point_radius, cx+self.point_radius, cy+self.point_radius, fill='red')
+        self.canvas.create_oval(cx-self.point_radius, cy-self.point_radius,
+                                cx+self.point_radius, cy+self.point_radius, fill='red')
 
     def draw_line(self, a, b, width=1, color='black'):
-        ca=self.convert_graph_to_canvas_coordinates_optimized(*a)
-        cb=self.convert_graph_to_canvas_coordinates_optimized(*b)
+        ca = self.convert_graph_to_canvas_coordinates_optimized(*a)
+        cb = self.convert_graph_to_canvas_coordinates_optimized(*b)
         r, g, b = self.master.winfo_rgb(color)
         hex_color = "#{:02x}{:02x}{:02x}".format(r//256, g//256, b//256)
-        self.canvas.create_line(ca, cb, fill=hex_color, width=width,smooth=True)
+        self.canvas.create_line(ca, cb, fill=hex_color,
+                                width=width, smooth=True)
 
-        new_r, new_g, new_b = utils.lighten_color(r//256,g//256,b//256, 0.33)
+        new_r, new_g, new_b = utils.lighten_color(r//256, g//256, b//256, 0.33)
         hex_color = "#{:02x}{:02x}{:02x}".format(new_r, new_g, new_b)
-        self.canvas.create_line(ca, cb, fill=hex_color, width=width+0.5,smooth=True)
+        self.canvas.create_line(ca, cb, fill=hex_color,
+                                width=width+0.5, smooth=True)
 
     def export_data(self):
         return copy(self.data)
 
-
     def convert_canvas_to_graph_coordinates_optimized(self, x, y):
-        graph_x = utils.map_value(x-self.offset, 0, self.canvas_width, self.lower_end_x, self.upper_end_x)
-        graph_y = utils.map_value(y-self.offset, 0, self.canvas_height, self.lower_end_y, self.upper_end_y)
+        graph_x = utils.map_value(
+            x-self.offset, 0, self.canvas_width, self.lower_end_x, self.upper_end_x)
+        graph_y = utils.map_value(
+            y-self.offset, 0, self.canvas_height, self.lower_end_y, self.upper_end_y)
         return graph_x, graph_y
 
     def convert_graph_to_canvas_coordinates_optimized(self, x, y):
-        graph_x = utils.map_value(x, self.lower_end_x, self.upper_end_x, 0, self.canvas_width)+self.offset
-        graph_y = utils.map_value(y, self.lower_end_y, self.upper_end_y, 0, self.canvas_height)+self.offset
+        graph_x = utils.map_value(
+            x, self.lower_end_x, self.upper_end_x, 0, self.canvas_width)+self.offset
+        graph_y = utils.map_value(
+            y, self.lower_end_y, self.upper_end_y, 0, self.canvas_height)+self.offset
         return graph_x, graph_y
 
     def draw_bounding_box(self):
         self.canvas.create_rectangle(1, 1, 598, 598, outline='black')
 
     def _eval_func(self, function, x):
-        val=function(x)
+        val = function(x)
         return val if utils.is_in_interval(val, -1, 1) else 0
 
     def use_preconfig_drawing(self, function):
@@ -188,52 +195,52 @@ class GraphCanvas(tk.Frame):
             # Draw the name of the graph
             self.canvas.create_text(legend_x + 30, legend_y + i * legend_spacing,
                                     text=name, anchor='w')
-            if graph_type=="line":# and False:
+            if graph_type == "line":  # and False:
                 for a, b in utils.pair_iterator(graph):
-                    self.draw_line(a,b, width, color)
+                    self.draw_line(a, b, width, color)
             else:
                 for a in graph:
-                    x,y=self.convert_graph_to_canvas_coordinates_optimized(*a)
-                    self.canvas.create_oval(x-width/2, y-width/2, x+width/2, y+width/2)
-        
-        
-    
+                    x, y = self.convert_graph_to_canvas_coordinates_optimized(
+                        *a)
+                    self.canvas.create_oval(
+                        x-width/2, y-width/2, x+width/2, y+width/2)
+
     def draw_extern_graph_from_func(self, function, name=None, width=None, color=None, graph_type='line', prio=0):
         if not width:
-            width=self.point_radius/2
+            width = self.point_radius/2
         if not color:
-            color=utils.get_prepared_random_color()
+            color = utils.get_prepared_random_color()
         if not name:
             name = f"funciton {len(list(self.extern_graph.keys()))}"
         try:
-            x=self.lst #
-            if graph_type=="crazy":
-                x=np.linspace(self.lower_end_x, self.upper_end_x, 44100)
-                graph_type="line"
-            data =  list(zip(x,function(x)))
+            x = self.lst
+            if graph_type == "crazy":
+                x = np.linspace(self.lower_end_x, self.upper_end_x, 44100)
+                graph_type = "line"
+            data = list(zip(x, function(x)))
             if not hasattr(self, 'extern_graph'):
-                self.extern_graph={}
-            self.extern_graph[name] = (data,color,width,graph_type,prio)
+                self.extern_graph = {}
+            self.extern_graph[name] = (data, color, width, graph_type, prio)
             self._draw()
         except Exception as e:
             print(e)
 
-    def draw_extern_graph_from_data(self, data, name=None, width=None, color=None, graph_type='line',prio=0):
+    def draw_extern_graph_from_data(self, data, name=None, width=None, color=None, graph_type='line', prio=0):
         if not width:
-            width=self.point_radius/2
+            width = self.point_radius/2
         if not color:
-            color=utils.get_prepared_random_color()
+            color = utils.get_prepared_random_color()
         if not name:
             name = f"funciton {len(list(self.extern_graph.keys()))}"
         try:
-            #data =  list(zip(self.lst,data))
+            # data =  list(zip(self.lst,data))
             if not hasattr(self, 'extern_graph'):
-                self.extern_graph={}
-            self.extern_graph[name] = (data,color,width,graph_type,prio)
+                self.extern_graph = {}
+            self.extern_graph[name] = (data, color, width, graph_type, prio)
             self._draw()
         except Exception as e:
             print(e)
-        
+
 
 # moved to ./tests
 # if __name__ == "__main__":
@@ -241,4 +248,3 @@ class GraphCanvas(tk.Frame):
 #     graph = GraphCanvas(root)
 #     graph.pack(fill=tk.BOTH, expand=True)
 #     root.mainloop()
- 

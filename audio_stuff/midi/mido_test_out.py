@@ -1,5 +1,6 @@
 import mido
 
+
 def send_midi():
     # Open a virtual port for output
     midiout = mido.open_output('My virtual port', virtual=True)
@@ -14,6 +15,7 @@ def send_midi():
 
         # Send the message
         midiout.send(msg)
+
 
 if __name__ == "__main__":
     send_midi()
