@@ -116,8 +116,6 @@ class FourierNN:
         self.current_model.save('./tmp/tmp_model.keras')
 
     def __init__(self, data=None):
-        if os.path.exists('./tmp/tmp_model.keras'):
-            os.remove('./tmp/tmp_model.keras')
         self.models: list = []
         self.current_model: keras.Model = None
         self.fourier_degree = self.DEFAULT_FORIER_DEGREE
@@ -145,10 +143,11 @@ class FourierNN:
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
-        # print(f"generate foureir basis for {x}")
+        print(f"generating fourier basis for {x}")
         # return np.array([[x]]) to show why this function is importents
         basis = [np.sin(i * x) for i in range(1, n+1)]
         basis += [np.cos(i * x) for i in range(1, n+1)]
+        print(f"fourier basis for {x} generated")
         return np.array(basis)
 
     @staticmethod
@@ -211,13 +210,11 @@ class FourierNN:
         y_train = np.array(y_train)
         x_test = np.array(x_test)
         y_test = np.array(y_test)
-
         with multiprocessing.Pool(processes=os.cpu_count()) as pool:
             result_a = pool.starmap(FourierNN.fourier_basis, zip(
                 x_train, (self.fourier_degree for i in range(len(x_train)))))
             result_b = pool.starmap(FourierNN.fourier_basis, zip(
                 x_train, (self.fourier_degree for i in range(len(x_test)))))
-
         x_train_transformed = np.array(result_a)
         x_test_transformed = np.array(result_b)
 
@@ -342,7 +339,7 @@ class FourierNN:
     def load_new_model_from_file(self, filename='./tmp/model.h5'):
         if self.current_model:
             self.models.append(self.current_model)
-        self.current_model = tf.keras.models.load_model(filename, )
+        self.current_model = tf.keras.models.load_model(filename)
         print(self.current_model.name)
         self.current_model._name = os.path.basename(
             filename).replace('/', '').split('.')[0]

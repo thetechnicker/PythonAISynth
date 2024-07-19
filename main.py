@@ -1,3 +1,5 @@
+from scr import music
+from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.utils import DIE
 from scr.predefined_functions import predefined_functions_dict
 from scr.graph_canvas import GraphCanvas
@@ -33,6 +35,7 @@ class MainGUI(tk.Tk):
         self.trainings_process: Process = None
         self.music_process: Process = None
         self.training_started = False
+        self.block_training = False
         self.queue = Queue(-1)
         self.fourier_nn = None
 
@@ -55,7 +58,8 @@ class MainGUI(tk.Tk):
             'LOSS_FUNCTION': 'Huber',
         }
 
-        self.gui = NeuralNetworkGUI(self, defaults=defaults)
+        self.gui = NeuralNetworkGUI(
+            self, defaults=defaults, callback=self.update_frourier_params)
         self.gui.grid(row=1, column=3, rowspan=3, sticky='NSEW')
 
     def create_status_bar(self):
@@ -65,19 +69,25 @@ class MainGUI(tk.Tk):
         self.status_bar.grid(row=2, column=0, sticky='we', columnspan=4)
 
         self.status_label = tk.Label(
-            self.status_bar, text="Ready", anchor=tk.W)
+            self.status_bar, text="Ready", anchor=tk.W, font=("TkFixedFont"))
         self.status_label.pack(side=tk.LEFT)
 
         self.processes_label = tk.Label(
-            self.status_bar, text="Processes: 0", anchor=tk.E)
+            self.status_bar, text="Processes: 0", anchor=tk.E, font=("TkFixedFont"))
         self.processes_label.pack(side=tk.RIGHT)
-
+        self.frame_no = 0
         self.after(500, self.update_status_bar)
 
     def update_status_bar(self):
         children = self.process_monitor.children(recursive=True)
-        self.status_label.config(
-            text="Ready" if len(children) == 0 else "Busy")
+        animation_text = "|" if self.frame_no == 0 else '/' if self.frame_no == 1 else '-' if self.frame_no == 2 else '\\'
+        self.frame_no = (self.frame_no+1) % 4
+        if len(children) == 0:
+            self.status_label.config(text="Ready", fg="green")
+        else:
+            self.status_label.config(
+                text=f"Busy ({animation_text})", fg="red")
+
         self.processes_label.config(text=f"Processes: {len(children)}")
         self.after(500, self.update_status_bar)
 
@@ -167,6 +177,7 @@ class MainGUI(tk.Tk):
                 DIE(self.trainings_process)
                 self.trainings_process = None
                 self.training_started = False
+                self.block_training = False
                 messagebox.showinfo(
                     "training Ended", f"exit code: {exit_code}")
                 return
@@ -181,25 +192,28 @@ class MainGUI(tk.Tk):
         self.trainings_process = multiprocessing.Process(
             target=self.fourier_nn.train, args=(self.graph.lst, self.queue,))
         self.trainings_process.start()
+        self.training_started = True
 
     # Define your functions here
 
     def start_training(self):
-        if self.trainings_process or self.training_started:
+        if self.trainings_process or self.block_training:
             print('already training')
             return
-        self.training_started = True
+        self.block_training = True
         print("STARTING TRAINING")
         t = Thread(target=self.init_or_update_nn)
         t.daemon = True
         t.start()
-        self.train_update()
+        self.after(100, self.train_update)
         atexit.register(DIE, self.trainings_process)
         self.graph.draw_extern_graph_from_data(
             self.graph.export_data(), "train_data", color="blue")
 
     def play_music(self):
         print("play_music")
+        if self.fourier_nn:
+            music.midi_to_musik_live(self, self.fourier_nn)
 
     def clear_graph(self):
         print("clear_graph")
@@ -207,11 +221,57 @@ class MainGUI(tk.Tk):
 
     def export_neural_net(self):
         print("export_neural_net")
+        default_format = 'keras'
+        if self.fourier_nn:
+            path = './tmp'
+            if not os.path.exists(path):
+                os.mkdir(path)
+            i = 0
+            while os.path.exists(path+f"/model{i}.{default_format}"):
+                i += 1
+
+            dialog = askStringAndSelectionDialog(parent=self,
+                                                 title="Save Model",
+                                                 label_str="Enter a File Name",
+                                                 default_str=f"model{i}",
+                                                 label_select="Select Format",
+                                                 default_select=default_format,
+                                                 values_to_select_from=["keras", "h5"])
+            name, file_format = dialog.result
+            if not name:
+                name = f"model{i}"
+
+            file = f"{path}/{name}.{file_format}"
+            print(file)
+            if not os.path.exists(file):
+                try:
+                    self.fourier_nn.save_model(file)
+                except Exception as e:
+                    messagebox.showwarning(
+                        "ERROR - Can't Save Model", f"{e}")
+            else:
+                messagebox.showwarning(
+                    "File already Exists", f"The selected filename {name} already exists.")
 
     def load_neural_net(self):
         print("load_neural_net")
+        filetypes = (('Keras files', '*.keras'),
+                     ('HDF5 files', '*.h5'), ('All files', '*.*'))
+        filename = filedialog.askopenfilename(
+            title='Open a file', initialdir='.', filetypes=filetypes, parent=self)
+        if os.path.exists(filename):
+            if not self.fourier_nn:
+                self.fourier_nn = FourierNN(data=None)
+            self.fourier_nn.load_new_model_from_file(filename)
+            name = os.path.basename(filename).split('.')[0]
+            self.graph.draw_extern_graph_from_func(
+                self.fourier_nn.predict, name)
+            print(name)
+            # self.fourier_nn.update_data(
+            #     data=self.graph.get_graph(name=name)[0])
 
     def redraw_graph(self):
+        # now idea when usefull
         print("redraw_graph")
 
     def draw_graph_from_func(self, *args, **kwargs):
@@ -219,8 +279,19 @@ class MainGUI(tk.Tk):
         self.graph.use_preconfig_drawing(
             predefined_functions_dict[self.combo_selected_value.get()])
 
+    def update_frourier_params(self, key, value):
+        if not self.fourier_nn:
+            self.fourier_nn = FourierNN()
+        self.fourier_nn.update_attribs(**{key: value})
 
-if __name__ == "__main__":
+
+def main():
+    os.environ['HAS_RUN_INIT'] = 'True'
+    multiprocessing.set_start_method("spawn")
     window = MainGUI()
     window.mainloop()
+
+
+if __name__ == "__main__":
+    main()
     # manager.
