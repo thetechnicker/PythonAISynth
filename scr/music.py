@@ -73,16 +73,6 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
             print("live music possible")
         proc = None
 
-        def wrapper(func, param):
-            print(os.getcwd())
-            sys.stdout = open(f'tmp/process_{os.getpid()}_output.txt', 'w')
-            print("test")
-            return func(*param)
-
-        def init_worker():
-            # Ignore the SIGINT signal in worker processes, to handle it in the parent
-            signal.signal(signal.SIGINT, signal.SIG_IGN)
-
         def midi_proc(note_list, port_name: str, virtual: bool):
             print("start Midi")
             pygame.init()
@@ -143,7 +133,7 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
                             channel.play(notes[msg.note])
                             running_channels[notes[msg.note]] = (id, channel,)
 
-        def start_midi_process(fourier_nn):
+        def start_midi_process(fourier_nn:FourierNN):
             print("test")
             global proc
             global port_name
