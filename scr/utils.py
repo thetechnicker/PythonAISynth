@@ -1,7 +1,19 @@
-from multiprocessing import Process
+from io import StringIO
+from multiprocessing import Process, Queue
 import random
+import sys
 import time
+from typing import TextIO
 import numpy as np
+
+
+class QueueSTD_OUT(TextIO):
+    def __init__(self, queue: Queue) -> None:
+        super().__init__()
+        self.queue = queue
+
+    def write(self, msg):
+        self.queue.put(msg)
 
 
 def DIE(process: Process, join_timeout=30, term_iterations=50):

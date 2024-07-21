@@ -21,7 +21,7 @@ from scipy.io.wavfile import write
 from multiprocessing import Process, Queue
 
 from scr import utils
-from scr.utils import midi_to_freq
+from scr.utils import QueueSTD_OUT, midi_to_freq
 # print(tf.__version__)
 
 
@@ -237,7 +237,9 @@ class FourierNN:
         model.summary()
         return model
 
-    def train(self, test_data, queue=None, quiet=False):
+    def train(self, test_data, queue=None, quiet=False, stdout=None):
+        if stdout:
+            sys.stdout = QueueSTD_OUT(stdout)
         _, x_train_transformed, y_train, _, _, test_x, test_y = self.prepared_data
         if self.change_params:
             self.create_new_model()
@@ -257,19 +259,6 @@ class FourierNN:
                   ],
                   batch_size=int(self.SAMPLES/2), verbose=0)
         self.current_model.save('./tmp/tmp_model.keras')
-
-    def train_Process(self, test_data, queue=None, quiet=False) -> Process:
-        # tf.keras.backend.clear_session()
-        _, x_train_transformed, y_train, _, _ = self.prepared_data
-        model = self.current_model
-
-        _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
-        _x = np.array(_x)
-        process = multiprocessing.Process(target=model.fit, args=(x_train_transformed, y_train),
-                                          kwargs={'epochs': self.EPOCHS, 'callbacks': [MyCallback(queue, _x, quiet)], 'batch_size': 32, 'verbose': 0})
-        #
-        # process.start()
-        return process
 
     def predict(self, data):
         if not hasattr(data, '__iter__'):
@@ -357,21 +346,3 @@ class FourierNN:
                 self.models.insert(index, self.current_model)
             # self.fourier_degree=
             self.current_model = new_model
-
-
-# moved to ./tests/fouriernn_test.py
-# if __name__ == '__main__':
-#     # Test the class with custom data points
-#     data = [(x, np.sin(x * tf.keras.activations.relu(x)))
-#             for x in np.linspace(np.pi, -np.pi, 100)]
-#     fourier_nn = FourierNN(data)
-#     fourier_nn.train()
-# if __name__ == '__main__':
-#     def relu(x):
-#         return np.maximum(0, x)
-#     # Test the class with custom data points
-#     data = np.array([(x, np.sin(x * relu(x))) for x in np.linspace(np.pi, -np.pi, 100)])
-#     fourier_nn = FourierNN(data)
-#     fourier_nn.train_and_plot()
-#     # fourier_nn.convert_to_audio()
-#     # fourier_nn.save_model()

@@ -1,6 +1,10 @@
+from copy import copy
+from multiprocessing import Queue
 import sys
 import tkinter as tk
 from tkinter import scrolledtext
+import queue
+import time
 
 
 class RedirectedOutputFrame(tk.Frame):
@@ -14,24 +18,31 @@ class RedirectedOutputFrame(tk.Frame):
         self.textbox.configure(wrap='word')
         # Bind the resize event
         self.textbox.bind("<Configure>", self.on_resize)
-        sys.stdout.write = self.redirector_stdout
-        sys.stderr.write = self.redirector_stderr
+        self.queue = Queue(-1)
+        self.old_stdout = copy(sys.stdout.write)
+        self.old_stderr = copy(sys.stderr.write)
+        sys.stdout.write = self.redirector
+        # sys.stderr.write = self.redirector_err
+        self.after(100, self.check_queue)
 
-    def redirector_stdout(self, inputStr):
+    def redirector(self, inputStr):
         self.textbox.configure(state='normal')
         self.textbox.insert(tk.INSERT, inputStr)
         self.textbox.configure(state='disabled')
         self.textbox.see(tk.END)  # Auto-scroll to the end
-
-    def redirector_stderr(self, inputStr):
-        self.textbox.configure(state='normal')
-        self.textbox.insert(tk.INSERT, inputStr, 'error')
-        self.textbox.configure(state='disabled')
-        self.textbox.see(tk.END)  # Auto-scroll to the end
-        self.textbox.tag_config('error', foreground='red')
+        self.old_stdout(inputStr)
 
     def on_resize(self, event):
         width = self.textbox.winfo_width()
         font_width = self.textbox.tk.call(
             "font", "measure", self.textbox["font"], "-displayof", self.textbox, "0")
-        sys.stdout.write = self.redirector_stdout
+        sys.stdout.write = self.redirector
+
+    def check_queue(self):
+        while True:
+            try:
+                msg = self.queue.get_nowait()
+                self.redirector(msg)
+            except queue.Empty:
+                break
+        self.after(100, self.check_queue)

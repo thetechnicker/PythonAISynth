@@ -1,3 +1,5 @@
+import copy
+import sys
 from scr import music
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
@@ -20,6 +22,16 @@ from tkinter import filedialog
 from tkinter import messagebox
 import psutil
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+
+if multiprocessing.current_process().name != 'MainProcess':
+    _print = copy.copy(print)
+
+    def print(*values: object,
+              sep: str | None = " ",
+              end: str | None = "\n",
+              file=None,
+              flush=True):
+        _print(values, sep=sep, end=end, file=file, flush=flush)
 
 
 class MainGUI(tk.Tk):
@@ -78,7 +90,7 @@ class MainGUI(tk.Tk):
         self.status_label.pack(side=tk.LEFT)
 
         self.processes_label = tk.Label(
-            self.status_bar, text="Processes: 0", anchor=tk.E, font=("TkFixedFont"))
+            self.status_bar, text="Children Processes: 0", anchor=tk.E, font=("TkFixedFont"))
         self.processes_label.pack(side=tk.RIGHT)
         self.frame_no = 0
         self.after(500, self.update_status_bar)
@@ -87,13 +99,14 @@ class MainGUI(tk.Tk):
         children = self.process_monitor.children(recursive=True)
         animation_text = "|" if self.frame_no == 0 else '/' if self.frame_no == 1 else '-' if self.frame_no == 2 else '\\'
         self.frame_no = (self.frame_no+1) % 4
-        if len(children) == 0:
+        if len(children) == 1:
             self.status_label.config(text="Ready", fg="green")
         else:
             self.status_label.config(
                 text=f"Busy ({animation_text})", fg="red")
 
-        self.processes_label.config(text=f"Processes: {len(children)}")
+        self.processes_label.config(
+            text=f"Children Processes: {len(children)}")
         self.after(500, self.update_status_bar)
 
     def create_row_one(self):
@@ -161,7 +174,7 @@ class MainGUI(tk.Tk):
             if self.trainings_process.is_alive():
                 try:
                     data = self.queue.get_nowait()
-                    print("!!!check!!!")
+                    # print("!!!check!!!")
                     data = list(zip(self.graph.lst, data.reshape(-1)))
                     # graph.data=data
                     self.graph.draw_extern_graph_from_data(
@@ -195,7 +208,7 @@ class MainGUI(tk.Tk):
             self.fourier_nn.update_data(self.graph.export_data())
         self.fourier_nn.save_tmp_model()
         self.trainings_process = multiprocessing.Process(
-            target=self.fourier_nn.train, args=(self.graph.lst, self.queue,))
+            target=self.fourier_nn.train, args=(self.graph.lst, self.queue,), kwargs={'stdout': self.std_redirect.queue})
         self.trainings_process.start()
         self.training_started = True
 
@@ -218,7 +231,7 @@ class MainGUI(tk.Tk):
     def play_music(self):
         print("play_music")
         if self.fourier_nn:
-            music.midi_to_musik_live(self, self.fourier_nn)
+            music.midi_to_musik_live(self.fourier_nn)
 
     def clear_graph(self):
         print("clear_graph")
@@ -294,8 +307,10 @@ class MainGUI(tk.Tk):
 def main():
     os.environ['HAS_RUN_INIT'] = 'True'
     multiprocessing.set_start_method("spawn")
-    window = MainGUI()
-    window.mainloop()
+    with multiprocessing.Manager() as manager:
+        std_write = sys.stdout.write
+        window = MainGUI()
+        window.mainloop()
 
 
 if __name__ == "__main__":

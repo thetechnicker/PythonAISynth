@@ -1,6 +1,6 @@
 import atexit
 import multiprocessing
-from multiprocessing import Process
+from multiprocessing import Process, Queue
 import os
 import signal
 import sys
@@ -73,7 +73,9 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
             print("live music possible")
         proc = None
 
-        def midi_proc(note_list, port_name: str, virtual: bool):
+        def midi_proc(note_list, port_name: str, virtual: bool, stdout: Queue):
+            if stdout:
+                sys.stdout = utils.QueueSTD_OUT(stdout)
             print("start Midi")
             pygame.init()
             pygame.mixer.init(frequency=44100, size=-16,
@@ -136,18 +138,19 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
                             except IndexError:
                                 print("to many sounds playing")
 
-        def start_midi_process(fourier_nn: FourierNN):
+        def start_midi_process(fourier_nn: FourierNN, stdout: Queue):
             print("test")
             global proc
             global port_name
             global virtual
             with multiprocessing.Pool(processes=os.cpu_count()) as pool:
                 r = pool.map(fourier_nn.synthesize_3, range(128))
-            proc = Process(target=midi_proc, args=(r, port_name, virtual,))
+            proc = Process(target=midi_proc, args=(
+                r, port_name, virtual, stdout,))
             proc.start()
             atexit.register(utils.DIE, proc)
 
-        def midi_to_musik_live(root, fourier_nn: FourierNN):
+        def midi_to_musik_live(fourier_nn: FourierNN, stdout: Queue):
             os.environ['play'] = 'true'
             global proc
             if proc:
@@ -156,7 +159,7 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
 
             fourier_nn.save_tmp_model()
 
-            t = Thread(target=start_midi_process, args=(fourier_nn, ))
+            t = Thread(target=start_midi_process, args=(fourier_nn, stdout, ))
             t.start()
             atexit.register(t.join)
 
