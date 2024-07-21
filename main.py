@@ -1,5 +1,6 @@
 from scr import music
 from scr.simple_input_dialog import askStringAndSelectionDialog
+from scr.std_redirect import RedirectedOutputFrame
 from scr.utils import DIE
 from scr.predefined_functions import predefined_functions_dict
 from scr.graph_canvas import GraphCanvas
@@ -38,13 +39,17 @@ class MainGUI(tk.Tk):
         self.block_training = False
         self.queue = Queue(-1)
         self.fourier_nn = None
-
+        self.init_terminal_frame()
         self.create_menu()
         self.create_row_one()
         self.graph = GraphCanvas(self, (900, 300))  # , draw_callback)
         self.graph.grid(row=1, column=0, columnspan=3, sticky='NSEW')
         self.add_net_controll()
         self.create_status_bar()
+
+    def init_terminal_frame(self):
+        self.std_redirect = RedirectedOutputFrame(self)
+        self.std_redirect.grid(row=2, column=0, columnspan=4, sticky='NSEW')
 
     def add_net_controll(self):
         defaults = {
@@ -66,7 +71,7 @@ class MainGUI(tk.Tk):
         # Create a status bar with two labels
         self.status_bar = tk.Frame(self, bd=1, relief=tk.SUNKEN)
         # Adjust row and column as needed
-        self.status_bar.grid(row=2, column=0, sticky='we', columnspan=4)
+        self.status_bar.grid(row=3, column=0, sticky='we', columnspan=4)
 
         self.status_label = tk.Label(
             self.status_bar, text="Ready", anchor=tk.W, font=("TkFixedFont"))
@@ -273,6 +278,7 @@ class MainGUI(tk.Tk):
     def redraw_graph(self):
         # now idea when usefull
         print("redraw_graph")
+        self.graph._draw()
 
     def draw_graph_from_func(self, *args, **kwargs):
         print("draw_graph_from_func:", self.combo_selected_value.get())

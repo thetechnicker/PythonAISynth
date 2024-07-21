@@ -125,15 +125,15 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
                         print(msg)
                         if msg.type == 'note_off':
                             free_channel_ids.append(
-                                running_channels[notes[msg.note]][0])
-                            running_channels[notes[msg.note]][1].stop()
+                                running_channels[msg.note][0])
+                            running_channels[msg.note][1].stop()
                         elif msg.type == 'note_on':
                             id = free_channel_ids.pop()
                             channel = pygame.mixer.Channel(id)
                             channel.play(notes[msg.note])
-                            running_channels[notes[msg.note]] = (id, channel,)
+                            running_channels[msg.note] = (id, channel,)
 
-        def start_midi_process(fourier_nn:FourierNN):
+        def start_midi_process(fourier_nn: FourierNN):
             print("test")
             global proc
             global port_name
