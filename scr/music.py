@@ -128,10 +128,13 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
                                 running_channels[msg.note][0])
                             running_channels[msg.note][1].stop()
                         elif msg.type == 'note_on':
-                            id = free_channel_ids.pop()
-                            channel = pygame.mixer.Channel(id)
-                            channel.play(notes[msg.note])
-                            running_channels[msg.note] = (id, channel,)
+                            try:
+                                id = free_channel_ids.pop()
+                                channel = pygame.mixer.Channel(id)
+                                channel.play(notes[msg.note], fade_ms=500)
+                                running_channels[msg.note] = (id, channel,)
+                            except IndexError:
+                                print("to many sounds playing")
 
         def start_midi_process(fourier_nn: FourierNN):
             print("test")
