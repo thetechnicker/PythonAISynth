@@ -61,6 +61,7 @@ class MainGUI(tk.Tk):
 
     def init_terminal_frame(self):
         self.std_redirect = RedirectedOutputFrame(self)
+        self.std_queue = self.std_redirect.queue
         self.std_redirect.grid(row=2, column=0, columnspan=4, sticky='NSEW')
 
     def add_net_controll(self):
@@ -68,6 +69,7 @@ class MainGUI(tk.Tk):
             'SAMPLES': 44100//2,
             'EPOCHS': 100,
             'DEFAULT_FORIER_DEGREE': 250,
+            'CALC_FOURIER_DEGREE_BY_DATA_LENGTH': False,
             'FORIER_DEGREE_DIVIDER': 1,
             'FORIER_DEGREE_OFFSET': 0,
             'PATIENCE': 10,
@@ -92,11 +94,33 @@ class MainGUI(tk.Tk):
         self.processes_label = tk.Label(
             self.status_bar, text="Children Processes: 0", anchor=tk.E, font=("TkFixedFont"))
         self.processes_label.pack(side=tk.RIGHT)
+
+        # CPU and RAM
+        self.cpu_label = tk.Label(
+            self.status_bar, text="CPU Usage: 0%", anchor=tk.E, font=("TkFixedFont"))
+        self.cpu_label.pack(side=tk.RIGHT)
+
+        self.ram_label = tk.Label(
+            self.status_bar, text="RAM Usage: 0%", anchor=tk.E, font=("TkFixedFont"))
+        self.ram_label.pack(side=tk.RIGHT)
+
         self.frame_no = 0
         self.after(500, self.update_status_bar)
 
     def update_status_bar(self):
         children = self.process_monitor.children(recursive=True)
+        total_cpu = self.process_monitor.cpu_percent()
+        total_mem = self.process_monitor.memory_percent()
+
+        for child in children:
+            try:
+                total_cpu += child.cpu_percent()
+                total_mem += child.memory_percent()
+            except psutil.NoSuchProcess:
+                pass
+        self.cpu_label.config(text=f"CPU Usage: {total_cpu:.2f}%")
+        self.ram_label.config(text=f"RAM Usage: {total_mem:.2f}%")
+
         animation_text = "|" if self.frame_no == 0 else '/' if self.frame_no == 1 else '-' if self.frame_no == 2 else '\\'
         self.frame_no = (self.frame_no+1) % 4
         if len(children) == 1:
@@ -201,14 +225,14 @@ class MainGUI(tk.Tk):
                 return
         self.after(100, self.train_update)
 
-    def init_or_update_nn(self):
+    def init_or_update_nn(self):  # , stdout=None):
         if not self.fourier_nn:
             self.fourier_nn = FourierNN(self.graph.export_data())
         else:
             self.fourier_nn.update_data(self.graph.export_data())
         self.fourier_nn.save_tmp_model()
         self.trainings_process = multiprocessing.Process(
-            target=self.fourier_nn.train, args=(self.graph.lst, self.queue,), kwargs={'stdout': self.std_redirect.queue})
+            target=self.fourier_nn.train, args=(self.graph.lst, self.queue, ), kwargs={'stdout': self.std_queue})
         self.trainings_process.start()
         self.training_started = True
 
@@ -220,6 +244,7 @@ class MainGUI(tk.Tk):
             return
         self.block_training = True
         print("STARTING TRAINING")
+        # , args=(self.std_redirect.queue,))
         t = Thread(target=self.init_or_update_nn)
         t.daemon = True
         t.start()
@@ -307,10 +332,11 @@ class MainGUI(tk.Tk):
 def main():
     os.environ['HAS_RUN_INIT'] = 'True'
     multiprocessing.set_start_method("spawn")
-    with multiprocessing.Manager() as manager:
-        std_write = sys.stdout.write
-        window = MainGUI()
-        window.mainloop()
+    # with multiprocessing.Manager() as manager:
+    std_write = copy.copy(sys.stdout.write)
+    window = MainGUI()
+    window.mainloop()
+    sys.stdout.write = std_write
 
 
 if __name__ == "__main__":

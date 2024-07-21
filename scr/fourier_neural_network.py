@@ -91,8 +91,11 @@ class FourierNN:
         # self.current_model.save('./tmp/tmp_model.keras')
         model = self.current_model
         del self.current_model
+        # queue = self.stdout_queue
+        # del self.stdout_queue
         fourier_nn_dict = self.__dict__.copy()
         self.current_model = model
+        # self.stdout_queue = queue
         return fourier_nn_dict
 
     def __setstate__(self, state):
@@ -105,6 +108,7 @@ class FourierNN:
         for key in self.keys:
             val = getattr(self, key, None)
             print(f"{key}: {val}")
+        # self.stdout_queue = None
         print("-------------------------")
 
     def load_tmp_model(self):
@@ -115,11 +119,12 @@ class FourierNN:
     def save_tmp_model(self):
         self.current_model.save('./tmp/tmp_model.keras')
 
-    def __init__(self, data=None):
+    def __init__(self, data=None, stdout_queue=None):
         self.models: list = []
         self.current_model: keras.Model = None
         self.fourier_degree = self.DEFAULT_FORIER_DEGREE
         self.prepared_data = None
+        self.stdout_queue = stdout_queue
         if data is not None:
             self.update_data(data)
 
@@ -132,8 +137,8 @@ class FourierNN:
     def get_models(self) -> list[Sequential]:
         return [self.current_model]+self.models
 
-    def update_data(self, data):
-
+    def update_data(self, data, stdout_queue=None):
+        self.stdout_queue = stdout_queue
         self.prepared_data = self.prepare_data(list(data))
         if not self.current_model:
             self.create_new_model()
@@ -142,7 +147,9 @@ class FourierNN:
         return list(zip(self.prepared_data[0], self.prepared_data[2]))
 
     @staticmethod
-    def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
+    def fourier_basis(x, n=DEFAULT_FORIER_DEGREE, stdout_queue=None):
+        if stdout_queue and multiprocessing.current_process().name != 'MainProcess':
+            sys.stdout = QueueSTD_OUT(queue=stdout_queue)
         print(f"generating fourier basis for {x}")
         # return np.array([[x]]) to show why this function is importents
         basis = [np.sin(i * x) for i in range(1, n+1)]
@@ -167,7 +174,7 @@ class FourierNN:
         data = sorted(data, key=lambda x: x[0])
         while len(data) < self.SAMPLES:
             data_copy = sorted(data[:], key=lambda x: x[0])
-            pairs = ((data_copy[i], data_copy[i+1])
+            pairs = ((data_copy[i], data_copy[i+1],)
                      for i in range(len(data_copy)-1))
             with Pool() as pool:
                 new_data = pool.starmap(utils.interpolate, pairs)
@@ -189,7 +196,7 @@ class FourierNN:
         test_data = sorted(data, key=lambda x: x[0])
         while len(test_data) < test_samples:
             data_copy = sorted(test_data[:], key=lambda x: x[0])
-            pairs = ((data_copy[i], data_copy[i+1])
+            pairs = ((data_copy[i], data_copy[i+1],)
                      for i in range(len(data_copy)-1))
             with Pool() as pool:
                 new_data = pool.starmap(utils.interpolate, pairs)
@@ -212,12 +219,17 @@ class FourierNN:
         y_test = np.array(y_test)
         with multiprocessing.Pool(processes=os.cpu_count()) as pool:
             result_a = pool.starmap(FourierNN.fourier_basis, zip(
-                x_train, (self.fourier_degree for i in range(len(x_train)))))
+                x_train,
+                (self.fourier_degree for i in range(len(x_train))),
+                (self.stdout_queue for i in range(len(x_test))),
+            ))
             result_b = pool.starmap(FourierNN.fourier_basis, zip(
-                x_train, (self.fourier_degree for i in range(len(x_test)))))
+                x_train,
+                (self.fourier_degree for i in range(len(x_test))),
+                (self.stdout_queue for i in range(len(x_test))),
+            ))
         x_train_transformed = np.array(result_a)
         x_test_transformed = np.array(result_b)
-
         return (x_train, x_train_transformed, y_train, actualData_x, actualData_y, x_test_transformed, y_test)
 
     def create_model(self, input_shape):
@@ -238,8 +250,8 @@ class FourierNN:
         return model
 
     def train(self, test_data, queue=None, quiet=False, stdout=None):
-        if stdout:
-            sys.stdout = QueueSTD_OUT(stdout)
+        if stdout and multiprocessing.current_process().name != 'MainProcess':
+            sys.stdout = QueueSTD_OUT(queue=stdout)
         _, x_train_transformed, y_train, _, _, test_x, test_y = self.prepared_data
         if self.change_params:
             self.create_new_model()
