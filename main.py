@@ -1,6 +1,7 @@
+from scr import music
 import copy
 import sys
-from scr import music
+from scr.music import Synth
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
 from scr.utils import DIE
@@ -248,7 +249,8 @@ class MainGUI(tk.Tk):
     def play_music(self):
         print("play_music")
         if self.fourier_nn:
-            music.midi_to_musik_live(self.fourier_nn, self.std_queue)
+            self.synth = Synth(self, self.fourier_nn, self.std_queue)
+            # music.midi_to_musik_live(self.fourier_nn, self.std_queue)
 
     def clear_graph(self):
         print("clear_graph")
