@@ -144,14 +144,10 @@ class FourierNN:
         return list(zip(self.prepared_data[0], self.prepared_data[2]))
 
     @staticmethod
-    def fourier_basis(x, n=DEFAULT_FORIER_DEGREE, stdout_queue=None):
-        if stdout_queue and multiprocessing.current_process().name != 'MainProcess':
-            sys.stdout = QueueSTD_OUT(queue=stdout_queue)
-        print(f"generating fourier basis for {x}")
+    def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
         # return np.array([[x]]) to show why this function is importents
         basis = [np.sin(i * x) for i in range(1, n+1)]
         basis += [np.cos(i * x) for i in range(1, n+1)]
-        print(f"fourier basis for {x} generated")
         return np.array(basis)
 
     @staticmethod
@@ -215,21 +211,20 @@ class FourierNN:
         y_train = np.array(y_train)
         x_test = np.array(x_test)
         y_test = np.array(y_test)
-        print("--------------------------------------------------------")
+        print(" Generate Fourier-Basis ".center(50, '-'))
 
         with multiprocessing.Pool(processes=os.cpu_count()) as pool:
             result_a = pool.starmap(FourierNN.fourier_basis, zip(
                 x_train,
                 (self.fourier_degree for i in range(len(x_train))),
-                (self.stdout_queue for i in range(len(x_train))),
             ))
             result_b = pool.starmap(FourierNN.fourier_basis, zip(
                 x_train,
                 (self.fourier_degree for i in range(len(x_test))),
-                (self.stdout_queue for i in range(len(x_test))),
             ))
 
-        print("--------------------------------------------------------")
+        print(''.center(50, '-'))
+
         x_train_transformed = np.array(result_a)
         x_test_transformed = np.array(result_b)
         print(len(x_train_transformed), len(y_train))

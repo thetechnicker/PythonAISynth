@@ -6,6 +6,8 @@ from copy import copy
 import sys
 from multiprocessing import Queue
 
+from scr import utils
+
 
 class RedirectedOutputFrame(tk.Frame):
     def __init__(self, master=None):
@@ -130,6 +132,16 @@ class RedirectedOutputFrame(tk.Frame):
 
     def redirector(self, inputStr):
         self.textbox.configure(state='normal')
+        self.textbox.mark_set("insert", "end")
+        while '\b' in inputStr:
+            bs_index = inputStr.index('\b')
+            if bs_index == 0:
+                # Delete the character before the current 'insert' position in the Text widget
+                self.textbox.delete("insert-2c")
+                inputStr = inputStr[1:]
+            else:
+                # Remove the character before the backspace and the backspace itself
+                inputStr = inputStr[:bs_index-1] + inputStr[bs_index+1:]
         self.insert_ansi(inputStr, tk.INSERT)
         # self.textbox.insert(tk.INSERT, inputStr)
         self.textbox.configure(state='disabled')

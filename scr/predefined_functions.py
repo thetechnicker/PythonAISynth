@@ -59,6 +59,14 @@ def my_generated_function(x):
         return np.sin(np.tan(-x) * keras.activations.softplus(x)) / np.cos(random.uniform(-1, 1) * x)
 
 
+def extreme(x):
+    if not hasattr(extreme, 'prev'):
+        extreme.prev = -1
+    else:
+        extreme.prev = -extreme.prev
+    return extreme.prev
+
+
 predefined_functions_dict = {
     'funny': funny,
     'funny2': funny2,
@@ -67,6 +75,7 @@ predefined_functions_dict = {
     'cool': my_complex_function,
     'bing': my_generated_function,
     'nice': nice,
+    'extreme': extreme,
     'sin': np.sin,
     'cos': np.cos,
     'tan': np.tan,

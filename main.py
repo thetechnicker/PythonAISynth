@@ -23,16 +23,6 @@ from tkinter import messagebox
 import psutil
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
-if multiprocessing.current_process().name != 'MainProcess':
-    _print = copy.copy(print)
-
-    def print(*values: object,
-              sep: str | None = " ",
-              end: str | None = "\n",
-              file=None,
-              flush=True):
-        _print(values, sep=sep, end=end, file=file, flush=flush)
-
 
 class MainGUI(tk.Tk):
     def __init__(self, *args, **kwargs):
@@ -122,7 +112,7 @@ class MainGUI(tk.Tk):
 
         animation_text = "|" if self.frame_no == 0 else '/' if self.frame_no == 1 else '-' if self.frame_no == 2 else '\\'
         self.frame_no = (self.frame_no+1) % 4
-        if len(children) == 1:
+        if len(children) <= 1:
             self.status_label.config(text="Ready", fg="green")
         else:
             self.status_label.config(
@@ -256,7 +246,7 @@ class MainGUI(tk.Tk):
     def play_music(self):
         print("play_music")
         if self.fourier_nn:
-            music.midi_to_musik_live(self.fourier_nn)
+            music.midi_to_musik_live(self.fourier_nn, self.std_queue)
 
     def clear_graph(self):
         print("clear_graph")
