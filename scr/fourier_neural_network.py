@@ -99,8 +99,9 @@ class FourierNN:
         # Load the model from a file after deserialization
         self.__dict__.update(state)
         if os.path.exists('./tmp/tmp_model.keras'):
-            self.current_model = tf.keras.models.load_model(
-                './tmp/tmp_model.keras')
+            with self.lock:
+                self.current_model = tf.keras.models.load_model(
+                    './tmp/tmp_model.keras')
 
         # for key in self.keys:
         #     val = getattr(self, key, None)
@@ -109,14 +110,16 @@ class FourierNN:
         print("-------------------------")
 
     def load_tmp_model(self):
-        self.current_model = tf.keras.models.load_model(
-            './tmp/tmp_model.keras')
-        self.current_model.summary()
+        with self.lock:
+            self.current_model = tf.keras.models.load_model(
+                './tmp/tmp_model.keras')
+            self.current_model.summary()
 
     def save_tmp_model(self):
         self.current_model.save('./tmp/tmp_model.keras')
 
-    def __init__(self, data=None, stdout_queue=None):
+    def __init__(self, data=None, stdout_queue=None, lock=None):
+        self.lock = lock
         self.models: list = []
         self.current_model: keras.Model = None
         self.fourier_degree = self.DEFAULT_FORIER_DEGREE
@@ -301,7 +304,8 @@ class FourierNN:
         return output.astype(np.int16)
 
     def synthesize_3(self, midi_note, duration=1.0, sample_rate=44100):
-        # sys.stdout = open(f'tmp/process_{os.getpid()}_output.txt', 'w')
+        old_stderr = sys.stderr
+        sys.stderr = open(f'tmp/error/process_{os.getpid()}_output.txt', 'w')
         print(f"begin generating sound for note: {midi_note}", flush=True)
         output = np.zeros(shape=int(sample_rate * duration))
         freq = midi_to_freq(midi_note)
@@ -313,6 +317,8 @@ class FourierNN:
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         print(f"Generated sound for note: {midi_note}")
         # gc.collect()
+        sys.stderr.close()
+        sys.stderr = old_stderr
         return (midi_note, output.astype(np.int16))
 
     def convert_to_audio(self, filename='./tmp/output.wav'):

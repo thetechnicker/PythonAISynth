@@ -25,8 +25,9 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
 
 class MainGUI(tk.Tk):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, lock=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.lock = lock
         self.process_monitor = psutil.Process()
         self.title(f"AI Synth - {version}")
         self.rowconfigure(1, weight=1)
@@ -216,7 +217,8 @@ class MainGUI(tk.Tk):
 
     def init_or_update_nn(self):  # , stdout=None):
         if not self.fourier_nn:
-            self.fourier_nn = FourierNN(self.graph.export_data())
+            self.fourier_nn = FourierNN(
+                self.graph.export_data(), lock=self.lock)
         else:
             self.fourier_nn.update_data(self.graph.export_data())
 
@@ -294,7 +296,7 @@ class MainGUI(tk.Tk):
             title='Open a file', initialdir='.', filetypes=filetypes, parent=self)
         if os.path.exists(filename):
             if not self.fourier_nn:
-                self.fourier_nn = FourierNN(data=None)
+                self.fourier_nn = FourierNN(data=None, lock=self.lock)
             self.fourier_nn.load_new_model_from_file(filename)
             name = os.path.basename(filename).split('.')[0]
             self.graph.draw_extern_graph_from_func(
@@ -315,18 +317,19 @@ class MainGUI(tk.Tk):
 
     def update_frourier_params(self, key, value):
         if not self.fourier_nn:
-            self.fourier_nn = FourierNN()
+            self.fourier_nn = FourierNN(lock=self.lock)
         self.fourier_nn.update_attribs(**{key: value})
 
 
 def main():
     os.environ['HAS_RUN_INIT'] = 'True'
     multiprocessing.set_start_method("spawn")
-    # with multiprocessing.Manager() as manager:
-    std_write = copy.copy(sys.stdout.write)
-    window = MainGUI()
-    window.mainloop()
-    sys.stdout.write = std_write
+    with multiprocessing.Manager() as manager:
+        lock = manager.Lock()
+        std_write = copy.copy(sys.stdout.write)
+        window = MainGUI(lock=lock)
+        window.mainloop()
+        sys.stdout.write = std_write
 
 
 if __name__ == "__main__":

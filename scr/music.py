@@ -8,6 +8,7 @@ from threading import Thread
 from tkinter import filedialog
 import numpy as np
 import pretty_midi
+from scipy.fftpack import fft
 
 from scr import utils
 from scr.fourier_neural_network import FourierNN
@@ -143,33 +144,31 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
             global proc
             global port_name
             global virtual
-
-            t = np.linspace(0, 1, 44100)
-            y = fourier_nn.predict(2 * np.pi * 250 * t)
-            # Compute FFT
-            fft_vals = np.fft.fft(y)
+            t = np.linspace(-np.pi, np.pi, 44100)
+            y = fourier_nn.predict(t)
+            fft_vals = fft(y)
 
             # Get absolute value of FFT values (to get magnitude)
             fft_abs = np.abs(fft_vals)
 
             # Get frequency values for each FFT bin
-            freqs = np.fft.fftfreq(len(y))
-
-            # Only consider the positive frequencies
-            positive_freq_mask = freqs > 0
-            fft_abs = fft_abs[positive_freq_mask]
-            freqs = freqs[positive_freq_mask]
+            # The second argument is the sample spacing (inverse of the sample rate)
+            freqs = np.fft.fftfreq(len(y), 1/44100)
 
             # Find the frequency where the magnitude of FFT is maximum
             dominant_freq = freqs[np.argmax(fft_abs)]
 
             print("dominant_freq:", dominant_freq)
             fourier_nn.save_tmp_model()
-            try:
-                with multiprocessing.Pool(processes=os.cpu_count()) as pool:
-                    results = pool.starmap(fourier_nn.synthesize_3, range(128))
-            except:
-                return
+            with multiprocessing.Pool(processes=os.cpu_count()) as pool:
+                try:
+                    results = pool.map(
+                        fourier_nn.synthesize_3, range(128))
+                except Exception as e:
+                    print("error", e)
+                    pool.terminate()
+                    pool.join()
+                    return
             proc = Process(target=midi_proc, args=(
                 results, port_name, virtual, stdout,))
             proc.start()
@@ -184,7 +183,7 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
             fourier_nn.save_tmp_model()
 
             t = Thread(target=start_midi_process, args=(fourier_nn, stdout, ))
-            t.daemon = True
+            # t.daemon = True
             t.start()
             atexit.register(t.join)
             atexit.register(utils.DIE, proc)

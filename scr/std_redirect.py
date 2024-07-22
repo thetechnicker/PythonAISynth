@@ -20,7 +20,9 @@ class RedirectedOutputFrame(tk.Frame):
         self.textbox.bind("<Configure>", self.on_resize)
         self.queue: Queue = Queue(-1)
         self.old_stdout = copy(sys.stdout.write)
+        self.old_stderr = copy(sys.stderr.write)
         sys.stdout.write = self.redirector
+        sys.stderr.write = self.redirector
         self.after(100, self.check_queue)
 
         # dictionaries to replace formatting code with tags
