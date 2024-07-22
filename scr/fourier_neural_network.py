@@ -91,11 +91,8 @@ class FourierNN:
         # self.current_model.save('./tmp/tmp_model.keras')
         model = self.current_model
         del self.current_model
-        # queue = self.stdout_queue
-        # del self.stdout_queue
         fourier_nn_dict = self.__dict__.copy()
         self.current_model = model
-        # self.stdout_queue = queue
         return fourier_nn_dict
 
     def __setstate__(self, state):
@@ -105,9 +102,9 @@ class FourierNN:
             self.current_model = tf.keras.models.load_model(
                 './tmp/tmp_model.keras')
 
-        for key in self.keys:
-            val = getattr(self, key, None)
-            print(f"{key}: {val}")
+        # for key in self.keys:
+        #     val = getattr(self, key, None)
+        #     print(f"{key}: {val}")
         # self.stdout_queue = None
         print("-------------------------")
 
@@ -174,7 +171,7 @@ class FourierNN:
         data = sorted(data, key=lambda x: x[0])
         while len(data) < self.SAMPLES:
             data_copy = sorted(data[:], key=lambda x: x[0])
-            pairs = ((data_copy[i], data_copy[i+1],)
+            pairs = ((data_copy[i], data_copy[i+1], 0.5)
                      for i in range(len(data_copy)-1))
             with Pool() as pool:
                 new_data = pool.starmap(utils.interpolate, pairs)
@@ -203,7 +200,7 @@ class FourierNN:
             test_data.extend(new_data)
             if len(test_data) >= test_samples:
                 # Delete every second element
-                data = data[::2]
+                test_data = test_data[::2]
                 break
 
         while len(test_data) > test_samples:
@@ -213,23 +210,29 @@ class FourierNN:
 
         x_train, y_train = zip(*data)
         x_test, y_test = zip(*test_data)
+
         x_train = np.array(x_train)
         y_train = np.array(y_train)
         x_test = np.array(x_test)
         y_test = np.array(y_test)
+        print("--------------------------------------------------------")
+
         with multiprocessing.Pool(processes=os.cpu_count()) as pool:
             result_a = pool.starmap(FourierNN.fourier_basis, zip(
                 x_train,
                 (self.fourier_degree for i in range(len(x_train))),
-                (self.stdout_queue for i in range(len(x_test))),
+                (self.stdout_queue for i in range(len(x_train))),
             ))
             result_b = pool.starmap(FourierNN.fourier_basis, zip(
                 x_train,
                 (self.fourier_degree for i in range(len(x_test))),
                 (self.stdout_queue for i in range(len(x_test))),
             ))
+
+        print("--------------------------------------------------------")
         x_train_transformed = np.array(result_a)
         x_test_transformed = np.array(result_b)
+        print(len(x_train_transformed), len(y_train))
         return (x_train, x_train_transformed, y_train, actualData_x, actualData_y, x_test_transformed, y_test)
 
     def create_model(self, input_shape):

@@ -62,14 +62,13 @@ class MainGUI(tk.Tk):
     def init_terminal_frame(self):
         self.std_redirect = RedirectedOutputFrame(self)
         self.std_queue = self.std_redirect.queue
-        self.std_redirect.grid(row=2, column=0, columnspan=4, sticky='NSEW')
+        self.std_redirect.grid(row=2, column=0, columnspan=3, sticky='NSEW')
 
     def add_net_controll(self):
         defaults = {
             'SAMPLES': 44100//2,
             'EPOCHS': 100,
             'DEFAULT_FORIER_DEGREE': 250,
-            'CALC_FOURIER_DEGREE_BY_DATA_LENGTH': False,
             'FORIER_DEGREE_DIVIDER': 1,
             'FORIER_DEGREE_OFFSET': 0,
             'PATIENCE': 10,
@@ -230,6 +229,7 @@ class MainGUI(tk.Tk):
             self.fourier_nn = FourierNN(self.graph.export_data())
         else:
             self.fourier_nn.update_data(self.graph.export_data())
+
         self.fourier_nn.save_tmp_model()
         self.trainings_process = multiprocessing.Process(
             target=self.fourier_nn.train, args=(self.graph.lst, self.queue, ), kwargs={'stdout': self.std_queue})
