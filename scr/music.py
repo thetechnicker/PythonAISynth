@@ -74,6 +74,9 @@ class Synth():
             self.num_channels))
         self.generate_sounds()
 
+    def generate_sound_wrapper(self, midi_note):
+        return self.fourier_nn.synthesize_3()
+
     def generate_sounds(self):
         t = np.arange(0, 1, 1/44100)
         y = self.fourier_nn.predict(2 * np.pi*t)
@@ -92,19 +95,22 @@ class Synth():
         midi_offset = midi.frequency_to_midi(dominant_freq)
 
         self.pool = multiprocessing.Pool(processes=os.cpu_count())
-        self.result_async = self.pool.map_async(self.fourier_nn.synthesize_3,
+        atexit.register(self.pool.terminate)
+        atexit.register(self.pool.join)
+        self.result_async = self.pool.map_async(self.generate_sound_wrapper,
                                                 (x-midi_offset for x in range(128)))
-        self.master.after(1000, self.test)
+        self.master.after(1000, self.monitor_note_generation)
 
-    def test(self):
-        print("waiting for notes")
+    def monitor_note_generation(self):
         try:
             self.notes = self.result_async.get(0.1)
         except multiprocessing.TimeoutError:
-            self.master.after(1000, self.test)
+            self.master.after(1000, self.monitor_note_generation)
         else:
             self.pool.close()
             self.pool.join()
+            atexit.unregister(self.pool.terminate)
+            atexit.unregister(self.pool.join)
 
     def play_init_sound(self):
         f1 = 440  # Frequency of the "duuu" sound (in Hz)
