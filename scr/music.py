@@ -75,6 +75,7 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
         proc = None
 
         def midi_proc(note_list, port_name: str, virtual: bool, stdout: Queue):
+
             if stdout:
                 sys.stdout = utils.QueueSTD_OUT(stdout)
             print("start Midi")
@@ -122,6 +123,7 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
             while (channel.get_busy()):
                 pass
             print("Ready")
+
             with mido.open_input(port_name, virtual=virtual) as midiin:
                 while True:
                     for msg in midiin.iter_pending():
@@ -134,6 +136,7 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
                             try:
                                 id = free_channel_ids.pop()
                                 channel = pygame.mixer.Channel(id)
+                                channel.set_volume(0)
                                 channel.play(notes[msg.note], fade_ms=500)
                                 running_channels[msg.note] = (id, channel,)
                             except IndexError:
@@ -185,8 +188,8 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
             t = Thread(target=start_midi_process, args=(fourier_nn, stdout, ))
             # t.daemon = True
             t.start()
-            atexit.register(utils.DIE, proc)
             atexit.register(t.join)
+            atexit.register(utils.DIE, proc)
 
     except Exception as e:
         print("live music NOT possible", e, sep="\n")
