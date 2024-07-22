@@ -144,8 +144,8 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
             global proc
             global port_name
             global virtual
-            t = np.linspace(-np.pi, np.pi, 44100)
-            y = fourier_nn.predict(t)
+            t = np.arange(0, 1, 1/44100)
+            y = fourier_nn.predict(2 * np.pi*t)
             fft_vals = fft(y)
 
             # Get absolute value of FFT values (to get magnitude)
@@ -185,8 +185,8 @@ if ((not os.getenv('HAS_RUN_INIT')) or os.getenv('play') == 'true'):
             t = Thread(target=start_midi_process, args=(fourier_nn, stdout, ))
             # t.daemon = True
             t.start()
-            atexit.register(t.join)
             atexit.register(utils.DIE, proc)
+            atexit.register(t.join)
 
     except Exception as e:
         print("live music NOT possible", e, sep="\n")

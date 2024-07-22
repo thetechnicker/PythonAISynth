@@ -304,8 +304,8 @@ class FourierNN:
         return output.astype(np.int16)
 
     def synthesize_3(self, midi_note, duration=1.0, sample_rate=44100):
-        old_stderr = sys.stderr
-        sys.stderr = open(f'tmp/error/process_{os.getpid()}_output.txt', 'w')
+        # old_stderr = sys.stderr
+        # sys.stderr = open(f'tmp/error/process_{os.getpid()}_output.txt', 'w')
         print(f"begin generating sound for note: {midi_note}", flush=True)
         output = np.zeros(shape=int(sample_rate * duration))
         freq = midi_to_freq(midi_note)
@@ -317,8 +317,6 @@ class FourierNN:
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         print(f"Generated sound for note: {midi_note}")
         # gc.collect()
-        sys.stderr.close()
-        sys.stderr = old_stderr
         return (midi_note, output.astype(np.int16))
 
     def convert_to_audio(self, filename='./tmp/output.wav'):
