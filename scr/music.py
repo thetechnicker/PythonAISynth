@@ -141,9 +141,12 @@ class Synth():
 
     def __getstate__(self) -> object:
         master = self.master
+        pool = self.pool
         del self.master
+        del self.pool
         Synth_dict = self.__dict__.copy()
         self.master = master
+        self.pool = pool
         return Synth_dict
 
     def __setstate__(self, state):
