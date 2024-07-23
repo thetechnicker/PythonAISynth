@@ -26,9 +26,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
 
 
 class MainGUI(tk.Tk):
-    def __init__(self, *args, lock=None, **kwargs):
+    def __init__(self, *args, lock=None, std_queue, **kwargs):
         super().__init__(*args, **kwargs)
         self.lock = lock
+        self.std_queue = std_queue
         self.process_monitor = psutil.Process()
         self.title(f"AI Synth - {version}")
         self.rowconfigure(1, weight=1)
@@ -43,6 +44,7 @@ class MainGUI(tk.Tk):
         self.block_training = False
         self.queue = Queue(-1)
         self.fourier_nn = None
+        self.synth: Synth = None
         self.init_terminal_frame()
         self.create_menu()
         self.create_row_one()
@@ -52,8 +54,8 @@ class MainGUI(tk.Tk):
         self.create_status_bar()
 
     def init_terminal_frame(self):
-        self.std_redirect = RedirectedOutputFrame(self)
-        self.std_queue = self.std_redirect.queue
+        self.std_redirect = RedirectedOutputFrame(self, self.std_queue)
+        # self.std_queue = self.std_redirect.queue
         self.std_redirect.grid(row=2, column=0, columnspan=3, sticky='NSEW')
 
     def add_net_controll(self):
@@ -207,6 +209,7 @@ class MainGUI(tk.Tk):
                     print("model loaded")
                     self.graph.draw_extern_graph_from_func(
                         self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy'
+                    self.synth = Synth(self, self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
                 self.training_started = False
@@ -248,8 +251,8 @@ class MainGUI(tk.Tk):
 
     def play_music(self):
         print("play_music")
-        if self.fourier_nn:
-            self.synth = Synth(self, self.fourier_nn, self.std_queue)
+        if self.synth:
+            pass
             # music.midi_to_musik_live(self.fourier_nn, self.std_queue)
 
     def clear_graph(self):
@@ -304,6 +307,7 @@ class MainGUI(tk.Tk):
             self.graph.draw_extern_graph_from_func(
                 self.fourier_nn.predict, name)
             print(name)
+            self.synth = Synth(self, self.fourier_nn, self.std_queue)
             # self.fourier_nn.update_data(
             #     data=self.graph.get_graph(name=name)[0])
 
@@ -328,8 +332,9 @@ def main():
     multiprocessing.set_start_method("spawn")
     with multiprocessing.Manager() as manager:
         lock = manager.Lock()
+        queue = manager.Queue(-1)
         std_write = copy.copy(sys.stdout.write)
-        window = MainGUI(lock=lock)
+        window = MainGUI(lock=lock, std_queue=queue)
         window.mainloop()
         sys.stdout.write = std_write
 

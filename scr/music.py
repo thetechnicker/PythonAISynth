@@ -61,6 +61,7 @@ class Synth():
     def __init__(self, master, fourier_nn, stdout: Queue, num_channels: int = 20):
         self.master = master
         self.stdout = stdout
+        self.pool = None
         self.fourier_nn: FourierNN = fourier_nn
         self.fs = 44100  # Sample rate
         self.num_channels = num_channels
@@ -74,8 +75,8 @@ class Synth():
             self.num_channels))
         self.generate_sounds()
 
-    def generate_sound_wrapper(self, midi_note):
-        return self.fourier_nn.synthesize_3()
+    def generate_sound_wrapper(self, x):
+        return self.fourier_nn.synthesize_3(x)
 
     def generate_sounds(self):
         t = np.arange(0, 1, 1/44100)
@@ -97,16 +98,17 @@ class Synth():
         self.pool = multiprocessing.Pool(processes=os.cpu_count())
         atexit.register(self.pool.terminate)
         atexit.register(self.pool.join)
-        self.result_async = self.pool.map_async(self.generate_sound_wrapper,
-                                                (x-midi_offset for x in range(128)))
-        self.master.after(1000, self.monitor_note_generation)
+        result_async = self.pool.map_async(self.generate_sound_wrapper,
+                                           (x-midi_offset for x in range(128)))
+        self.master.after(1000, self.monitor_note_generation, result_async)
 
-    def monitor_note_generation(self):
+    def monitor_note_generation(self, result_async):
         try:
-            self.notes = self.result_async.get(0.1)
+            self.notes = result_async.get(0.1)
         except multiprocessing.TimeoutError:
-            self.master.after(1000, self.monitor_note_generation)
+            self.master.after(1000, self.monitor_note_generation, result_async)
         else:
+            print("sounds Generated")
             self.pool.close()
             self.pool.join()
             atexit.unregister(self.pool.terminate)
@@ -136,6 +138,13 @@ class Synth():
         while (channel.get_busy()):
             pass
         print("Ready")
+
+    def __getstate__(self) -> object:
+        master = self.master
+        del self.master
+        Synth_dict = self.__dict__.copy()
+        self.master = master
+        return Synth_dict
 
     def __setstate__(self, state):
         # Load the model from a file after deserialization

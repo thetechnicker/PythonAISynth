@@ -3,7 +3,7 @@ from multiprocessing import Process, Queue
 import random
 import sys
 import time
-from typing import TextIO
+from typing import Callable, TextIO
 import numpy as np
 
 
@@ -175,3 +175,8 @@ def lighten_color(r, g, b, percent):
     g_lighter = min(255, int(g + (255 - g) * percent))
     b_lighter = min(255, int(b + (255 - b) * percent))
     return r_lighter, g_lighter, b_lighter
+
+
+def exec_with_queue_stdout(func: Callable, *args, queue: Queue):
+    sys.stdout = QueueSTD_OUT(queue=queue)
+    return func(*args)

@@ -10,7 +10,7 @@ from scr import utils
 
 
 class RedirectedOutputFrame(tk.Frame):
-    def __init__(self, master=None):
+    def __init__(self, master=None, std_queue=None):
         super().__init__(master)
         self.textbox = scrolledtext.ScrolledText(
             self, height=10, font=("TkFixedFont"))
@@ -18,7 +18,7 @@ class RedirectedOutputFrame(tk.Frame):
         self.textbox.configure(state='disabled')
         self.textbox.configure(wrap='word')
         self.textbox.bind("<Configure>", self.on_resize)
-        self.queue: Queue = Queue(-1)
+        self.queue: Queue = Queue(-1) if not std_queue else std_queue
         self.old_stdout = copy(sys.stdout.write)
         self.old_stderr = copy(sys.stderr.write)
         sys.stdout.write = self.redirector
