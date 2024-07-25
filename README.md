@@ -1,6 +1,6 @@
 # PythonAISynth
 
-Little Software to make Musik with function aproximating neural networks
+Little Software to make Musik with a function aproximating neural network.
 
 ## Branches
 
