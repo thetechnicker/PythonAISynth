@@ -16,8 +16,14 @@ Here is how to set it up: [mkdocs](https://www.mkdocs.org/getting-started/)
 
 ## setup
 
-use venv to set up an environment. `requirements_venv.txt` contains the requirements that work on windows.
-when using conda the `environment.yml` file contains the requirements, those should work on any device, **but may not contain all needed modules!!**
+run
+
+```
+conda env create -f environment.yml -n ai_synth
+conda activate ai_synth
+```
+
+to setup a python environment using Conda
 
 ## Please Help Me
 
