@@ -65,6 +65,7 @@ class Synth():
         self.fourier_nn: FourierNN = fourier_nn
         self.fs = 44100  # Sample rate
         self.num_channels = num_channels
+        self.notes: dict = {}
         # pygame.init()
         mixer.init(frequency=44100, size=-16,
                    channels=2, buffer=1024)
@@ -104,11 +105,16 @@ class Synth():
 
     def monitor_note_generation(self, result_async):
         try:
-            self.notes = result_async.get(0.1)
+            note_list = result_async.get(0.1)
         except multiprocessing.TimeoutError:
             self.master.after(1000, self.monitor_note_generation, result_async)
         else:
+            for note, sound in note_list:
+                stereo = np.repeat(sound.reshape(-1, 1), 2, axis=1)
+                stereo_sound = sndarray.make_sound(stereo)
+                self.notes[note] = stereo_sound
             print("sounds Generated")
+            self.play_init_sound()
             self.pool.close()
             self.pool.join()
             atexit.unregister(self.pool.terminate)
@@ -138,6 +144,9 @@ class Synth():
         while (channel.get_busy()):
             pass
         print("Ready")
+
+    def play_sound(self, midi_note):
+        pass
 
     def __getstate__(self) -> object:
         master = self.master
