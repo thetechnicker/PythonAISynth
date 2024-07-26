@@ -180,3 +180,19 @@ def lighten_color(r, g, b, percent):
 def exec_with_queue_stdout(func: Callable, *args, queue: Queue):
     sys.stdout = QueueSTD_OUT(queue=queue)
     return func(*args)
+
+
+def calculate_peak_frequency(signal, sample_rate):
+    # Perform the Fourier transform
+    fft_vals = fft(signal)
+
+    # Get the absolute values of the FFT (to get magnitude)
+    fft_abs = np.abs(fft_vals)
+
+    # Generate the frequencies associated with the FFT values
+    fft_freq = fftfreq(len(signal), 1.0/sample_rate)
+
+    # Find the peak frequency
+    peak_freq = fft_freq[np.argmax(fft_abs)]
+
+    return peak_freq

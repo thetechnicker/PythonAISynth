@@ -7,6 +7,7 @@ class NeuralNetworkGUI(tk.Frame):
         tk.Frame.__init__(self, parent, **kwargs)
         # self.grid(sticky='NSEW')
         self.on_change_callback = callback
+        # self.config(background='black')
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
 

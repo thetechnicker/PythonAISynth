@@ -22,7 +22,7 @@ from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 import psutil
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class MainGUI(tk.Tk):
@@ -72,7 +72,7 @@ class MainGUI(tk.Tk):
 
         self.gui = NeuralNetworkGUI(
             self, defaults=defaults, callback=self.update_frourier_params)
-        self.gui.grid(row=1, column=3, rowspan=3, sticky='NSEW')
+        self.gui.grid(row=1, column=3, sticky='NSEW')
 
     def create_status_bar(self):
         # Create a status bar with two labels
@@ -208,7 +208,7 @@ class MainGUI(tk.Tk):
                     self.fourier_nn.load_tmp_model()
                     print("model loaded")
                     self.graph.draw_extern_graph_from_func(
-                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy'
+                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
                     self.synth = Synth(self, self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
@@ -222,13 +222,13 @@ class MainGUI(tk.Tk):
     def init_or_update_nn(self):  # , stdout=None):
         if not self.fourier_nn:
             self.fourier_nn = FourierNN(
-                self.graph.export_data(), lock=self.lock)
+                self.lock, self.graph.export_data(), stdout_queue=self.std_queue)
         else:
             self.fourier_nn.update_data(self.graph.export_data())
 
         self.fourier_nn.save_tmp_model()
         self.trainings_process = multiprocessing.Process(
-            target=self.fourier_nn.train, args=(self.graph.lst, self.queue, ), kwargs={'stdout': self.std_queue})
+            target=self.fourier_nn.train, args=(self.graph.lst, self.queue, ))
         self.trainings_process.start()
         self.training_started = True
 
@@ -301,7 +301,8 @@ class MainGUI(tk.Tk):
             title='Open a file', initialdir='.', filetypes=filetypes, parent=self)
         if os.path.exists(filename):
             if not self.fourier_nn:
-                self.fourier_nn = FourierNN(data=None, lock=self.lock)
+                self.fourier_nn = FourierNN(
+                    lock=self.lock, data=None, stdout_queue=self.std_queue)
             self.fourier_nn.load_new_model_from_file(filename)
             name = os.path.basename(filename).split('.')[0]
             self.graph.draw_extern_graph_from_func(
@@ -323,7 +324,8 @@ class MainGUI(tk.Tk):
 
     def update_frourier_params(self, key, value):
         if not self.fourier_nn:
-            self.fourier_nn = FourierNN(lock=self.lock)
+            self.fourier_nn = FourierNN(
+                lock=self.lock, stdout_queue=self.std_queue)
         self.fourier_nn.update_attribs(**{key: value})
 
 

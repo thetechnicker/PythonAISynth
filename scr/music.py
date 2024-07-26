@@ -32,7 +32,7 @@ def musik_from_file(fourier_nn: FourierNN):
                 # node_a
                 print(note_a)
                 duration = note_a.end - note_a.start
-                synthesized_note = fourier_nn.synthesize_2(
+                synthesized_note = fourier_nn.synthesize(
                     midi_note=note_a.pitch-12, duration=duration, sample_rate=44100)
                 print(synthesized_note.shape)
                 notes_list.append(synthesized_note)
@@ -77,24 +77,15 @@ class Synth():
         self.generate_sounds()
 
     def generate_sound_wrapper(self, x):
-        return self.fourier_nn.synthesize_3(x)
+        return self.fourier_nn.synthesize_tuple(x)
 
     def generate_sounds(self):
-        t = np.arange(0, 1, 1/44100)
-        y = self.fourier_nn.predict(2 * np.pi*t)
-        fft_vals = fft(y)
-
-        # Get absolute value of FFT values (to get magnitude)
-        fft_abs = np.abs(fft_vals)
-
-        # Get frequency values for each FFT bin
-        # The second argument is the sample spacing (inverse of the sample rate)
-        freqs = np.fft.fftfreq(len(y), 1/44100)
-
-        # Find the frequency where the magnitude of FFT is maximum
-        dominant_freq = freqs[np.argmax(fft_abs)]
-        print(dominant_freq)
-        midi_offset = midi.frequency_to_midi(dominant_freq)
+        timestep = 44100
+        t = np.arange(0, 1, step=1 / timestep)
+        data = self.fourier_nn.predict((2 * np.pi*t)-np.pi)
+        peak_frequency = peak_frequency = utils.calculate_peak_frequency(
+            data, timestep)
+        midi_offset = midi.frequency_to_midi(peak_frequency)
 
         self.pool = multiprocessing.Pool(processes=os.cpu_count())
         atexit.register(self.pool.terminate)
@@ -105,14 +96,10 @@ class Synth():
 
     def monitor_note_generation(self, result_async):
         try:
-            note_list = result_async.get(0.1)
+            self.note_list = result_async.get(0.1)
         except multiprocessing.TimeoutError:
             self.master.after(1000, self.monitor_note_generation, result_async)
         else:
-            for note, sound in note_list:
-                stereo = np.repeat(sound.reshape(-1, 1), 2, axis=1)
-                stereo_sound = sndarray.make_sound(stereo)
-                self.notes[note] = stereo_sound
             print("sounds Generated")
             self.play_init_sound()
             self.pool.close()
@@ -146,6 +133,11 @@ class Synth():
         print("Ready")
 
     def play_sound(self, midi_note):
+        id = self.free_channel_ids.pop()
+        channel = mixer.Channel(id)
+        channel.play(self.notes[midi_note])
+
+    def aply_effects():
         pass
 
     def __getstate__(self) -> object:
