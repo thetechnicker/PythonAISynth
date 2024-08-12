@@ -3,7 +3,7 @@ import numpy as np
 from scipy.signal import lfilter, butter
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import sounddevice as sd
+# import sounddevice as sd
 
 
 class EnvelopeGraph(tk.Frame):
@@ -44,9 +44,6 @@ class EnvelopeGraph(tk.Frame):
         self.sustain_scale.grid(row=1, column=2, sticky='NSEW')
         self.sustain_scale_2.grid(row=1, column=3, sticky='NSEW')
         self.release_scale.grid(row=1, column=4, sticky='NSEW')
-
-        # Start the check for envelope changes
-        # self.check_envelope_change()
 
     def create_scale(self, label):
         scale = tk.Scale(self, from_=0, to=1, resolution=0.01,
@@ -101,20 +98,6 @@ class EnvelopeGraph(tk.Frame):
 
         except:
             pass
-
-    # def check_envelope_change(self):
-    #     if self.envelope is not None and not np.array_equal(self.envelope, self.previous_envelope):
-    #         self.previous_envelope = self.envelope.copy()
-    #         # Wait for x seconds before doing task X
-    #         self.after(1000, self.task_X)
-    #     self.after(1000, self.check_envelope_change)
-
-    # def task_X(self):
-    #     print("stabel")
-    #     self.sample *= self.envelope
-    #     # sd.play(self.sample, blocking=True)
-    #     print("---------")
-    #     pass
 
 
 # Create a new Tkinter window

@@ -29,6 +29,12 @@ class myBuffer:
     def add_sample(self, name: str, buffer: np.ndarray, repeat: bool = False):
         with self.lock:
             self._dict[name] = (buffer, repeat)
+            max_len = max(len(i[0]) for i in self._dict.values())
+
+            for name, (i, repeat) in self._dict.items():
+                zero_padding = np.zeros(max_len - len(i))
+                self._dict[name] = (np.concatenate(
+                    (i, zero_padding)), repeat)
 
     def remove_sample(self, name: str):
         with self.lock:
@@ -41,6 +47,8 @@ class myBuffer:
                 max_len = max(len(i[0]) for i in self._dict.values())
 
                 for name, (i, repeat) in self._dict.items():
+                    if len(i) == max_len:
+                        continue
                     zero_padding = np.zeros(max_len - len(i))
                     self._dict[name] = (np.concatenate(
                         (i, zero_padding)), repeat)
