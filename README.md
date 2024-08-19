@@ -24,6 +24,8 @@ Once the project setup is complete, you can initiate it by executing the `main.p
 python main.py
 ```
 
+![window](docs/img/main_window.png)
+
 Follow the steps below to generate sound:
 
 1. Draw a curve on the graph.
