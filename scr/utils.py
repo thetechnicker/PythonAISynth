@@ -5,6 +5,7 @@ import sys
 import time
 from typing import Callable, TextIO
 import numpy as np
+from scipy.fft import fft, fftfreq
 
 
 class QueueSTD_OUT(TextIO):
