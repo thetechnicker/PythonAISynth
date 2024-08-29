@@ -171,9 +171,9 @@ class Synth():
                         try:
                             id = self.free_channel_ids.pop()
                             channel = mixer.Channel(id)
-                            # channel.set_volume(0)
+                            channel.set_volume(1)
                             channel.play(
-                                self.notes[midi_event[1]], fade_ms=500)
+                                self.notes[midi_event[1]], fade_ms=10, loops=-1)
                             self.running_channels[midi_event[1]] = (
                                 id, channel,)
                         except IndexError:
@@ -186,6 +186,7 @@ class Synth():
 
     def run_live_synth(self):
         if not self.notes_ready:
+            print("\033[31;1;4mNOT READY YET\033[0m")
             return
         if not self.live_synth:
             self.live_synth = Process(target=self.live_synth_loop)
@@ -193,7 +194,7 @@ class Synth():
         else:
             self.live_synth.terminate()
             self.live_synth.join()
-        atexit.register(utils.DIE, self.live_synth)
+        atexit.register(utils.DIE, self.live_synth, 0, 0)
 
     def play_sound(self, midi_note):
         id = self.free_channel_ids.pop()
