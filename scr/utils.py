@@ -1,11 +1,13 @@
+import atexit
 from io import StringIO
 from multiprocessing import Process, Queue
 import random
 import sys
+import threading
 import time
-from typing import Callable, TextIO
+from typing import Any, Callable, TextIO
 import numpy as np
-from scipy.fft import fft, fftfreq
+from scipy.fft import dst
 
 
 class QueueSTD_OUT(TextIO):
@@ -183,17 +185,34 @@ def exec_with_queue_stdout(func: Callable, *args, queue: Queue):
     return func(*args)
 
 
-def calculate_peak_frequency(signal, sample_rate):
-    # Perform the Fourier transform
-    fft_vals = fft(signal)
+def calculate_peak_frequency(signal):
+    np.savetxt('tmp/why_do_i_need_this_array.txt', signal)
+    test_data = np.loadtxt('tmp/why_do_i_need_this_array.txt')
+    test_data = test_data - np.mean(test_data)
 
-    # Get the absolute values of the FFT (to get magnitude)
-    fft_abs = np.abs(fft_vals)
+    # Perform the Discrete Sine Transform (DST)
+    transformed_signal = dst(test_data, type=4, norm='ortho')
 
-    # Generate the frequencies associated with the FFT values
-    fft_freq = fftfreq(len(signal), 1.0/sample_rate)
-
-    # Find the peak frequency
-    peak_freq = fft_freq[np.argmax(fft_abs)]
-
+    peak_index = np.argmax(np.abs(transformed_signal))
+    peak_freq = (peak_index+1)/2
     return peak_freq
+
+
+def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
+    """
+    Schedules a function to be run after a specified delay in milliseconds.
+
+    Args:
+        delay_ms (int): The delay in milliseconds before the function is executed.
+        func (Callable[..., Any]): The function to be executed after the delay.
+        *args (Any): Positional arguments to pass to the function.
+        **kwargs (Any): Keyword arguments to pass to the function.
+    """
+    delay_seconds = delay_ms / 1000.0
+    timer = threading.Timer(delay_seconds, func, args=args, kwargs=kwargs)
+    timer.start()
+
+
+def kill_timer(timer):
+    if timer.is_alive():
+        timer.cancel()

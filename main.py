@@ -1,4 +1,3 @@
-from scr import music
 import copy
 import sys
 from scr.music import Synth
@@ -11,12 +10,11 @@ from scr.fourier_neural_network_gui import NeuralNetworkGUI
 from scr.fourier_neural_network import FourierNN
 from _version import version
 import atexit
-from multiprocessing import Manager, Process, Queue
+from multiprocessing import Process, Queue
+from multiprocessing.managers import SyncManager
 import multiprocessing
 import os
 from threading import Thread
-import tkinter as tk
-from tkinter import ttk
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
@@ -26,10 +24,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class MainGUI(tk.Tk):
-    def __init__(self, *args, lock=None, std_queue, **kwargs):
+    def __init__(self, *args, manager: SyncManager = None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.lock = lock
-        self.std_queue = std_queue
+        # self.tk.call(
+        #     "source", "d:/Python/PythonAISynth/theme/Azure-ttk-theme/azure.tcl")
+        # self.tk.call("set_theme", "dark")
+        self.manager = manager
+        self.lock = manager.Lock()
+        self.std_queue = manager.Queue(-1)
         self.process_monitor = psutil.Process()
         self.title(f"AI Synth - {version}")
         self.rowconfigure(1, weight=1)
@@ -107,11 +109,12 @@ class MainGUI(tk.Tk):
 
         for child in children:
             try:
-                total_cpu += child.cpu_percent()
+                total_cpu += child.cpu_percent(0.01)
                 total_mem += child.memory_percent()
             except psutil.NoSuchProcess:
                 pass
-        self.cpu_label.config(text=f"CPU Usage: {total_cpu:.2f}%")
+        self.cpu_label.config(
+            text=f"CPU Usage: {total_cpu/os.cpu_count():.2f}%")
         self.ram_label.config(text=f"RAM Usage: {total_mem:.2f}%")
 
         animation_text = "|" if self.frame_no == 0 else '/' if self.frame_no == 1 else '-' if self.frame_no == 2 else '\\'
@@ -209,7 +212,7 @@ class MainGUI(tk.Tk):
                     print("model loaded")
                     self.graph.draw_extern_graph_from_func(
                         self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
-                    self.synth = Synth(self, self.fourier_nn, self.std_queue)
+                    self.synth = Synth(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
                 self.training_started = False
@@ -252,7 +255,7 @@ class MainGUI(tk.Tk):
     def play_music(self):
         print("play_music")
         if self.synth:
-            pass
+            self.synth.run_live_synth()
             # music.midi_to_musik_live(self.fourier_nn, self.std_queue)
 
     def clear_graph(self):
@@ -308,7 +311,7 @@ class MainGUI(tk.Tk):
             self.graph.draw_extern_graph_from_func(
                 self.fourier_nn.predict, name)
             print(name)
-            self.synth = Synth(self, self.fourier_nn, self.std_queue)
+            self.synth = Synth(self.fourier_nn, self.std_queue)
             # self.fourier_nn.update_data(
             #     data=self.graph.get_graph(name=name)[0])
 
@@ -333,10 +336,8 @@ def main():
     os.environ['HAS_RUN_INIT'] = 'True'
     multiprocessing.set_start_method("spawn")
     with multiprocessing.Manager() as manager:
-        lock = manager.Lock()
-        queue = manager.Queue(-1)
         std_write = copy.copy(sys.stdout.write)
-        window = MainGUI(lock=lock, std_queue=queue)
+        window = MainGUI(manager=manager)
         window.mainloop()
         sys.stdout.write = std_write
 

@@ -19,7 +19,7 @@ def main():
         fourier_nn.load_new_model_from_file(
             "tmp/nice.keras")  # replace with actual net
         data = fourier_nn.predict(lst)
-    peak_frequency = calculate_peak_frequency(np.sin(lst), step)
+    peak_frequency = calculate_peak_frequency(np.sin(lst))
     print(f"The peak frequency is {peak_frequency} Hz")
     plt.plot(lst, data)
 
