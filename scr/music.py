@@ -167,7 +167,7 @@ class Synth():
                 midi_events = midi_input.read(10)
                 for midi_event, timestamp in midi_events:
                     if midi_event[0] == 144:
-                        print("Note one")
+                        print("Note on", midi_event[1])
                         try:
                             id = self.free_channel_ids.pop()
                             channel = mixer.Channel(id)
@@ -179,14 +179,14 @@ class Synth():
                         except IndexError:
                             print("to many sounds playing")
                     elif midi_event[0] == 128:
-                        print("Note off")
+                        print("Note off", midi_event[1])
                         self.free_channel_ids.append(
                             self.running_channels[midi_event[1]][0])
                         self.running_channels[midi_event[1]][1].stop()
 
     def pending_for_live_synth(self):
         if not self.notes_ready:
-            print("pending")
+            # print("pending")
             utils.run_after_ms(500, self.pending_for_live_synth)
         else:
             self.run_live_synth()
