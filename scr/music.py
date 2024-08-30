@@ -189,11 +189,14 @@ class Synth():
             print("\033[31;1;4mNOT READY YET\033[0m")
             return
         if not self.live_synth:
+            print("spawning live synth")
             self.live_synth = Process(target=self.live_synth_loop)
             self.live_synth.start()
         else:
+            print("killing live synth")
             self.live_synth.terminate()
             self.live_synth.join()
+            print("live synth killed")
         atexit.register(utils.DIE, self.live_synth, 0, 0)
 
     def play_sound(self, midi_note):
