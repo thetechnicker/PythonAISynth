@@ -75,7 +75,7 @@ class Synth():
         self.running_channels: dict[str, tuple[int, mixer.Channel]] = {}
         self.free_channel_ids = list(range(
             self.num_channels))
-        self.generate_sounds()
+        # self.generate_sounds()
 
     def generate_sound_wrapper(self, x, offset):
         midi_note, data = self.fourier_nn.synthesize_tuple(x)
@@ -184,9 +184,18 @@ class Synth():
                             self.running_channels[midi_event[1]][0])
                         self.running_channels[midi_event[1]][1].stop()
 
+    def pending_for_live_synth(self):
+        if not self.notes_ready:
+            print("pending")
+            utils.run_after_ms(500, self.pending_for_live_synth)
+        else:
+            self.run_live_synth()
+
     def run_live_synth(self):
         if not self.notes_ready:
             print("\033[31;1;4mNOT READY YET\033[0m")
+            self.generate_sounds()
+            utils.run_after_ms(500, self.pending_for_live_synth)
             return
         if not self.live_synth:
             print("spawning live synth")
@@ -196,6 +205,7 @@ class Synth():
             print("killing live synth")
             self.live_synth.terminate()
             self.live_synth.join()
+            self.live_synth = None
             print("live synth killed")
         atexit.register(utils.DIE, self.live_synth, 0, 0)
 
