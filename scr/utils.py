@@ -1,7 +1,22 @@
-from multiprocessing import Process
+import atexit
+from io import StringIO
+from multiprocessing import Process, Queue
 import random
+import sys
+import threading
 import time
+from typing import Any, Callable, TextIO
 import numpy as np
+from scipy.fft import dst
+
+
+class QueueSTD_OUT(TextIO):
+    def __init__(self, queue: Queue) -> None:
+        super().__init__()
+        self.queue = queue
+
+    def write(self, msg):
+        self.queue.put(msg)
 
 
 def DIE(process: Process, join_timeout=30, term_iterations=50):
@@ -163,3 +178,41 @@ def lighten_color(r, g, b, percent):
     g_lighter = min(255, int(g + (255 - g) * percent))
     b_lighter = min(255, int(b + (255 - b) * percent))
     return r_lighter, g_lighter, b_lighter
+
+
+def exec_with_queue_stdout(func: Callable, *args, queue: Queue):
+    sys.stdout = QueueSTD_OUT(queue=queue)
+    return func(*args)
+
+
+def calculate_peak_frequency(signal):
+    np.savetxt('tmp/why_do_i_need_this_array.txt', signal)
+    test_data = np.loadtxt('tmp/why_do_i_need_this_array.txt')
+    test_data = test_data - np.mean(test_data)
+
+    # Perform the Discrete Sine Transform (DST)
+    transformed_signal = dst(test_data, type=4, norm='ortho')
+
+    peak_index = np.argmax(np.abs(transformed_signal))
+    peak_freq = (peak_index+1)/2
+    return peak_freq
+
+
+def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
+    """
+    Schedules a function to be run after a specified delay in milliseconds.
+
+    Args:
+        delay_ms (int): The delay in milliseconds before the function is executed.
+        func (Callable[..., Any]): The function to be executed after the delay.
+        *args (Any): Positional arguments to pass to the function.
+        **kwargs (Any): Keyword arguments to pass to the function.
+    """
+    delay_seconds = delay_ms / 1000.0
+    timer = threading.Timer(delay_seconds, func, args=args, kwargs=kwargs)
+    timer.start()
+
+
+def kill_timer(timer):
+    if timer.is_alive():
+        timer.cancel()

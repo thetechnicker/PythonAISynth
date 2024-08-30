@@ -1,4 +1,6 @@
-from scr import music
+import copy
+import sys
+from scr.music import Synth
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
 from scr.utils import DIE
@@ -8,23 +10,25 @@ from scr.fourier_neural_network_gui import NeuralNetworkGUI
 from scr.fourier_neural_network import FourierNN
 from _version import version
 import atexit
-from multiprocessing import Manager, Process, Queue
+from multiprocessing import Process, Queue
+from multiprocessing.managers import SyncManager
 import multiprocessing
 import os
 from threading import Thread
 import tkinter as tk
 from tkinter import ttk
-import tkinter as tk
-from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 import psutil
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # or any {'0', '1', '2'}
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class MainGUI(tk.Tk):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, manager: SyncManager = None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.manager = manager
+        self.lock = manager.Lock()
+        self.std_queue = manager.Queue(-1)
         self.process_monitor = psutil.Process()
         self.title(f"AI Synth - {version}")
         self.rowconfigure(1, weight=1)
@@ -39,6 +43,7 @@ class MainGUI(tk.Tk):
         self.block_training = False
         self.queue = Queue(-1)
         self.fourier_nn = None
+        self.synth: Synth = None
         self.init_terminal_frame()
         self.create_menu()
         self.create_row_one()
@@ -48,8 +53,9 @@ class MainGUI(tk.Tk):
         self.create_status_bar()
 
     def init_terminal_frame(self):
-        self.std_redirect = RedirectedOutputFrame(self)
-        self.std_redirect.grid(row=2, column=0, columnspan=4, sticky='NSEW')
+        self.std_redirect = RedirectedOutputFrame(self, self.std_queue)
+        # self.std_queue = self.std_redirect.queue
+        self.std_redirect.grid(row=2, column=0, columnspan=3, sticky='NSEW')
 
     def add_net_controll(self):
         defaults = {
@@ -65,7 +71,7 @@ class MainGUI(tk.Tk):
 
         self.gui = NeuralNetworkGUI(
             self, defaults=defaults, callback=self.update_frourier_params)
-        self.gui.grid(row=1, column=3, rowspan=3, sticky='NSEW')
+        self.gui.grid(row=1, column=3, sticky='NSEW')
 
     def create_status_bar(self):
         # Create a status bar with two labels
@@ -78,22 +84,46 @@ class MainGUI(tk.Tk):
         self.status_label.pack(side=tk.LEFT)
 
         self.processes_label = tk.Label(
-            self.status_bar, text="Processes: 0", anchor=tk.E, font=("TkFixedFont"))
+            self.status_bar, text="Children Processes: 0", anchor=tk.E, font=("TkFixedFont"))
         self.processes_label.pack(side=tk.RIGHT)
+
+        # CPU and RAM
+        self.cpu_label = tk.Label(
+            self.status_bar, text="CPU Usage: 0%", anchor=tk.E, font=("TkFixedFont"))
+        self.cpu_label.pack(side=tk.RIGHT)
+
+        self.ram_label = tk.Label(
+            self.status_bar, text="RAM Usage: 0%", anchor=tk.E, font=("TkFixedFont"))
+        self.ram_label.pack(side=tk.RIGHT)
+
         self.frame_no = 0
         self.after(500, self.update_status_bar)
 
     def update_status_bar(self):
         children = self.process_monitor.children(recursive=True)
+        total_cpu = self.process_monitor.cpu_percent()
+        total_mem = self.process_monitor.memory_percent()
+
+        for child in children:
+            try:
+                total_cpu += child.cpu_percent(0.01)
+                total_mem += child.memory_percent()
+            except psutil.NoSuchProcess:
+                pass
+        self.cpu_label.config(
+            text=f"CPU Usage: {total_cpu/os.cpu_count():.2f}%")
+        self.ram_label.config(text=f"RAM Usage: {total_mem:.2f}%")
+
         animation_text = "|" if self.frame_no == 0 else '/' if self.frame_no == 1 else '-' if self.frame_no == 2 else '\\'
         self.frame_no = (self.frame_no+1) % 4
-        if len(children) == 0:
+        if len(children) <= 1:
             self.status_label.config(text="Ready", fg="green")
         else:
             self.status_label.config(
                 text=f"Busy ({animation_text})", fg="red")
 
-        self.processes_label.config(text=f"Processes: {len(children)}")
+        self.processes_label.config(
+            text=f"Children Processes: {len(children)}")
         self.after(500, self.update_status_bar)
 
     def create_row_one(self):
@@ -161,7 +191,7 @@ class MainGUI(tk.Tk):
             if self.trainings_process.is_alive():
                 try:
                     data = self.queue.get_nowait()
-                    print("!!!check!!!")
+                    # print("!!!check!!!")
                     data = list(zip(self.graph.lst, data.reshape(-1)))
                     # graph.data=data
                     self.graph.draw_extern_graph_from_data(
@@ -178,7 +208,8 @@ class MainGUI(tk.Tk):
                     self.fourier_nn.load_tmp_model()
                     print("model loaded")
                     self.graph.draw_extern_graph_from_func(
-                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy'
+                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
+                    self.synth = Synth(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
                 self.training_started = False
@@ -188,14 +219,16 @@ class MainGUI(tk.Tk):
                 return
         self.after(100, self.train_update)
 
-    def init_or_update_nn(self):
+    def init_or_update_nn(self):  # , stdout=None):
         if not self.fourier_nn:
-            self.fourier_nn = FourierNN(self.graph.export_data())
+            self.fourier_nn = FourierNN(
+                self.lock, self.graph.export_data(), stdout_queue=self.std_queue)
         else:
             self.fourier_nn.update_data(self.graph.export_data())
+
         self.fourier_nn.save_tmp_model()
         self.trainings_process = multiprocessing.Process(
-            target=self.fourier_nn.train, args=(self.graph.lst, self.queue,))
+            target=self.fourier_nn.train, args=(self.graph.lst, self.queue, ))
         self.trainings_process.start()
         self.training_started = True
 
@@ -207,6 +240,7 @@ class MainGUI(tk.Tk):
             return
         self.block_training = True
         print("STARTING TRAINING")
+        # , args=(self.std_redirect.queue,))
         t = Thread(target=self.init_or_update_nn)
         t.daemon = True
         t.start()
@@ -217,8 +251,9 @@ class MainGUI(tk.Tk):
 
     def play_music(self):
         print("play_music")
-        if self.fourier_nn:
-            music.midi_to_musik_live(self, self.fourier_nn)
+        if self.synth:
+            self.synth.run_live_synth()
+            # music.midi_to_musik_live(self.fourier_nn, self.std_queue)
 
     def clear_graph(self):
         print("clear_graph")
@@ -266,12 +301,14 @@ class MainGUI(tk.Tk):
             title='Open a file', initialdir='.', filetypes=filetypes, parent=self)
         if os.path.exists(filename):
             if not self.fourier_nn:
-                self.fourier_nn = FourierNN(data=None)
+                self.fourier_nn = FourierNN(
+                    lock=self.lock, data=None, stdout_queue=self.std_queue)
             self.fourier_nn.load_new_model_from_file(filename)
             name = os.path.basename(filename).split('.')[0]
             self.graph.draw_extern_graph_from_func(
                 self.fourier_nn.predict, name)
             print(name)
+            self.synth = Synth(self.fourier_nn, self.std_queue)
             # self.fourier_nn.update_data(
             #     data=self.graph.get_graph(name=name)[0])
 
@@ -287,15 +324,19 @@ class MainGUI(tk.Tk):
 
     def update_frourier_params(self, key, value):
         if not self.fourier_nn:
-            self.fourier_nn = FourierNN()
+            self.fourier_nn = FourierNN(
+                lock=self.lock, stdout_queue=self.std_queue)
         self.fourier_nn.update_attribs(**{key: value})
 
 
 def main():
     os.environ['HAS_RUN_INIT'] = 'True'
     multiprocessing.set_start_method("spawn")
-    window = MainGUI()
-    window.mainloop()
+    with multiprocessing.Manager() as manager:
+        std_write = copy.copy(sys.stdout.write)
+        window = MainGUI(manager=manager)
+        window.mainloop()
+        sys.stdout.write = std_write
 
 
 if __name__ == "__main__":

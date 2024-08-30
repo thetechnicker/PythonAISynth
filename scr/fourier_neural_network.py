@@ -9,6 +9,7 @@ from multiprocessing.pool import Pool
 import random
 from threading import Thread
 import time
+from typing import Tuple
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
@@ -18,10 +19,10 @@ from keras.callbacks import Callback
 from tensorflow.keras.callbacks import EarlyStopping, CSVLogger
 import matplotlib.pyplot as plt
 from scipy.io.wavfile import write
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, current_process
 
 from scr import utils
-from scr.utils import midi_to_freq
+from scr.utils import QueueSTD_OUT, midi_to_freq
 # print(tf.__version__)
 
 
@@ -99,27 +100,34 @@ class FourierNN:
         # Load the model from a file after deserialization
         self.__dict__.update(state)
         if os.path.exists('./tmp/tmp_model.keras'):
-            self.current_model = tf.keras.models.load_model(
-                './tmp/tmp_model.keras')
+            with self.lock:
+                self.current_model = tf.keras.models.load_model(
+                    './tmp/tmp_model.keras')
 
-        for key in self.keys:
-            val = getattr(self, key, None)
-            print(f"{key}: {val}")
+        if current_process().name != 'MainProcess' and self.stdout_queue:
+            sys.stdout = utils.QueueSTD_OUT(self.stdout_queue)
+        # for key in self.keys:
+        #     val = getattr(self, key, None)
+        #     print(f"{key}: {val}")
+        # self.stdout_queue = None
         print("-------------------------")
 
     def load_tmp_model(self):
-        self.current_model = tf.keras.models.load_model(
-            './tmp/tmp_model.keras')
-        self.current_model.summary()
+        with self.lock:
+            self.current_model = tf.keras.models.load_model(
+                './tmp/tmp_model.keras')
+            self.current_model.summary()
 
     def save_tmp_model(self):
         self.current_model.save('./tmp/tmp_model.keras')
 
-    def __init__(self, data=None):
+    def __init__(self, lock, data=None, stdout_queue=None):
+        self.lock = lock
         self.models: list = []
         self.current_model: keras.Model = None
         self.fourier_degree = self.DEFAULT_FORIER_DEGREE
         self.prepared_data = None
+        self.stdout_queue = stdout_queue
         if data is not None:
             self.update_data(data)
 
@@ -132,8 +140,8 @@ class FourierNN:
     def get_models(self) -> list[Sequential]:
         return [self.current_model]+self.models
 
-    def update_data(self, data):
-
+    def update_data(self, data, stdout_queue=None):
+        self.stdout_queue = stdout_queue
         self.prepared_data = self.prepare_data(list(data))
         if not self.current_model:
             self.create_new_model()
@@ -143,11 +151,9 @@ class FourierNN:
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
-        print(f"generating fourier basis for {x}")
         # return np.array([[x]]) to show why this function is importents
         basis = [np.sin(i * x) for i in range(1, n+1)]
         basis += [np.cos(i * x) for i in range(1, n+1)]
-        print(f"fourier basis for {x} generated")
         return np.array(basis)
 
     @staticmethod
@@ -167,7 +173,7 @@ class FourierNN:
         data = sorted(data, key=lambda x: x[0])
         while len(data) < self.SAMPLES:
             data_copy = sorted(data[:], key=lambda x: x[0])
-            pairs = ((data_copy[i], data_copy[i+1])
+            pairs = ((data_copy[i], data_copy[i+1], 0.5)
                      for i in range(len(data_copy)-1))
             with Pool() as pool:
                 new_data = pool.starmap(utils.interpolate, pairs)
@@ -189,14 +195,14 @@ class FourierNN:
         test_data = sorted(data, key=lambda x: x[0])
         while len(test_data) < test_samples:
             data_copy = sorted(test_data[:], key=lambda x: x[0])
-            pairs = ((data_copy[i], data_copy[i+1])
+            pairs = ((data_copy[i], data_copy[i+1],)
                      for i in range(len(data_copy)-1))
             with Pool() as pool:
                 new_data = pool.starmap(utils.interpolate, pairs)
             test_data.extend(new_data)
             if len(test_data) >= test_samples:
                 # Delete every second element
-                data = data[::2]
+                test_data = test_data[::2]
                 break
 
         while len(test_data) > test_samples:
@@ -206,24 +212,35 @@ class FourierNN:
 
         x_train, y_train = zip(*data)
         x_test, y_test = zip(*test_data)
+
         x_train = np.array(x_train)
         y_train = np.array(y_train)
         x_test = np.array(x_test)
         y_test = np.array(y_test)
+        print(" Generate Fourier-Basis ".center(50, '-'))
+
         with multiprocessing.Pool(processes=os.cpu_count()) as pool:
             result_a = pool.starmap(FourierNN.fourier_basis, zip(
-                x_train, (self.fourier_degree for i in range(len(x_train)))))
+                x_train,
+                (self.fourier_degree for i in range(len(x_train))),
+            ))
             result_b = pool.starmap(FourierNN.fourier_basis, zip(
-                x_train, (self.fourier_degree for i in range(len(x_test)))))
+                x_train,
+                (self.fourier_degree for i in range(len(x_test))),
+            ))
+
+        print(''.center(50, '-'))
+
         x_train_transformed = np.array(result_a)
         x_test_transformed = np.array(result_b)
-
+        print(len(x_train_transformed), len(y_train))
         return (x_train, x_train_transformed, y_train, actualData_x, actualData_y, x_test_transformed, y_test)
 
     def create_model(self, input_shape):
+        print(input_shape)
         model: tf.keras.Model = Sequential([
             Input(shape=input_shape),
-            Dense(64, activation='relu'),
+            Dense(64, activation='linear'),
             Dense(1, activation='linear')
         ])
         model.compile(optimizer=self.OPTIMIZER,
@@ -258,39 +275,19 @@ class FourierNN:
                   batch_size=int(self.SAMPLES/2), verbose=0)
         self.current_model.save('./tmp/tmp_model.keras')
 
-    def train_Process(self, test_data, queue=None, quiet=False) -> Process:
-        # tf.keras.backend.clear_session()
-        _, x_train_transformed, y_train, _, _ = self.prepared_data
-        model = self.current_model
-
-        _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
-        _x = np.array(_x)
-        process = multiprocessing.Process(target=model.fit, args=(x_train_transformed, y_train),
-                                          kwargs={'epochs': self.EPOCHS, 'callbacks': [MyCallback(queue, _x, quiet)], 'batch_size': 32, 'verbose': 0})
-        #
-        # process.start()
-        return process
-
-    def predict(self, data):
+    def predict(self, data, batch_size=None):
         if not hasattr(data, '__iter__'):
             data = [data]
-        _y = list(self.fourier_basis(x, self.fourier_degree) for x in data)
-        y_test = self.current_model.predict(np.array(_y), batch_size=len(data))
+        with multiprocessing.Pool(processes=os.cpu_count()) as pool:
+            _y = pool.starmap(FourierNN.fourier_basis, zip(
+                data,
+                (self.fourier_degree for i in range(len(data))),
+            ))
+        y_test = self.current_model.predict(
+            np.array(_y), batch_size=batch_size if batch_size else len(data))
         return y_test
 
-    def synthesize(self, midi_notes, sample_rate=44100, duration=5.0):
-        output = np.zeros(shape=int(sample_rate * duration))
-        for note in midi_notes:
-            freq = midi_to_freq(note)
-            t = np.linspace(0, duration, int(sample_rate * duration), False)
-            t_scaled = t * 2 * np.pi / (1/freq)
-            signal = self.current_model.predict(
-                np.array([self.fourier_basis(x, self.fourier_degree) for x in t_scaled]))
-            output += signal
-        output = output / np.max(np.abs(output))  # Normalize
-        return output.astype(np.int16)
-
-    def synthesize_2(self, midi_note, duration=1.0, sample_rate=44100):
+    def synthesize(self, midi_note, duration=1.0, sample_rate=44100):
         output = np.zeros(shape=int(sample_rate * duration))
         freq = midi_to_freq(midi_note)
         t = np.linspace(0, duration, int(sample_rate * duration), False)
@@ -301,13 +298,12 @@ class FourierNN:
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         return output.astype(np.int16)
 
-    def synthesize_3(self, midi_note, duration=1.0, sample_rate=44100):
-        # sys.stdout = open(f'tmp/process_{os.getpid()}_output.txt', 'w')
+    def synthesize_tuple(self, midi_note, duration=1.0, sample_rate=44100) -> Tuple[int, np.array]:
         print(f"begin generating sound for note: {midi_note}", flush=True)
         output = np.zeros(shape=int(sample_rate * duration))
         freq = midi_to_freq(midi_note)
         t = np.linspace(0, duration, int(sample_rate * duration), False)
-        t_scaled = t * 2 * np.pi / (1/freq)
+        t_scaled = (t * 2 * np.pi) / (1/freq)
         batch_size = sample_rate//1
         output = self.current_model.predict(np.array([self.fourier_basis(
             x, self.fourier_degree) for x in t_scaled]), batch_size=batch_size)
@@ -315,21 +311,6 @@ class FourierNN:
         print(f"Generated sound for note: {midi_note}")
         # gc.collect()
         return (midi_note, output.astype(np.int16))
-
-    def convert_to_audio(self, filename='./tmp/output.wav'):
-        print(self.models.summary())
-        sample_rate = self.SAMPLES
-        duration = 5.0
-        T = 1 / 440
-        t = np.linspace(0, duration, int(sample_rate * duration), False)
-        t_scaled = t * 2 * np.pi / T
-        data = np.array([self.fourier_basis(x, self.fourier_degree)
-                        for x in t_scaled])
-        print(data.shape)
-        signal = self.models.predict(data)
-        audio = (signal * 32767 / np.max(np.abs(signal))) / 2
-        audio = audio.astype(np.int16)
-        write(filename, sample_rate, audio)
 
     def save_model(self, filename='./tmp/model.h5'):
         self.current_model._name = os.path.basename(
@@ -357,21 +338,3 @@ class FourierNN:
                 self.models.insert(index, self.current_model)
             # self.fourier_degree=
             self.current_model = new_model
-
-
-# moved to ./tests/fouriernn_test.py
-# if __name__ == '__main__':
-#     # Test the class with custom data points
-#     data = [(x, np.sin(x * tf.keras.activations.relu(x)))
-#             for x in np.linspace(np.pi, -np.pi, 100)]
-#     fourier_nn = FourierNN(data)
-#     fourier_nn.train()
-# if __name__ == '__main__':
-#     def relu(x):
-#         return np.maximum(0, x)
-#     # Test the class with custom data points
-#     data = np.array([(x, np.sin(x * relu(x))) for x in np.linspace(np.pi, -np.pi, 100)])
-#     fourier_nn = FourierNN(data)
-#     fourier_nn.train_and_plot()
-#     # fourier_nn.convert_to_audio()
-#     # fourier_nn.save_model()
