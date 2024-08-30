@@ -26,9 +26,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 class MainGUI(tk.Tk):
     def __init__(self, *args, manager: SyncManager = None, **kwargs):
         super().__init__(*args, **kwargs)
-        # self.tk.call(
-        #     "source", "d:/Python/PythonAISynth/theme/Azure-ttk-theme/azure.tcl")
-        # self.tk.call("set_theme", "dark")
         self.manager = manager
         self.lock = manager.Lock()
         self.std_queue = manager.Queue(-1)
