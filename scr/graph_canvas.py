@@ -180,7 +180,19 @@ class GraphCanvas(ttk.Frame):
         return max(-1, min(1, val))
 
     def use_preconfig_drawing(self, function):
-        self.data = [(x, self._eval_func(function, x)) for x in self.lst]
+        data = [(x, self._eval_func(function, x)) for x in self.lst]
+        data_array = np.array(data)
+        x_values = data_array[:, 0]
+        y_values = data_array[:, 1]
+
+        # Calculate the mean of the y-values
+        mean_y = np.mean(y_values)
+
+        # Center the y-values around 0
+        y_values_centered = y_values - mean_y
+
+        # Combine x_values and y_values_centered back into a single array
+        self.data = np.column_stack((x_values, y_values_centered))
         self._draw()
 
     def get_graph(self, name):
@@ -197,7 +209,7 @@ class GraphCanvas(ttk.Frame):
                                     fill=color, width=2)
             # Draw the name of the graph
             self.canvas.create_text(legend_x + 30, legend_y + i * legend_spacing,
-                                    text=name, anchor='w')
+                                    text=name, anchor='w', fill='white'if self.darkmode else 'black')
             if graph_type == "line":  # and False:
                 for a, b in utils.pair_iterator(graph):
                     self.draw_line(a, b, width, color)

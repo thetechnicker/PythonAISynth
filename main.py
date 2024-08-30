@@ -81,7 +81,7 @@ class MainGUI(tk.Tk):
 
         self.style = ttk.Style()
         if DARKMODE:
-            self.configure(bg='#2d2d2d')
+            self.configure(bg='#202020')
             self.option_add("*TCombobox*Listbox*Background", "black")
             self.option_add("*TCombobox*Listbox*Foreground", "white")
             self.style.theme_create('dark', parent="clam", settings=dark_theme)
