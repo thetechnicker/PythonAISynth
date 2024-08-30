@@ -72,7 +72,7 @@ dark_theme = {
     },
 }
 
-DARKMODE = False
+DARKMODE = True
 
 
 class MainGUI(tk.Tk):

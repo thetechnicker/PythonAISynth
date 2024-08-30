@@ -83,7 +83,7 @@ class GraphCanvas(ttk.Frame):
             self.canvas.create_line(x, (self.canvas_height/2)-10+self.offset,
                                     x, (self.canvas_height/2)+10+self.offset, fill='blue')
             self.canvas.create_text(
-                x, (self.canvas_height/2)+10+self.offset, text=f'{i}π')
+                x, (self.canvas_height/2)+10+self.offset, text=f'{i}π', fill='white'if self.darkmode else 'black')
 
         for i in range(-1, 2):
             y = (self.canvas_height/2 - i * (self.canvas_height/2))+self.offset
@@ -91,7 +91,8 @@ class GraphCanvas(ttk.Frame):
             self.canvas.create_line((self.canvas_width/2)-10+self.offset,
                                     y, (self.canvas_width/2)+10+self.offset, y, fill='red')
             # self.canvas.create_oval((self.canvas_height/2)-10, y+10, (self.canvas_height/2)+10, y-10,  fill='black')
-            self.canvas.create_text((self.canvas_width/2)-10, y, text=f'{i}')
+            self.canvas.create_text(
+                (self.canvas_width/2)-10, y, text=f'{i}', fill='white'if self.darkmode else 'black')
 
     first = True
 
@@ -176,7 +177,7 @@ class GraphCanvas(ttk.Frame):
 
     def _eval_func(self, function, x):
         val = function(x)
-        return val if utils.is_in_interval(val, -1, 1) else 0
+        return max(-1, min(1, val))
 
     def use_preconfig_drawing(self, function):
         self.data = [(x, self._eval_func(function, x)) for x in self.lst]
