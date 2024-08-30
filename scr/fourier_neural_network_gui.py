@@ -53,6 +53,7 @@ class NeuralNetworkGUI(ttk.Frame):
             else:
                 entry = ttk.Entry(self, textvariable=var)
                 entry.grid(row=i, column=1, sticky='NSEW')
+            var.set(default)
 
     def on_change(self, name, value):
         # print(f"{name} changed to {value}")
