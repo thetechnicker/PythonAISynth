@@ -1,5 +1,6 @@
 import queue
 import tkinter as tk
+from tkinter import ttk
 from tkinter import scrolledtext
 import re
 from copy import copy
@@ -14,6 +15,10 @@ class RedirectedOutputFrame(tk.Frame):
         super().__init__(master)
         self.textbox = scrolledtext.ScrolledText(
             self, height=10, font=("TkFixedFont"))
+        self.textbox.configure(
+            background=master.style.lookup('TFrame', 'background'))
+        self.textbox.configure(
+            foreground=master.style.lookup('TFrame', 'foreground'))
         self.textbox.pack(fill=tk.BOTH, expand=True)
         self.textbox.configure(state='disabled')
         self.textbox.configure(wrap='word')

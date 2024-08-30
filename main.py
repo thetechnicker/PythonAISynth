@@ -22,10 +22,71 @@ from tkinter import messagebox
 import psutil
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
+dark_theme = {
+    ".": {
+        "configure": {
+            "background": "#2d2d2d",  # Dark grey background
+            "foreground": "white",    # White text
+        }
+    },
+    "TLabel": {
+        "configure": {
+            "foreground": "white",    # White text
+        }
+    },
+    "TButton": {
+        "configure": {
+            "background": "#3c3f41",  # Dark blue-grey button
+            "foreground": "white",    # White text
+        }
+    },
+    "TEntry": {
+        "configure": {
+            "background": "#2d2d2d",  # Dark grey background
+            "foreground": "white",    # White text
+            "fieldbackground": "#4d4d4d",
+            "insertcolor": "white",
+            "bordercolor": "black",
+            "lightcolor": "#4d4d4d",
+            "darkcolor": "black",
+        }
+    },
+    "TCheckbutton": {
+        "configure": {
+            "foreground": "white",    # White text
+            "indicatorbackground": "white",
+            "indicatorforeground": "black",
+        }
+    },
+    "TCombobox": {
+        "configure": {
+            "background": "#2d2d2d",  # Dark grey background
+            "foreground": "white",    # White text
+            "fieldbackground": "#4d4d4d",
+            "insertcolor": "white",
+            "bordercolor": "black",
+            "lightcolor": "#4d4d4d",
+            "darkcolor": "black",
+            "arrowcolor": "white"
+        },
+    },
+}
+
+DARKMODE = False
+
 
 class MainGUI(tk.Tk):
     def __init__(self, *args, manager: SyncManager = None, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.style = ttk.Style()
+        if DARKMODE:
+            self.configure(bg='#2d2d2d')
+            self.option_add("*TCombobox*Listbox*Background", "black")
+            self.option_add("*TCombobox*Listbox*Foreground", "white")
+            self.style.theme_create('dark', parent="clam", settings=dark_theme)
+            self.style.theme_use('dark')
+
         self.manager = manager
         self.lock = manager.Lock()
         self.std_queue = manager.Queue(-1)
@@ -47,7 +108,7 @@ class MainGUI(tk.Tk):
         self.init_terminal_frame()
         self.create_menu()
         self.create_row_one()
-        self.graph = GraphCanvas(self, (900, 300))  # , draw_callback)
+        self.graph = GraphCanvas(self, (900, 300), DARKMODE)
         self.graph.grid(row=1, column=0, columnspan=3, sticky='NSEW')
         self.add_net_controll()
         self.create_status_bar()
@@ -75,25 +136,25 @@ class MainGUI(tk.Tk):
 
     def create_status_bar(self):
         # Create a status bar with two labels
-        self.status_bar = tk.Frame(self, bd=1, relief=tk.SUNKEN)
+        self.status_bar = ttk.Frame(self, relief=tk.SUNKEN)
         # Adjust row and column as needed
         self.status_bar.grid(row=3, column=0, sticky='we', columnspan=4)
 
-        self.status_label = tk.Label(
-            self.status_bar, text="Ready", anchor=tk.W, font=("TkFixedFont"))
+        self.status_label = ttk.Label(
+            self.status_bar, text="Ready", anchor=tk.W, font=("TkFixedFont"), relief=tk.SUNKEN)
         self.status_label.pack(side=tk.LEFT)
 
-        self.processes_label = tk.Label(
-            self.status_bar, text="Children Processes: 0", anchor=tk.E, font=("TkFixedFont"))
+        self.processes_label = ttk.Label(
+            self.status_bar, text="Children Processes: 0", anchor=tk.E, font=("TkFixedFont"), relief=tk.SUNKEN)
         self.processes_label.pack(side=tk.RIGHT)
 
         # CPU and RAM
-        self.cpu_label = tk.Label(
-            self.status_bar, text="CPU Usage: 0%", anchor=tk.E, font=("TkFixedFont"))
+        self.cpu_label = ttk.Label(
+            self.status_bar, text="CPU Usage: 0%", anchor=tk.E, font=("TkFixedFont"), relief=tk.SUNKEN)
         self.cpu_label.pack(side=tk.RIGHT)
 
-        self.ram_label = tk.Label(
-            self.status_bar, text="RAM Usage: 0%", anchor=tk.E, font=("TkFixedFont"))
+        self.ram_label = ttk.Label(
+            self.status_bar, text="RAM Usage: 0%", anchor=tk.E, font=("TkFixedFont"), relief=tk.SUNKEN)
         self.ram_label.pack(side=tk.RIGHT)
 
         self.frame_no = 0
@@ -117,17 +178,17 @@ class MainGUI(tk.Tk):
         animation_text = "|" if self.frame_no == 0 else '/' if self.frame_no == 1 else '-' if self.frame_no == 2 else '\\'
         self.frame_no = (self.frame_no+1) % 4
         if len(children) <= 1:
-            self.status_label.config(text="Ready", fg="green")
+            self.status_label.config(text="Ready", foreground="green")
         else:
             self.status_label.config(
-                text=f"Busy ({animation_text})", fg="red")
+                text=f"Busy ({animation_text})", foreground="red")
 
         self.processes_label.config(
             text=f"Children Processes: {len(children)}")
         self.after(500, self.update_status_bar)
 
     def create_row_one(self):
-        self.label = tk.Label(self, text="Predefined Functions:")
+        self.label = ttk.Label(self, text="Predefined Functions:")
         self.label.grid(row=0, column=0, sticky='NSEW')
 
         self.combo_selected_value = tk.StringVar()
@@ -141,18 +202,22 @@ class MainGUI(tk.Tk):
         self.combo.grid(row=0, column=1, sticky='NSEW')
 
         # Create a 'Start Training' button
-        self.train_button = tk.Button(
+        self.train_button = ttk.Button(
             self, text="Start Training", command=self.start_training)
         self.train_button.grid(row=0, column=2, sticky='NSEW')
 
         # Create a 'Play' button
-        self.play_button = tk.Button(
+        self.play_button = ttk.Button(
             self, text="Play", command=self.play_music)
         self.play_button.grid(row=0, column=3, sticky='NSEW')
 
     def create_menu(self):
         # Create a menu bar
-        self.menu_bar = tk.Menu(self)
+        if DARKMODE:
+            self.menu_bar = tk.Menu(self, background="#2d2d2d", foreground="white",
+                                    activebackground="#3e3e3e", activeforeground="white")
+        else:
+            self.menu_bar = tk.Menu(self)
 
         # Create a 'File' menu
         self.create_menu_item("File", [
@@ -180,7 +245,11 @@ class MainGUI(tk.Tk):
         self.config(menu=self.menu_bar)
 
     def create_menu_item(self, name, commands):
-        menu = tk.Menu(self.menu_bar, tearoff=0)
+        if DARKMODE:
+            menu = tk.Menu(self.menu_bar, tearoff=0, bg="#2d2d2d", fg="white",
+                           activebackground="#3e3e3e", activeforeground="white")
+        else:
+            menu = tk.Menu(self.menu_bar, tearoff=0)
         for label, command in commands:
             menu.add_command(label=label, command=command)
         self.menu_bar.add_cascade(label=name, menu=menu)
@@ -335,6 +404,7 @@ def main():
     with multiprocessing.Manager() as manager:
         std_write = copy.copy(sys.stdout.write)
         window = MainGUI(manager=manager)
+
         window.mainloop()
         sys.stdout.write = std_write
 

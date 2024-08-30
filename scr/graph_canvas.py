@@ -2,6 +2,7 @@ from copy import copy
 import time
 import tkinter as tk
 import math
+from tkinter import ttk
 from typing import Literal
 
 import numpy as np
@@ -9,7 +10,7 @@ import numpy as np
 from scr import utils
 
 
-class GraphCanvas(tk.Frame):
+class GraphCanvas(ttk.Frame):
     LEVEL_OF_DETAIL = 250
     INCLUDE_0 = False
 
@@ -24,15 +25,16 @@ class GraphCanvas(tk.Frame):
     lower_end_y = 1
     upper_end_y = -1
 
-    def __init__(self, master, size: tuple[int, int] = None):
+    def __init__(self, master, size: tuple[int, int] = None, darkmode=False):
         if size:
             self.canvas_width = size[0]
             self.canvas_height = size[1]
             self.aspect_ratio = self.canvas_width/self.canvas_height
-        super().__init__(master)
+        self.darkmode = darkmode
+        ttk.Frame.__init__(self, master)
         self.master = master
         self.canvas = tk.Canvas(self, width=self.canvas_width+self.offset*2,
-                                height=self.canvas_height+self.offset*2, bg='white')
+                                height=self.canvas_height+self.offset*2, bg='#2d2d2d' if self.darkmode else "white")
         self.canvas.pack(fill=tk.BOTH, expand=True)
         self.canvas.bind('<Configure>', self.resize)
 
@@ -71,9 +73,9 @@ class GraphCanvas(tk.Frame):
 
     def setup_axes(self):
         self.canvas.create_line(self.offset, self.canvas_height/2+self.offset, self.canvas_width +
-                                self.offset, self.canvas_height/2+self.offset, fill='black')  # X-axis
+                                self.offset, self.canvas_height/2+self.offset, fill='white'if self.darkmode else 'black')  # X-axis
         self.canvas.create_line(self.canvas_width/2+self.offset, self.offset, self.canvas_width /
-                                2+self.offset, self.canvas_height+self.offset, fill='black')  # Y-axis
+                                2+self.offset, self.canvas_height+self.offset, fill='white'if self.darkmode else 'black')  # Y-axis
         # self.canvas.create_oval()
 
         for i in range(-1, 2):

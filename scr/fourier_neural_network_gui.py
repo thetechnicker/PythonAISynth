@@ -1,10 +1,11 @@
 import tkinter as tk
+from tkinter import ttk
 from tensorflow.keras import losses, optimizers
 
 
-class NeuralNetworkGUI(tk.Frame):
+class NeuralNetworkGUI(ttk.Frame):
     def __init__(self, parent=None, defaults: dict = None, callback=None, **kwargs):
-        tk.Frame.__init__(self, parent, **kwargs)
+        ttk.Frame.__init__(self, parent, **kwargs)
         # self.grid(sticky='NSEW')
         self.on_change_callback = callback
         # self.config(background='black')
@@ -25,7 +26,7 @@ class NeuralNetworkGUI(tk.Frame):
                        'FORIER_DEGREE_DIVIDER', 'FORIER_DEGREE_OFFSET', 'PATIENCE', 'OPTIMIZER', 'LOSS_FUNCTION']
         for i, param in enumerate(self.params):
             # self.rowconfigure(i, weight=1)
-            label = tk.Label(self, text=param)
+            label = ttk.Label(self, text=param)
             label.grid(row=i, column=0, sticky='NSW')
             default = defaults.get(
                 param, 0 if param != 'CALC_FOURIER_DEGREE_BY_DATA_LENGTH' else False)
@@ -43,14 +44,14 @@ class NeuralNetworkGUI(tk.Frame):
 
                 var.set(default)
 
-                dropdown = tk.OptionMenu(
+                dropdown = ttk.OptionMenu(
                     self, var, *(used_list))
                 dropdown.grid(row=i, column=1, sticky='NSEW')
             elif param == 'CALC_FOURIER_DEGREE_BY_DATA_LENGTH':
-                entry = tk.Checkbutton(self, variable=var)
+                entry = ttk.Checkbutton(self, variable=var)
                 entry.grid(row=i, column=1, sticky='NSEW')
             else:
-                entry = tk.Entry(self, textvariable=var)
+                entry = ttk.Entry(self, textvariable=var)
                 entry.grid(row=i, column=1, sticky='NSEW')
 
     def on_change(self, name, value):
