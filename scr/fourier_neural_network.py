@@ -110,7 +110,7 @@ class FourierNN:
         #     val = getattr(self, key, None)
         #     print(f"{key}: {val}")
         # self.stdout_queue = None
-        print("-------------------------")
+        # print("-------------------------")
 
     def load_tmp_model(self):
         with self.lock:
@@ -151,6 +151,7 @@ class FourierNN:
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
+        # print(f"generate fourier basis for {x}")
         # return np.array([[x]]) to show why this function is importents
         basis = [np.sin(i * x) for i in range(1, n+1)]
         basis += [np.cos(i * x) for i in range(1, n+1)]

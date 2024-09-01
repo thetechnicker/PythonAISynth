@@ -1,4 +1,6 @@
+from typing import Callable
 import pygame
+import scipy
 from scr.fourier_neural_network import FourierNN
 from scr import utils
 from pygame import mixer, midi, sndarray
@@ -25,6 +27,7 @@ def musik_from_file(fourier_nn: FourierNN):
     if fourier_nn:
         for instrument in midi_data.instruments:
             # print(dir(instrument))
+            note_list = []
             for note_a, note_b in utils.note_iterator(instrument.notes):
                 # node_a
                 print(note_a)
@@ -32,7 +35,7 @@ def musik_from_file(fourier_nn: FourierNN):
                 synthesized_note = fourier_nn.synthesize(
                     midi_note=note_a.pitch-12, duration=duration, sample_rate=44100)
                 print(synthesized_note.shape)
-                notes_list.append(synthesized_note)
+                note_list.append(synthesized_note)
 
                 if note_b:
                     # pause
@@ -40,7 +43,7 @@ def musik_from_file(fourier_nn: FourierNN):
                     duration = abs(note_b.start - note_a.end)
                     synthesized_note = np.zeros((int(duration*44100), 1))
                     print(synthesized_note.shape)
-                    notes_list.append(synthesized_note)
+                    note_list.append(synthesized_note)
 
                 # # node_b
                 # print(note_b)
@@ -49,9 +52,25 @@ def musik_from_file(fourier_nn: FourierNN):
                 #     midi_note=note_b.pitch, duration=duration, sample_rate=44100)
                 # print(synthesized_note.shape)
                 # notes_list.append(synthesized_note)
-            break
-    output = np.concatenate(notes_list)
+            notes_list.append(np.concatenate(note_list))
+
+    output = np.sum(notes_list)
+    output = rescale_audio(output)
     sd.play(output, 44100)
+
+
+def rescale_audio(audio):
+    # print("---------------------------------------------------")
+    # Find the maximum absolute value in the audio
+    max_val = max(abs(audio.min()), audio.max())
+
+    # If max_val is zero, it means the audio is silent. In this case, we return the audio as it is.
+    if max_val == 0:
+        return audio
+
+    # Rescale the audio to fit within the range -1 to 1
+    # print("---------------------------------------------------")
+    return audio / max_val
 
 
 class Synth():
@@ -67,6 +86,9 @@ class Synth():
         self.fs = 44100  # Sample rate
         self.num_channels = num_channels
         self.notes: dict = {}
+        self.effects: list[Callable] = [
+
+        ]
         # pygame.init()
         mixer.init(frequency=44100, size=-16,
                    channels=2, buffer=1024)
@@ -145,13 +167,23 @@ class Synth():
             pass
         print("Ready")
 
+    def apply_effects(self, sound):
+        for effect in self.effects:
+            print(effect.__name__)
+            sound = effect(sound)
+        return sound
+
     def live_synth_loop(self):
         midi.init()
         mixer.init(frequency=44100, size=-16,
                    channels=2, buffer=1024)
         mixer.set_num_channels(self.num_channels)
         for note, sound in self.note_list:
-            stereo = np.repeat(sound.reshape(-1, 1), 2, axis=1)
+            # print(sound.shape)
+            stereo = np.repeat(self.apply_effects(
+                sound).reshape(-1, 1), 2, axis=1)
+            stereo = np.array(stereo, dtype=np.int16)
+            np.savetxt(f"tmp/numpy/sound_note_{note}.numpy", stereo)
             stereo_sound = pygame.sndarray.make_sound(stereo)
             self.notes[note] = stereo_sound
 
@@ -229,3 +261,69 @@ class Synth():
         self.__dict__.update(state)
         if current_process().name != 'MainProcess':
             sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)
+
+
+def get_raw_audio(sound):
+    return pygame.sndarray.array(sound)
+
+
+def apply_reverb(audio, decay=0.5, delay=0.02, fs=44100):
+    delay_samples = int(delay * fs)
+    impulse_response = np.zeros((delay_samples, 2))
+    impulse_response[0, :] = 1
+    impulse_response[-1, :] = decay
+    reverb_audio = np.zeros_like(audio)
+    for channel in range(audio.shape[1]):
+        reverb_audio[:, channel] = scipy.signal.fftconvolve(
+            audio[:, channel], impulse_response[:, channel])[:len(audio)]
+    return reverb_audio
+
+
+def apply_echo(audio, delay=0.2, decay=0.5, fs=44100):
+    delay_samples = int(delay * fs)
+    echo_audio = np.zeros((len(audio) + delay_samples, audio.shape[1]))
+    echo_audio[:len(audio), :] = audio
+    echo_audio[delay_samples:, :] += decay * audio
+    echo_audio = echo_audio[:len(audio), :]
+    return echo_audio
+
+
+def apply_chorus(audio, rate=1.5, depth=0.02, fs=44100):
+    t = np.arange(len(audio)) / fs
+    mod = depth * np.sin(2 * np.pi * rate * t)
+    chorus_audio = np.zeros_like(audio)
+    for channel in range(audio.shape[1]):
+        for i in range(len(audio)):
+            delay = int(mod[i] * fs)
+            if i + delay < len(audio):
+                chorus_audio[i, channel] = audio[i + delay, channel]
+            else:
+                chorus_audio[i, channel] = audio[i, channel]
+    return chorus_audio
+
+
+def apply_distortion(audio, gain=2.0, threshold=0.5):
+    distorted_audio = gain * audio
+    distorted_audio[distorted_audio > threshold] = threshold
+    distorted_audio[distorted_audio < -threshold] = -threshold
+    return distorted_audio
+
+
+def apply_fm_modulation(audio, carrier_freq=1000, mod_index=2.0, fs=44100):
+    t = np.arange(len(audio)) / fs
+    fm_audio = np.zeros_like(audio)
+    for channel in range(audio.shape[1]):
+        mod_signal = mod_index * audio[:, channel]
+        fm_audio[:, channel] = np.sin(
+            2 * np.pi * carrier_freq * t + mod_signal)
+    return fm_audio
+
+
+def apply_am_modulation(audio, carrier_freq=1000, mod_index=0.5, fs=44100):
+    t = np.arange(len(audio)) / fs
+    am_audio = np.zeros_like(audio)
+    for channel in range(audio.shape[1]):
+        carrier = np.sin(2 * np.pi * carrier_freq * t)
+        am_audio[:, channel] = (
+            1 + mod_index * audio[:, channel]) * carrier
+    return am_audio

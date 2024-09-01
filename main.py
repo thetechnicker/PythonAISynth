@@ -1,6 +1,7 @@
 import copy
 import sys
-from scr.music import Synth
+from scr import music
+from scr.music import Synth, musik_from_file
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
 from scr.utils import DIE
@@ -82,7 +83,7 @@ class MainGUI(tk.Tk):
         self.style = ttk.Style()
         if DARKMODE:
             self.configure(bg='#202020')
-            self.option_add("*TCombobox*Listbox*Background", "black")
+            self.option_add("*TCombobox*Listbox*Background", "#202020")
             self.option_add("*TCombobox*Listbox*Foreground", "white")
             self.style.theme_create('dark', parent="clam", settings=dark_theme)
             self.style.theme_use('dark')
@@ -214,7 +215,7 @@ class MainGUI(tk.Tk):
     def create_menu(self):
         # Create a menu bar
         if DARKMODE:
-            self.menu_bar = tk.Menu(self, background="#2d2d2d", foreground="white",
+            self.menu_bar = tk.Menu(self, bg="#2d2d2d", fg="white",
                                     activebackground="#3e3e3e", activeforeground="white")
         else:
             self.menu_bar = tk.Menu(self)
@@ -238,7 +239,8 @@ class MainGUI(tk.Tk):
 
         # Create a 'Music' menu
         self.create_menu_item("Music", [
-            ("Play Music from MIDI", self.play_music)
+            ("Play Music from MIDI Port", self.play_music),
+            ("Play Music from MIDI File", self.play_music_file)
         ])
 
         # Display the menu
@@ -324,6 +326,12 @@ class MainGUI(tk.Tk):
             self.synth.run_live_synth()
             # music.midi_to_musik_live(self.fourier_nn, self.std_queue)
 
+    def play_music_file(self):
+        print("play_music")
+        if self.fourier_nn:
+            music.musik_from_file(self.fourier_nn)
+            # music.midi_to_musik_live(self.fourier_nn, self.std_queue)
+
     def clear_graph(self):
         print("clear_graph")
         self.graph.clear()
@@ -404,7 +412,6 @@ def main():
     with multiprocessing.Manager() as manager:
         std_write = copy.copy(sys.stdout.write)
         window = MainGUI(manager=manager)
-
         window.mainloop()
         sys.stdout.write = std_write
 
