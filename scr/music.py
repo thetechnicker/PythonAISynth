@@ -60,16 +60,9 @@ def musik_from_file(fourier_nn: FourierNN):
 
 
 def rescale_audio(audio):
-    # print("---------------------------------------------------")
-    # Find the maximum absolute value in the audio
     max_val = max(abs(audio.min()), audio.max())
-
-    # If max_val is zero, it means the audio is silent. In this case, we return the audio as it is.
     if max_val == 0:
         return audio
-
-    # Rescale the audio to fit within the range -1 to 1
-    # print("---------------------------------------------------")
     return audio / max_val
 
 
@@ -87,7 +80,10 @@ class Synth():
         self.num_channels = num_channels
         self.notes: dict = {}
         self.effects: list[Callable] = [
-
+            # apply_reverb,
+            # apply_echo,
+            # apply_chorus,
+            # apply_distortion,
         ]
         # pygame.init()
         mixer.init(frequency=44100, size=-16,
@@ -170,7 +166,9 @@ class Synth():
     def apply_effects(self, sound):
         for effect in self.effects:
             print(effect.__name__)
-            sound = effect(sound)
+            sound[:] = effect(sound)
+        sound = sound-np.mean(sound)
+        sound[:] = rescale_audio(sound)
         return sound
 
     def live_synth_loop(self):
@@ -180,10 +178,9 @@ class Synth():
         mixer.set_num_channels(self.num_channels)
         for note, sound in self.note_list:
             # print(sound.shape)
-            stereo = np.repeat(self.apply_effects(
-                sound).reshape(-1, 1), 2, axis=1)
+            stereo = np.repeat(rescale_audio(sound).reshape(-1, 1), 2, axis=1)
             stereo = np.array(stereo, dtype=np.int16)
-            np.savetxt(f"tmp/numpy/sound_note_{note}.numpy", stereo)
+            # np.savetxt(f"tmp/numpy/sound_note_{note}.numpy", stereo)
             stereo_sound = pygame.sndarray.make_sound(stereo)
             self.notes[note] = stereo_sound
 
@@ -307,23 +304,3 @@ def apply_distortion(audio, gain=2.0, threshold=0.5):
     distorted_audio[distorted_audio > threshold] = threshold
     distorted_audio[distorted_audio < -threshold] = -threshold
     return distorted_audio
-
-
-def apply_fm_modulation(audio, carrier_freq=1000, mod_index=2.0, fs=44100):
-    t = np.arange(len(audio)) / fs
-    fm_audio = np.zeros_like(audio)
-    for channel in range(audio.shape[1]):
-        mod_signal = mod_index * audio[:, channel]
-        fm_audio[:, channel] = np.sin(
-            2 * np.pi * carrier_freq * t + mod_signal)
-    return fm_audio
-
-
-def apply_am_modulation(audio, carrier_freq=1000, mod_index=0.5, fs=44100):
-    t = np.arange(len(audio)) / fs
-    am_audio = np.zeros_like(audio)
-    for channel in range(audio.shape[1]):
-        carrier = np.sin(2 * np.pi * carrier_freq * t)
-        am_audio[:, channel] = (
-            1 + mod_index * audio[:, channel]) * carrier
-    return am_audio
