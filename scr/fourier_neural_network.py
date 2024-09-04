@@ -1,13 +1,7 @@
-import atexit
-import gc
-import itertools
 import os
 import sys
-from copy import copy
 import multiprocessing
 from multiprocessing.pool import Pool
-import random
-from threading import Thread
 import time
 from typing import Tuple
 import numpy as np
@@ -17,12 +11,12 @@ from keras.models import Sequential
 from keras.layers import Dense, Input
 from keras.callbacks import Callback
 from tensorflow.keras.callbacks import EarlyStopping, CSVLogger
-import matplotlib.pyplot as plt
-from scipy.io.wavfile import write
-from multiprocessing import Process, Queue, current_process
+from multiprocessing import Queue, current_process
+from concurrent.futures import ProcessPoolExecutor
+from numba import njit, prange
 
 from scr import utils
-from scr.utils import QueueSTD_OUT, midi_to_freq
+from scr.utils import midi_to_freq
 # print(tf.__version__)
 
 
@@ -150,8 +144,27 @@ class FourierNN:
         return list(zip(self.prepared_data[0], self.prepared_data[2]))
 
     @staticmethod
-    def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
-        indices = np.arange(1, n + 1)
+    @njit(parallel=True)
+    def fourier_basis_numba(data, indices):
+        n_samples = data.shape[0]
+        n_features = indices.size * 2
+        result = np.empty((n_samples, n_features), dtype=np.float64)
+
+        for i in prange(n_samples):
+            x = data[i]
+            sin_basis = np.sin(np.outer(indices, x))
+            cos_basis = np.cos(np.outer(indices, x))
+            basis = np.concatenate((sin_basis, cos_basis), axis=0)
+            result[i, :] = basis.flatten()
+
+        return result
+
+    @staticmethod
+    def precompute_indices(n=DEFAULT_FORIER_DEGREE):
+        return np.arange(1, n + 1)
+
+    @staticmethod
+    def fourier_basis(x, indices):
         sin_basis = np.sin(np.outer(indices, x))
         cos_basis = np.cos(np.outer(indices, x))
         basis = np.concatenate((sin_basis, cos_basis), axis=0)
@@ -219,19 +232,20 @@ class FourierNN:
         x_test = np.array(x_test)
         y_test = np.array(y_test)
         print(" Generate Fourier-Basis ".center(50, '-'))
-
+        indices = FourierNN.precompute_indices(self.fourier_degree)
         with multiprocessing.Pool(processes=os.cpu_count()) as pool:
             result_a = pool.starmap(FourierNN.fourier_basis, zip(
                 x_train,
-                (self.fourier_degree for i in range(len(x_train))),
+                (indices for i in range(len(x_train))),
             ))
             result_b = pool.starmap(FourierNN.fourier_basis, zip(
-                x_train,
-                (self.fourier_degree for i in range(len(x_test))),
+                x_test,
+                (indices for i in range(len(x_test))),
             ))
 
         print(''.center(50, '-'))
 
+        # .reshape(-1, self.fourier_degree*2)
         x_train_transformed = np.array(result_a)
         x_test_transformed = np.array(result_b)
         print(len(x_train_transformed), len(y_train))
@@ -260,12 +274,14 @@ class FourierNN:
         if self.change_params:
             self.create_new_model()
         model = self.current_model
-
-        _x = [self.fourier_basis(x, self.fourier_degree) for x in test_data]
+        indices = FourierNN.precompute_indices(self.fourier_degree)
+        _x = [self.fourier_basis(x, indices) for x in test_data]
         _x = np.array(_x)
         early_stopping = EarlyStopping(
             monitor='val_loss', patience=self.PATIENCE)
         csvlogger = CSVLogger("./tmp/training.csv")
+
+        print(model.input_shape, x_train_transformed.shape, y_train.shape)
         model.fit(x_train_transformed, y_train,
                   epochs=self.EPOCHS, validation_data=(test_x, test_y),
                   callbacks=[
@@ -277,18 +293,21 @@ class FourierNN:
         self.current_model.save('./tmp/tmp_model.keras')
 
     def predict(self, data, batch_size=None):
-        fourier_degree = self.fourier_degree
-
+        indices = FourierNN.precompute_indices(self.fourier_degree)
         if not hasattr(data, '__iter__'):
-            _y = [FourierNN.fourier_basis(data, fourier_degree)]
+            _y = [FourierNN.fourier_basis(data, indices)]
         else:
             data = np.array(data)
 
             def t():
-                return np.concatenate([FourierNN.fourier_basis(
-                    x, fourier_degree) for x in data], axis=0)
-            _y = utils.messure_time_taken("fourier_basis", t, wait=False)
-        _y = _y.reshape(len(data), -1)
+                return [FourierNN.fourier_basis(x, indices) for x in data]
+            # _y = utils.messure_time_taken(
+            #     "fourier_basis", FourierNN.fourier_basis_numba, data, indices, wait=False)
+            _y = utils.messure_time_taken(
+                "fourier_basis", t, wait=False)
+        _y = np.array(_y)
+        print(_y.shape)
+        _y = _y.reshape(len(_y), -1)
         y_test = self.current_model.predict(
             np.array(_y), batch_size=batch_size if batch_size else len(data))
 
