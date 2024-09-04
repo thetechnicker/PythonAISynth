@@ -151,11 +151,11 @@ class FourierNN:
 
     @staticmethod
     def fourier_basis(x, n=DEFAULT_FORIER_DEGREE):
-        # print(f"generate fourier basis for {x}")
-        # return np.array([[x]]) to show why this function is importents
-        basis = [np.sin(i * x) for i in range(1, n+1)]
-        basis += [np.cos(i * x) for i in range(1, n+1)]
-        return np.array(basis)
+        indices = np.arange(1, n + 1)
+        sin_basis = np.sin(np.outer(indices, x))
+        cos_basis = np.cos(np.outer(indices, x))
+        basis = np.concatenate((sin_basis, cos_basis), axis=0)
+        return basis
 
     @staticmethod
     def taylor_basis(x, n=DEFAULT_FORIER_DEGREE):
@@ -277,15 +277,21 @@ class FourierNN:
         self.current_model.save('./tmp/tmp_model.keras')
 
     def predict(self, data, batch_size=None):
+        fourier_degree = self.fourier_degree
+
         if not hasattr(data, '__iter__'):
-            data = [data]
-        with multiprocessing.Pool(processes=os.cpu_count()) as pool:
-            _y = pool.starmap(FourierNN.fourier_basis, zip(
-                data,
-                (self.fourier_degree for i in range(len(data))),
-            ))
+            _y = [FourierNN.fourier_basis(data, fourier_degree)]
+        else:
+            data = np.array(data)
+
+            def t():
+                return np.concatenate([FourierNN.fourier_basis(
+                    x, fourier_degree) for x in data], axis=0)
+            _y = utils.messure_time_taken("fourier_basis", t, wait=False)
+        _y = _y.reshape(len(data), -1)
         y_test = self.current_model.predict(
             np.array(_y), batch_size=batch_size if batch_size else len(data))
+
         return y_test
 
     def synthesize(self, midi_note, duration=1.0, sample_rate=44100):

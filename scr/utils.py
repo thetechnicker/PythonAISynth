@@ -38,12 +38,13 @@ def DIE(process: Process, join_timeout=30, term_iterations=50):
         print("Success")
 
 
-def messure_time_taken(name, func, *args, **kwargs):
+def messure_time_taken(name, func, *args, wait=True, **kwargs):
     timestamp = time.perf_counter_ns()
     result = func(*args, **kwargs)
     print(
         f"Time taken for {name}: {(time.perf_counter_ns()-timestamp)/1_000_000_000}s")
-    input("paused")
+    if wait:
+        input("paused")
     return result
 
 
