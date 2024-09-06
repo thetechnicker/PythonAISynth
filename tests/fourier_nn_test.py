@@ -41,13 +41,14 @@ def main():
         buffer_size = 512
 
         a = np.zeros((timestep, 1))
-        try:
-            while True:
-                a = utils.messure_time_taken("predict", fourier_nn.predict, x)
-        except KeyboardInterrupt:
-            for i in range((len(x)//buffer_size)+1):
-                a[i*buffer_size:(i+1)*buffer_size] = utils.messure_time_taken(
-                    "predict", fourier_nn.predict, x[i*buffer_size:(i+1)*buffer_size], wait=False)
+        # try:
+        #     while True:
+        #         a = utils.messure_time_taken(
+        #             "predict", fourier_nn.predict, x, wait=False)
+        # except KeyboardInterrupt:
+        for i in range((len(x)//buffer_size)+1):
+            a[i*buffer_size:(i+1)*buffer_size] = utils.messure_time_taken(
+                "predict", fourier_nn.predict, x[i*buffer_size:(i+1)*buffer_size], wait=False)
 
         fig, ax = plt.subplots()
         ax.plot(x, a)

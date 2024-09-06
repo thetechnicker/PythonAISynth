@@ -1,3 +1,8 @@
+# autopep8: off
+import os
+os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 import copy
 import sys
 from scr import music
@@ -14,14 +19,13 @@ import atexit
 from multiprocessing import Process, Queue
 from multiprocessing.managers import SyncManager
 import multiprocessing
-import os
 from threading import Thread
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 import psutil
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+# autopep8: on
 
 dark_theme = {
     ".": {
@@ -128,7 +132,7 @@ class MainGUI(tk.Tk):
             'FORIER_DEGREE_OFFSET': 0,
             'PATIENCE': 10,
             'OPTIMIZER': 'Adam',
-            'LOSS_FUNCTION': 'Huber',
+            'LOSS_FUNCTION': 'huber',
         }
 
         self.gui = NeuralNetworkGUI(
@@ -279,7 +283,7 @@ class MainGUI(tk.Tk):
                     self.fourier_nn.load_tmp_model()
                     print("model loaded")
                     self.graph.draw_extern_graph_from_func(
-                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
+                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4, graph_type='crazy')
                     self.synth = Synth(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None

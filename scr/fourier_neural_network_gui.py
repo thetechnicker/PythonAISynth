@@ -14,7 +14,7 @@ class NeuralNetworkGUI(ttk.Frame):
 
         # Define the list of loss functions and optimizers
         self.loss_functions = [func for func in dir(
-            losses) if not func.startswith('_') and isinstance(getattr(losses, func), type)]
+            losses) if not func.startswith('_') and callable(getattr(losses, func))]
 
         self.optimizers_list = [opt for opt in dir(
             optimizers) if not opt.startswith('_') and isinstance(getattr(optimizers, opt), type)]
@@ -36,6 +36,8 @@ class NeuralNetworkGUI(ttk.Frame):
                           var=var: self.on_change(key, var.get()))
             if param in ['OPTIMIZER', 'LOSS_FUNCTION']:
                 # set the default option
+                print("".center(25, "#"))
+                print(param)
                 used_list = self.optimizers_list if param == 'OPTIMIZER' else self.loss_functions
                 try:
                     default = used_list[used_list.index(defaults.get(param))]
