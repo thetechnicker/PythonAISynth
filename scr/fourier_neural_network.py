@@ -79,6 +79,7 @@ class FourierNN:
         for key in self.keys:
             val = getattr(self, key, None)
             print(f"{key}: {val}")
+        self.create_new_model()
         print("-------------------------")
 
     def __getstate__(self):
@@ -126,10 +127,12 @@ class FourierNN:
             self.update_data(data)
 
     def create_new_model(self):
-        if self.current_model:
-            self.models.append(self.current_model)
-        self.current_model = self.create_model(
-            (self.prepared_data[1].shape[1],))
+        if hasattr(self, "prepared_data"):
+            if self.prepared_data:
+                # if self.current_model:
+                #     self.models.append(self.current_model)
+                self.current_model = self.create_model(
+                    (self.prepared_data[1].shape[1],))
 
     def get_models(self) -> list[Sequential]:
         return [self.current_model]+self.models
@@ -152,6 +155,7 @@ class FourierNN:
 
         for i in prange(n_samples):
             x = data[i]
+            print("generating fourier basis for:", x)
             sin_basis = np.sin(np.outer(indices, x))
             cos_basis = np.cos(np.outer(indices, x))
             basis = np.concatenate((sin_basis, cos_basis), axis=0)
@@ -233,15 +237,18 @@ class FourierNN:
         y_test = np.array(y_test)
         print(" Generate Fourier-Basis ".center(50, '-'))
         indices = FourierNN.precompute_indices(self.fourier_degree)
-        with multiprocessing.Pool(processes=os.cpu_count()) as pool:
-            result_a = pool.starmap(FourierNN.fourier_basis, zip(
-                x_train,
-                (indices for i in range(len(x_train))),
-            ))
-            result_b = pool.starmap(FourierNN.fourier_basis, zip(
-                x_test,
-                (indices for i in range(len(x_test))),
-            ))
+        # with multiprocessing.Pool(processes=os.cpu_count()) as pool:
+        #     result_a = pool.starmap(FourierNN.fourier_basis, zip(
+        #         x_train,
+        #         (indices for i in range(len(x_train))),
+        #     ))
+        #     result_b = pool.starmap(FourierNN.fourier_basis, zip(
+        #         x_test,
+        #         (indices for i in range(len(x_test))),
+        #     ))
+
+        result_a = self.fourier_basis_numba(x_train, indices)
+        result_b = self.fourier_basis_numba(x_train, indices)
 
         print(''.center(50, '-'))
 

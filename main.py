@@ -121,9 +121,9 @@ class MainGUI(tk.Tk):
 
     def add_net_controll(self):
         defaults = {
-            'SAMPLES': 44100//2,
+            'SAMPLES': 500,
             'EPOCHS': 100,
-            'DEFAULT_FORIER_DEGREE': 250,
+            'DEFAULT_FORIER_DEGREE': 300,
             'FORIER_DEGREE_DIVIDER': 1,
             'FORIER_DEGREE_OFFSET': 0,
             'PATIENCE': 10,
@@ -279,7 +279,7 @@ class MainGUI(tk.Tk):
                     self.fourier_nn.load_tmp_model()
                     print("model loaded")
                     self.graph.draw_extern_graph_from_func(
-                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
+                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4, graph_type='crazy')
                     self.synth = Synth(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
@@ -324,6 +324,8 @@ class MainGUI(tk.Tk):
         print("play_music")
         if self.synth:
             self.synth.run_live_synth()
+        else:
+            print("or not")
             # music.midi_to_musik_live(self.fourier_nn, self.std_queue)
 
     def play_music_file(self):
@@ -392,7 +394,9 @@ class MainGUI(tk.Tk):
     def redraw_graph(self):
         # now idea when usefull
         print("redraw_graph")
-        self.graph._draw()
+        self.graph.draw_extern_graph_from_func(
+            self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
+        # self.graph._draw()
 
     def draw_graph_from_func(self, *args, **kwargs):
         print("draw_graph_from_func:", self.combo_selected_value.get())
