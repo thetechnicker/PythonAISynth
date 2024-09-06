@@ -167,7 +167,7 @@ class FourierNN:
     def fourier_basis(x, indices):
         sin_basis = np.sin(np.outer(indices, x))
         cos_basis = np.cos(np.outer(indices, x))
-        basis = np.concatenate((sin_basis, cos_basis), axis=0)
+        basis = np.concatenate((sin_basis, cos_basis), axis=0).flatten()
         return basis
 
     @staticmethod
