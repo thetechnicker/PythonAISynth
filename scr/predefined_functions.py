@@ -1,5 +1,6 @@
 import random
-from tensorflow import keras
+import keras
+import keras
 import numpy as np
 
 from scr import utils
@@ -87,5 +88,5 @@ predefined_functions_dict = {
     'sigmoid': keras.activations.sigmoid,
     'exponential': keras.activations.exponential,
     'selu': keras.activations.selu,
-    'gelu': keras.activations.gelu,
+    # 'gelu': keras.activations.gelu,
 }

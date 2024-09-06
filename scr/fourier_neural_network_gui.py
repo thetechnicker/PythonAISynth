@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
-from tensorflow.keras import losses, optimizers
+from keras import losses, optimizers
 
 
 class NeuralNetworkGUI(ttk.Frame):

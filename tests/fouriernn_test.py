@@ -2,9 +2,10 @@ import os
 import unittest
 from context import scr
 from scr import fourier_neural_network
+import keras
 
 import numpy as np
-import tensorflow as tf
+# import tensorflow as tf
 
 # TODO could use refactor
 
@@ -25,36 +26,38 @@ class TestStringMethods(unittest.TestCase):
     #     self.assertIsNotNone(fourier_nn.current_model)
 
     def test_relu_aprox(self):
-        data = [(x, tf.keras.activations.relu(x))
+        data = [(x, keras.activations.relu(x))
                 for x in np.linspace(np.pi, -np.pi, 100)]
         fourier_nn = fourier_neural_network.FourierNN(data)
         # self.assertEqual(fourier_nn.data, data)
         fourier_nn.train(quiet=True)
         test_data = np.linspace(np.pi, np.pi, fourier_nn.SAMPLES)
         out = fourier_nn.predict(test_data)
-        wanted_data=np.array([tf.keras.activations.relu(x) for x in test_data]).reshape((fourier_nn.SAMPLES, 1))
-        #print(wanted_data)
+        wanted_data = np.array([keras.activations.relu(x)
+                               for x in test_data]).reshape((fourier_nn.SAMPLES, 1))
+        # print(wanted_data)
         np.testing.assert_almost_equal(out, wanted_data, decimal=1)
 
     def test_sine_of_relu_aprox(self):
-        data = [(x, np.sin(x * tf.keras.activations.relu(x)))
+        data = [(x, np.sin(x * keras.activations.relu(x)))
                 for x in np.linspace(np.pi, -np.pi, 100)]
         fourier_nn = fourier_neural_network.FourierNN(data)
         # self.assertEqual(fourier_nn.data, data)
         fourier_nn.train(quiet=True)
         test_data = np.linspace(np.pi, np.pi, fourier_nn.SAMPLES)
-        #print(data)
+        # print(data)
         out = fourier_nn.predict(test_data)
-        wanted_data=np.array([np.sin(x*tf.keras.activations.relu(x)) for x in test_data]).reshape((fourier_nn.SAMPLES, 1))
-        #print(wanted_data)
-        #np.testing.assert_almost_equal(data, wanted_data)
+        wanted_data = np.array([np.sin(x*keras.activations.relu(x))
+                               for x in test_data]).reshape((fourier_nn.SAMPLES, 1))
+        # print(wanted_data)
+        # np.testing.assert_almost_equal(data, wanted_data)
         np.testing.assert_almost_equal(out, wanted_data, decimal=1)
 
 
 if __name__ == '__main__':
     unittest.main()
 # # Test the class with custom data points
-# data = [(x, np.sin(x * tf.keras.activations.relu(x)))
+# data = [(x, np.sin(x * keras.activations.relu(x)))
 #         for x in np.linspace(np.pi, -np.pi, 100)]
 # fourier_nn = FourierNN(data)
 # fourier_nn.train()

@@ -6,11 +6,11 @@ import time
 from typing import Tuple
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
+import keras
 from keras.models import Sequential
 from keras.layers import Dense, Input
 from keras.callbacks import Callback
-from tensorflow.keras.callbacks import EarlyStopping, CSVLogger
+from keras.callbacks import EarlyStopping, CSVLogger
 from multiprocessing import Queue, current_process
 from concurrent.futures import ProcessPoolExecutor
 from numba import njit, prange
@@ -52,7 +52,7 @@ class FourierNN:
     FORIER_DEGREE_OFFSET = 0
     PATIENCE = 10
     OPTIMIZER = 'Adam'
-    LOSS_FUNCTION = 'Huber'
+    LOSS_FUNCTION = 'huber'
     change_params = False
     keys = [
         'SAMPLES',
@@ -95,7 +95,7 @@ class FourierNN:
         self.__dict__.update(state)
         if os.path.exists('./tmp/tmp_model.keras'):
             with self.lock:
-                self.current_model = tf.keras.models.load_model(
+                self.current_model = keras.models.load_model(
                     './tmp/tmp_model.keras')
 
         if current_process().name != 'MainProcess' and self.stdout_queue:
@@ -108,7 +108,7 @@ class FourierNN:
 
     def load_tmp_model(self):
         with self.lock:
-            self.current_model = tf.keras.models.load_model(
+            self.current_model = keras.models.load_model(
                 './tmp/tmp_model.keras')
             self.current_model.summary()
 
@@ -167,7 +167,7 @@ class FourierNN:
     def fourier_basis(x, indices):
         sin_basis = np.sin(np.outer(indices, x))
         cos_basis = np.cos(np.outer(indices, x))
-        basis = np.concatenate((sin_basis, cos_basis), axis=0)
+        basis = np.concatenate((sin_basis, cos_basis), axis=0).flatten()
         return basis
 
     @staticmethod
@@ -232,39 +232,42 @@ class FourierNN:
         x_test = np.array(x_test)
         y_test = np.array(y_test)
         print(" Generate Fourier-Basis ".center(50, '-'))
-        indices = FourierNN.precompute_indices(self.fourier_degree)
+        self.indices = FourierNN.precompute_indices(self.fourier_degree)
         with multiprocessing.Pool(processes=os.cpu_count()) as pool:
             result_a = pool.starmap(FourierNN.fourier_basis, zip(
                 x_train,
-                (indices for i in range(len(x_train))),
+                (self.indices for i in range(len(x_train))),
             ))
             result_b = pool.starmap(FourierNN.fourier_basis, zip(
                 x_test,
-                (indices for i in range(len(x_test))),
+                (self.indices for i in range(len(x_test))),
             ))
 
         print(''.center(50, '-'))
 
         # .reshape(-1, self.fourier_degree*2)
         x_train_transformed = np.array(result_a)
+        # x_train_transformed = x_train_transformed.reshape(
+        #     x_train_transformed.shape[0], x_train_transformed.shape[1])
         x_test_transformed = np.array(result_b)
-        print(len(x_train_transformed), len(y_train))
+        print(x_train_transformed.shape, y_train.shape)
         return (x_train, x_train_transformed, y_train, actualData_x, actualData_y, x_test_transformed, y_test)
 
     def create_model(self, input_shape):
         print(input_shape)
-        model: tf.keras.Model = Sequential([
-            Input(shape=input_shape),
-            Dense(64, activation='linear'),
+        model: keras.Model = Sequential([
+            # Input(shape=input_shape),
+            Dense(64, activation='linear', input_shape=input_shape),
             Dense(1, activation='linear')
         ])
         model.compile(optimizer=self.OPTIMIZER,
-                      loss=tf.keras.losses.get(self.LOSS_FUNCTION),
+                      loss=keras.losses.get(self.LOSS_FUNCTION),
                       metrics=[
                           'accuracy',
-                          tf.keras.metrics.MeanSquaredError(),
-                          tf.keras.metrics.MeanAbsoluteError(),
-                          tf.keras.metrics.RootMeanSquaredError(),
+                          keras.metrics.mean_squared_error,
+                          keras.metrics.mean_absolute_error,
+                          #   keras.metrics.RootMeanSquaredError,
+                          #   keras.metrics.me
                       ])
         model.summary()
         return model
@@ -274,14 +277,14 @@ class FourierNN:
         if self.change_params:
             self.create_new_model()
         model = self.current_model
-        indices = FourierNN.precompute_indices(self.fourier_degree)
-        _x = [self.fourier_basis(x, indices) for x in test_data]
+        _x = [self.fourier_basis(x, self.indices) for x in test_data]
         _x = np.array(_x)
         early_stopping = EarlyStopping(
             monitor='val_loss', patience=self.PATIENCE)
         csvlogger = CSVLogger("./tmp/training.csv")
 
-        print(model.input_shape, x_train_transformed.shape, y_train.shape)
+        print(model.input_shape, x_train_transformed.shape,
+              y_train.shape, _x.shape)
         model.fit(x_train_transformed, y_train,
                   epochs=self.EPOCHS, validation_data=(test_x, test_y),
                   callbacks=[
@@ -293,16 +296,13 @@ class FourierNN:
         self.current_model.save('./tmp/tmp_model.keras')
 
     def predict(self, data, batch_size=None):
-        indices = FourierNN.precompute_indices(self.fourier_degree)
         if not hasattr(data, '__iter__'):
-            _y = [FourierNN.fourier_basis(data, indices)]
+            _y = [FourierNN.fourier_basis(data, self.indices)]
         else:
             data = np.array(data)
 
             def t():
-                return [FourierNN.fourier_basis(x, indices) for x in data]
-            # _y = utils.messure_time_taken(
-            #     "fourier_basis", FourierNN.fourier_basis_numba, data, indices, wait=False)
+                return [FourierNN.fourier_basis(x, self.indices) for x in data]
             _y = utils.messure_time_taken(
                 "fourier_basis", t, wait=False)
         _y = np.array(_y)
@@ -320,7 +320,7 @@ class FourierNN:
         t_scaled = t * 2 * np.pi / (1/freq)
         batch_size = int(sample_rate*duration)
         output = self.current_model.predict(np.array([self.fourier_basis(
-            x, self.fourier_degree) for x in t_scaled]), batch_size=batch_size)
+            x, self.indices) for x in t_scaled]), batch_size=batch_size)
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         return output.astype(np.int16)
 
@@ -332,7 +332,7 @@ class FourierNN:
         t_scaled = (t * 2 * np.pi) / (1/freq)
         batch_size = sample_rate//1
         output = self.current_model.predict(np.array([self.fourier_basis(
-            x, self.fourier_degree) for x in t_scaled]), batch_size=batch_size)
+            x, self.indices) for x in t_scaled]), batch_size=batch_size)
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         print(f"Generated sound for note: {midi_note}")
         # gc.collect()
@@ -346,7 +346,7 @@ class FourierNN:
     def load_new_model_from_file(self, filename='./tmp/model.h5'):
         if self.current_model:
             self.models.append(self.current_model)
-        self.current_model = tf.keras.models.load_model(filename)
+        self.current_model = keras.models.load_model(filename)
         print(self.current_model.name)
         self.current_model._name = os.path.basename(
             filename).replace('/', '').split('.')[0]
