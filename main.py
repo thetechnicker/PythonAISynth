@@ -292,11 +292,13 @@ class MainGUI(tk.Tk):
                 return
         self.after(100, self.train_update)
 
-    def init_or_update_nn(self):  # , stdout=None):
+    def init_or_update_nn(self, stdout=None):
         if not self.fourier_nn:
+            print("".center(20, '*'))
             self.fourier_nn = FourierNN(
-                self.lock, self.graph.export_data(), stdout_queue=self.std_queue)
+                self.lock, self.graph.export_data(), stdout_queue=stdout)
         else:
+            print("".center(20, '#'))
             self.fourier_nn.update_data(self.graph.export_data())
 
         self.fourier_nn.save_tmp_model()
@@ -314,7 +316,9 @@ class MainGUI(tk.Tk):
         self.block_training = True
         print("STARTING TRAINING")
         # , args=(self.std_redirect.queue,))
-        t = Thread(target=self.init_or_update_nn)
+        # print(self.std_queue)
+        # input("dasfasdf")
+        t = Thread(target=self.init_or_update_nn, args=(self.std_queue,))
         t.daemon = True
         t.start()
         self.after(100, self.train_update)
@@ -407,6 +411,7 @@ class MainGUI(tk.Tk):
 
     def update_frourier_params(self, key, value):
         if not self.fourier_nn:
+            # print(self.std_queue)
             self.fourier_nn = FourierNN(
                 lock=self.lock, stdout_queue=self.std_queue)
         self.fourier_nn.update_attribs(**{key: value})

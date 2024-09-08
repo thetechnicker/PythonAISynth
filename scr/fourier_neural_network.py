@@ -21,9 +21,10 @@ from scr.utils import QueueSTD_OUT, midi_to_freq
 
 
 class MyCallback(Callback):
-    def __init__(self, queue: Queue = None, test_data=None, quiet=False):
+    def __init__(self, queue: Queue = None, test_data=None, quiet=False, std_queue: Queue = None):
         # print(tf.__version__)
         super().__init__()
+        sys.stdout = QueueSTD_OUT(std_queue)
         self.queue: Queue = queue
         self.test_data = test_data
         self.quiet = quiet
@@ -70,7 +71,7 @@ class FourierNN:
         for key, val in kwargs.items():
             if hasattr(self, key) and key in self.keys:
                 setattr(self, key, val)
-                change_params = True
+                # change_params = True
                 # if self.prepared_data:
                 #    self.create_new_model()
             else:
@@ -78,9 +79,9 @@ class FourierNN:
                     f"The attribute '{key}' does not exist or can not be modified this way.")
         for key in self.keys:
             val = getattr(self, key, None)
-            print(f"{key}: {val}")
+            # print(f"{key}: {val}")
         self.create_new_model()
-        print("-------------------------")
+        # print("-------------------------")
 
     def __getstate__(self):
         # Save the model to a file before serialization
@@ -98,14 +99,18 @@ class FourierNN:
             with self.lock:
                 self.current_model = tf.keras.models.load_model(
                     './tmp/tmp_model.keras')
-
-        if current_process().name != 'MainProcess' and self.stdout_queue:
-            sys.stdout = utils.QueueSTD_OUT(self.stdout_queue)
+        if self.stdout_queue:  # and current_process().name != 'MainProcess'
+            sys.stdout = QueueSTD_OUT(self.stdout_queue)
+            # print("test")
         # for key in self.keys:
         #     val = getattr(self, key, None)
         #     print(f"{key}: {val}")
         # self.stdout_queue = None
         # print("-------------------------")
+
+    def init_process(self):
+        if self.stdout_queue:
+            sys.stdout = QueueSTD_OUT(self.stdout_queue)
 
     def load_tmp_model(self):
         with self.lock:
@@ -123,6 +128,7 @@ class FourierNN:
         self.fourier_degree = self.DEFAULT_FORIER_DEGREE
         self.prepared_data = None
         self.stdout_queue = stdout_queue
+        # print(self.stdout_queue)
         if data is not None:
             self.update_data(data)
 
@@ -138,8 +144,10 @@ class FourierNN:
         return [self.current_model]+self.models
 
     def update_data(self, data, stdout_queue=None):
-        self.stdout_queue = stdout_queue
-        self.prepared_data = self.prepare_data(list(data))
+        if stdout_queue:
+            self.stdout_queue = stdout_queue
+        self.prepared_data = self.prepare_data(
+            list(data), std_queue=self.stdout_queue)
         if not self.current_model:
             self.create_new_model()
 
@@ -181,7 +189,10 @@ class FourierNN:
         basis = [x**i / np.math.factorial(i) for i in range(n)]
         return np.array(basis)
 
-    def prepare_data(self, data):
+    def prepare_data(self, data, std_queue: Queue = None):
+        if std_queue:
+            self.stdout_queue = std_queue
+        # print(self.stdout_queue)
 
         self.fourier_degree = ((len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
                                if self.CALC_FOURIER_DEGREE_BY_DATA_LENGTH
@@ -195,7 +206,8 @@ class FourierNN:
             data_copy = sorted(data[:], key=lambda x: x[0])
             pairs = ((data_copy[i], data_copy[i+1], 0.5)
                      for i in range(len(data_copy)-1))
-            with Pool() as pool:
+            # , initializer=self.init_process) as pool:
+            with Pool(processes=os.cpu_count()) as pool:
                 new_data = pool.starmap(utils.interpolate, pairs)
             data.extend(new_data)
             if len(data) >= self.SAMPLES:
@@ -217,7 +229,8 @@ class FourierNN:
             data_copy = sorted(test_data[:], key=lambda x: x[0])
             pairs = ((data_copy[i], data_copy[i+1],)
                      for i in range(len(data_copy)-1))
-            with Pool() as pool:
+            # initargs=self.stdout_queue
+            with Pool(processes=os.cpu_count()) as pool:
                 new_data = pool.starmap(utils.interpolate, pairs)
             test_data.extend(new_data)
             if len(test_data) >= test_samples:
@@ -272,7 +285,9 @@ class FourierNN:
         model.summary()
         return model
 
-    def train(self, test_data, queue=None, quiet=False):
+    def train(self, test_data, queue=None, quiet=False, stdout_queue=None):
+        if stdout_queue:
+            sys.stdout = QueueSTD_OUT(stdout_queue)
         _, x_train_transformed, y_train, _, _, test_x, test_y = self.prepared_data
         if self.change_params:
             self.create_new_model()
@@ -294,7 +309,8 @@ class FourierNN:
         model.fit(x_train_transformed, y_train,
                   epochs=self.EPOCHS, validation_data=(test_x, test_y),
                   callbacks=[
-                      MyCallback(queue, _x, quiet),
+                      MyCallback(queue=queue, test_data=_x,
+                                 quiet=quiet, std_queue=stdout_queue),
                       early_stopping,
                       csvlogger,
                   ],

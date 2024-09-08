@@ -24,10 +24,9 @@ class RedirectedOutputFrame(tk.Frame):
         self.textbox.configure(wrap='word')
         self.textbox.bind("<Configure>", self.on_resize)
         self.queue: Queue = Queue(-1) if not std_queue else std_queue
-        self.old_stdout = copy(sys.stdout.write)
-        self.old_stderr = copy(sys.stderr.write)
-        sys.stdout.write = self.redirector
-        sys.stderr.write = self.redirector
+        self.old_stdout = sys.stdout
+        # self.old_stderr = copy(sys.stderr)
+        sys.stdout = utils.QueueSTD_OUT(self.queue)
         self.after(100, self.check_queue)
 
         # dictionaries to replace formatting code with tags
@@ -153,7 +152,7 @@ class RedirectedOutputFrame(tk.Frame):
         # self.textbox.insert(tk.INSERT, inputStr)
         self.textbox.configure(state='disabled')
         self.textbox.see(tk.END)  # Auto-scroll to the end
-        self.old_stdout(inputStr)
+        self.old_stdout.write(inputStr)
 
     def on_resize(self, event):
         width = self.textbox.winfo_width()
@@ -171,4 +170,4 @@ class RedirectedOutputFrame(tk.Frame):
         self.after(100, self.check_queue)
 
     def __del__(self):
-        sys.stdout.write = self.old_stdout
+        sys.stdout = self.old_stdout
