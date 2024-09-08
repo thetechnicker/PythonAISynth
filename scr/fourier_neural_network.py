@@ -16,7 +16,7 @@ from concurrent.futures import ProcessPoolExecutor
 from numba import njit, prange
 
 from scr import utils
-from scr.utils import midi_to_freq
+from scr.utils import QueueSTD_OUT, midi_to_freq
 # print(tf.__version__)
 
 
@@ -44,13 +44,13 @@ class MyCallback(Callback):
 
 
 class FourierNN:
-    SAMPLES = 44100//2
-    EPOCHS = 100
+    SAMPLES = 1000  # 44100//2
+    EPOCHS = 1000
     CALC_FOURIER_DEGREE_BY_DATA_LENGTH = False
-    DEFAULT_FORIER_DEGREE = 250
+    DEFAULT_FORIER_DEGREE = 300
     FORIER_DEGREE_DIVIDER = 1
     FORIER_DEGREE_OFFSET = 0
-    PATIENCE = 10
+    PATIENCE = 50
     OPTIMIZER = 'Adam'
     LOSS_FUNCTION = 'Huber'
     change_params = False
@@ -154,12 +154,14 @@ class FourierNN:
         result = np.empty((n_samples, n_features), dtype=np.float64)
 
         for i in prange(n_samples):
+            # print("\n")
             x = data[i]
             print("generating fourier basis for:", x)
             sin_basis = np.sin(np.outer(indices, x))
             cos_basis = np.cos(np.outer(indices, x))
             basis = np.concatenate((sin_basis, cos_basis), axis=0)
             result[i, :] = basis.flatten()
+            # print("\n")
 
         return result
 
@@ -198,7 +200,7 @@ class FourierNN:
             data.extend(new_data)
             if len(data) >= self.SAMPLES:
                 # Delete every second element
-                data = data[::2]
+                # data = data[::2]
                 break
 
         while len(data) > self.SAMPLES:
@@ -220,7 +222,7 @@ class FourierNN:
             test_data.extend(new_data)
             if len(test_data) >= test_samples:
                 # Delete every second element
-                test_data = test_data[::2]
+                # test_data = test_data[::2]
                 break
 
         while len(test_data) > test_samples:
@@ -237,25 +239,19 @@ class FourierNN:
         y_test = np.array(y_test)
         print(" Generate Fourier-Basis ".center(50, '-'))
         indices = FourierNN.precompute_indices(self.fourier_degree)
-        # with multiprocessing.Pool(processes=os.cpu_count()) as pool:
-        #     result_a = pool.starmap(FourierNN.fourier_basis, zip(
-        #         x_train,
-        #         (indices for i in range(len(x_train))),
-        #     ))
-        #     result_b = pool.starmap(FourierNN.fourier_basis, zip(
-        #         x_test,
-        #         (indices for i in range(len(x_test))),
-        #     ))
 
         result_a = self.fourier_basis_numba(x_train, indices)
-        result_b = self.fourier_basis_numba(x_train, indices)
+        result_b = self.fourier_basis_numba(x_test, indices)
 
         print(''.center(50, '-'))
 
         # .reshape(-1, self.fourier_degree*2)
         x_train_transformed = np.array(result_a)
         x_test_transformed = np.array(result_b)
-        print(len(x_train_transformed), len(y_train))
+        # print(len(x_train_transformed), len(y_train))
+        # print(len(test_data), np.array(test_data).shape)
+        # print(x_test_transformed.shape, y_test.shape)
+        # input("paused")
         return (x_train, x_train_transformed, y_train, actualData_x, actualData_y, x_test_transformed, y_test)
 
     def create_model(self, input_shape):
@@ -288,7 +284,13 @@ class FourierNN:
             monitor='val_loss', patience=self.PATIENCE)
         csvlogger = CSVLogger("./tmp/training.csv")
 
-        print(model.input_shape, x_train_transformed.shape, y_train.shape)
+        print("model.input_shape", model.input_shape, "\n",
+              "model.output_shape", model.output_shape, "\n",
+              "x_train_transformed.shape", x_train_transformed.shape, "\n",
+              "y_train.shape", y_train.shape, "\n",
+              "test_x.shape", test_x.shape, "\n",
+              "test_y.shape", test_y.shape, "\n",
+              "_x.shape", _x.shape, "\n")
         model.fit(x_train_transformed, y_train,
                   epochs=self.EPOCHS, validation_data=(test_x, test_y),
                   callbacks=[

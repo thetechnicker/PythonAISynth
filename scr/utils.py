@@ -8,6 +8,7 @@ import time
 from typing import Any, Callable, TextIO
 import numpy as np
 from scipy.fft import dst
+from numba import njit
 
 
 class QueueSTD_OUT(TextIO):
@@ -75,6 +76,7 @@ def find_two_closest(num_list, x):
     return sorted_list[:2]
 
 
+@njit
 def interpolate(point1, point2, t=0.5):
     """
     Interpolate between two 2D points.
@@ -96,6 +98,7 @@ def interpolate(point1, point2, t=0.5):
     return (x, y)
 
 
+@njit
 def interpolate_vectorized(point1, point2, t_values):
     """
     Vectorized interpolation between two 2D points.

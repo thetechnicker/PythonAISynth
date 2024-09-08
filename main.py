@@ -1,6 +1,7 @@
 import copy
 import sys
 from scr import music
+from scr import utils
 from scr.music import Synth, musik_from_file
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
@@ -113,6 +114,7 @@ class MainGUI(tk.Tk):
         self.graph.grid(row=1, column=0, columnspan=3, sticky='NSEW')
         self.add_net_controll()
         self.create_status_bar()
+        # sys.stdout = utils.QueueSTD_OUT(self.std_queue)
 
     def init_terminal_frame(self):
         self.std_redirect = RedirectedOutputFrame(self, self.std_queue)
@@ -121,12 +123,12 @@ class MainGUI(tk.Tk):
 
     def add_net_controll(self):
         defaults = {
-            'SAMPLES': 500,
-            'EPOCHS': 100,
+            'SAMPLES': 1000,
+            'EPOCHS': 1000,
             'DEFAULT_FORIER_DEGREE': 300,
             'FORIER_DEGREE_DIVIDER': 1,
             'FORIER_DEGREE_OFFSET': 0,
-            'PATIENCE': 10,
+            'PATIENCE': 50,
             'OPTIMIZER': 'Adam',
             'LOSS_FUNCTION': 'Huber',
         }
@@ -279,7 +281,7 @@ class MainGUI(tk.Tk):
                     self.fourier_nn.load_tmp_model()
                     print("model loaded")
                     self.graph.draw_extern_graph_from_func(
-                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4, graph_type='crazy')
+                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
                     self.synth = Synth(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
@@ -299,7 +301,7 @@ class MainGUI(tk.Tk):
 
         self.fourier_nn.save_tmp_model()
         self.trainings_process = multiprocessing.Process(
-            target=self.fourier_nn.train, args=(self.graph.lst, self.queue, ))
+            target=self.fourier_nn.train, args=(self.graph.lst, self.queue, ), kwargs={"stdout_queue": self.std_queue})
         self.trainings_process.start()
         self.training_started = True
 

@@ -2,11 +2,9 @@ import multiprocessing
 import os
 from matplotlib import ticker
 import numpy as np
-import sys
 import matplotlib.pyplot as plt
-from scipy.fft import dst
 import tensorflow as tf
-from tensorflow.keras import mixed_precision
+import sounddevice as sd
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -15,18 +13,20 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from context import scr
 from scr import predefined_functions
 from scr.fourier_neural_network import FourierNN
-from scr import utils
-from scr.music import Synth
 # autopep8: on
 
 
+def _1():
+    # to avoid removing importent import of scr
+    scr
+
+
 def main():
-    mixed_precision.set_global_policy('mixed_float16')
-    tf.config.optimizer.set_jit(True)
+    # mixed_precision.set_global_policy('mixed_float16')
+    # tf.config.optimizer.set_jit(True)
     # Initialize variables
     timestep = 44100
-    f = 440
-
+    f = 1
     t = np.linspace(-np.pi, np.pi, 250)
     data = list(
         zip(t, (predefined_functions.predefined_functions_dict['sin'](x) for x in t)))
@@ -37,15 +37,41 @@ def main():
 
         # utils.messure_time_taken(
         #     "predict", lambda x: [fourier_nn.predict(_x, 1) for _x in x], 2*np.pi * f * np.linspace(0, 1, timestep))
-        x = 2*np.pi * np.linspace(0, 1, timestep)
-        buffer_size = 512
-        a = np.zeros((timestep, 1))
-        for i in range((len(x)//buffer_size)+1):
-            a[i*buffer_size:(i+1)*buffer_size] = utils.messure_time_taken(
-                "predict", fourier_nn.predict, x[i*buffer_size:(i+1)*buffer_size], wait=False)
+        t2 = 2 * np.pi * f * np.linspace(0, 1, timestep)
+        buffer_size = 1024  # 512
+        # a = np.zeros((timestep, 1))
+        x = FourierNN.fourier_basis_numba(
+            t2, FourierNN.precompute_indices(fourier_nn.fourier_degree))
+
+        # for i in range((len(x)//buffer_size)+1):
+        #     a[i*buffer_size:(i+1)*buffer_size] = utils.messure_time_taken('predict',
+        #                                                                   fourier_nn.current_model.predict,
+        #                                                                   x[i*buffer_size:(
+        #                                                                       i+1)*buffer_size],
+        #                                                                   batch_size=buffer_size,
+        #                                                                   wait=False)
+        # a[i*buffer_size:(i+1)*buffer_size] = utils.messure_time_taken(
+        #     "predict", fourier_nn.predict, x[i*buffer_size:(i+1)*buffer_size], wait=False)
+        a = fourier_nn.current_model.predict(
+            x,
+            batch_size=len(x))
+        # try:
+        #     a = fourier_nn.current_model.predict(
+        #         x,
+        #         batch_size=len(x))
+        #     # verbose=0)
+        #     # max_i = (len(x)//buffer_size)+1
+        #     # i = 0
+        #     while True:
+        #         sd.wait()
+        #         sd.play(a)
+        #         # i = (i+1) % (max_i)
+        # except KeyboardInterrupt:
+        #     print("exit")
+        #     exit()
 
         fig, ax = plt.subplots()
-        ax.plot(x, a)
+        ax.plot(t2, a)
 
         # Set the x-axis major locator to multiples of π
         ax.xaxis.set_major_locator(ticker.MultipleLocator(base=np.pi))
