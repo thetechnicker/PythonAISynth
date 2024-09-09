@@ -323,7 +323,7 @@ class FourierNN:
             _y = [FourierNN.fourier_basis(data, indices)]
         else:
             data = np.array(data)
-            _y=[FourierNN.fourier_basis(x, indices) for x in data]
+            _y = [FourierNN.fourier_basis(x, indices) for x in data]
             # def t():
             #     return [FourierNN.fourier_basis(x, indices) for x in data]
             # _y = utils.messure_time_taken(
