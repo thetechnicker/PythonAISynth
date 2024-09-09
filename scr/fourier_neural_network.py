@@ -323,13 +323,13 @@ class FourierNN:
             _y = [FourierNN.fourier_basis(data, indices)]
         else:
             data = np.array(data)
-
-            def t():
-                return [FourierNN.fourier_basis(x, indices) for x in data]
+            _y=[FourierNN.fourier_basis(x, indices) for x in data]
+            # def t():
+            #     return [FourierNN.fourier_basis(x, indices) for x in data]
             # _y = utils.messure_time_taken(
             #     "fourier_basis", FourierNN.fourier_basis_numba, data, indices, wait=False)
-            _y = utils.messure_time_taken(
-                "fourier_basis", t, wait=False)
+            # _y = utils.messure_time_taken(
+            #     "fourier_basis", t, wait=False)
         _y = np.array(_y)
         print(_y.shape)
         _y = _y.reshape(len(_y), -1)
