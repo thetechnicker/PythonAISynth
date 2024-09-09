@@ -7,6 +7,7 @@ import threading
 import time
 from typing import Any, Callable, TextIO
 import numpy as np
+import psutil
 from scipy.fft import dst
 from numba import njit
 
@@ -37,6 +38,22 @@ def DIE(process: Process, join_timeout=30, term_iterations=50):
             process.kill()
             time.sleep(0.1)
         print("Success")
+
+
+def calculate_max_batch_size(num_features, dtype=np.float32, memory_buffer=0.1):
+    # Determine the number of bytes per feature based on the data type
+    bytes_per_feature = np.dtype(dtype).itemsize
+
+    # Calculate memory required for one sample
+    memory_per_sample = num_features * bytes_per_feature
+
+    # Get available memory in bytes
+    available_memory = psutil.virtual_memory().available
+
+    # Calculate maximum batch size with a memory buffer
+    max_batch_size = (memory_buffer * available_memory) // memory_per_sample
+
+    return max_batch_size
 
 
 def messure_time_taken(name, func, *args, wait=True, **kwargs):

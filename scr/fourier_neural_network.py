@@ -16,7 +16,7 @@ from concurrent.futures import ProcessPoolExecutor
 from numba import njit, prange
 
 from scr import utils
-from scr.utils import QueueSTD_OUT, midi_to_freq
+from scr.utils import QueueSTD_OUT, calculate_max_batch_size, midi_to_freq
 # print(tf.__version__)
 
 
@@ -80,7 +80,7 @@ class FourierNN:
         for key in self.keys:
             val = getattr(self, key, None)
             # print(f"{key}: {val}")
-        self.create_new_model()
+        self.new_model = True
         # print("-------------------------")
 
     def __getstate__(self):
@@ -122,6 +122,7 @@ class FourierNN:
         self.current_model.save('./tmp/tmp_model.keras')
 
     def __init__(self, lock, data=None, stdout_queue=None):
+        self.new_model = False
         self.lock = lock
         self.models: list = []
         self.current_model: keras.Model = None
@@ -148,7 +149,7 @@ class FourierNN:
             self.stdout_queue = stdout_queue
         self.prepared_data = self.prepare_data(
             list(data), std_queue=self.stdout_queue)
-        if not self.current_model:
+        if (not self.current_model) or self.new_model:
             self.create_new_model()
 
     def get_trainings_data(self):
@@ -320,23 +321,25 @@ class FourierNN:
     def predict(self, data, batch_size=None):
         indices = FourierNN.precompute_indices(self.fourier_degree)
         if not hasattr(data, '__iter__'):
-            _y = [FourierNN.fourier_basis(data, indices)]
+            x = [FourierNN.fourier_basis(data, indices)]
         else:
             data = np.array(data)
-            _y = [FourierNN.fourier_basis(x, indices) for x in data]
+            x = [FourierNN.fourier_basis(x, indices) for x in data]
             # def t():
             #     return [FourierNN.fourier_basis(x, indices) for x in data]
-            # _y = utils.messure_time_taken(
+            # x = utils.messure_time_taken(
             #     "fourier_basis", FourierNN.fourier_basis_numba, data, indices, wait=False)
-            # _y = utils.messure_time_taken(
+            # x = utils.messure_time_taken(
             #     "fourier_basis", t, wait=False)
-        _y = np.array(_y)
-        print(_y.shape)
-        _y = _y.reshape(len(_y), -1)
-        y_test = self.current_model.predict(
-            np.array(_y), batch_size=batch_size if batch_size else len(data))
+        x = np.array(x)
+        print(x.shape)
+        # x = x.reshape(len(x), -1)
+        batch_size = int(calculate_max_batch_size(x.shape[1]))
+        print("batch_size:", batch_size)
+        y = self.current_model.predict(
+            x, batch_size=batch_size if batch_size else len(data))
 
-        return y_test
+        return y
 
     def synthesize(self, midi_note, duration=1.0, sample_rate=44100):
         output = np.zeros(shape=int(sample_rate * duration))
@@ -356,8 +359,9 @@ class FourierNN:
         t = np.linspace(0, duration, int(sample_rate * duration), False)
         t_scaled = (t * 2 * np.pi) / (1/freq)
         batch_size = sample_rate//1
-        output = self.current_model.predict(np.array([self.fourier_basis(
-            x, self.fourier_degree) for x in t_scaled]), batch_size=batch_size)
+        indices = FourierNN.precompute_indices(self.fourier_degree)
+        x = FourierNN.fourier_basis_numba(t_scaled, indices)
+        output = self.current_model.predict(x, batch_size=batch_size)
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         print(f"Generated sound for note: {midi_note}")
         # gc.collect()
