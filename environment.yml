@@ -13,3 +13,4 @@ dependencies:
       - pygame
       - python-rtmidi
       - psutil
+      - numba
