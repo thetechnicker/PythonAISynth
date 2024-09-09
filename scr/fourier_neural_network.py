@@ -10,7 +10,7 @@ from tensorflow import keras
 from keras.models import Sequential
 from keras.layers import Dense, Input
 from keras.callbacks import Callback
-from tensorflow.keras.callbacks import EarlyStopping, CSVLogger
+from keras.callbacks import EarlyStopping, CSVLogger
 from multiprocessing import Queue, current_process
 from concurrent.futures import ProcessPoolExecutor
 from numba import njit, prange
