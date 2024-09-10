@@ -294,7 +294,8 @@ class FourierNN:
             self.create_new_model()
         model = self.current_model
         indices = FourierNN.precompute_indices(self.fourier_degree)
-        _x = [self.fourier_basis(x, indices) for x in test_data]
+        _x = FourierNN.fourier_basis_numba(test_data, indices)
+        #_x = [self.fourier_basis(x, indices) for x in test_data]
         _x = np.array(_x)
         early_stopping = EarlyStopping(
             monitor='val_loss', patience=self.PATIENCE)
@@ -324,7 +325,8 @@ class FourierNN:
             x = [FourierNN.fourier_basis(data, indices)]
         else:
             data = np.array(data)
-            x = [FourierNN.fourier_basis(x, indices) for x in data]
+            x = FourierNN.fourier_basis_numba(data, indices)
+            #x = [FourierNN.fourier_basis(x, indices) for x in data]
             # def t():
             #     return [FourierNN.fourier_basis(x, indices) for x in data]
             # x = utils.messure_time_taken(
