@@ -139,7 +139,7 @@ class FourierNN:
                 # if self.current_model:
                 #     self.models.append(self.current_model)
                 self.current_model = self.create_model(
-                    (self.prepared_data[1].shape[1],))
+                    (self.prepared_data[0].shape[1],))
 
     def get_models(self) -> list[Sequential]:
         return [self.current_model]+self.models
@@ -152,8 +152,8 @@ class FourierNN:
         if (not self.current_model) or self.new_model:
             self.create_new_model()
 
-    def get_trainings_data(self):
-        return list(zip(self.prepared_data[0], self.prepared_data[2]))
+    # def get_trainings_data(self):
+    #     return list(zip(self.prepared_data[0], self.prepared_data[2]))
 
     @staticmethod
     @njit(parallel=True)
@@ -165,7 +165,7 @@ class FourierNN:
         for i in prange(n_samples):
             # print("\n")
             x = data[i]
-            print("generating fourier basis for:", x)
+            #print("generating fourier basis for:", x)
             sin_basis = np.sin(np.outer(indices, x))
             cos_basis = np.cos(np.outer(indices, x))
             basis = np.concatenate((sin_basis, cos_basis), axis=0)
@@ -193,13 +193,10 @@ class FourierNN:
     def prepare_data(self, data, std_queue: Queue = None):
         if std_queue:
             self.stdout_queue = std_queue
-        # print(self.stdout_queue)
 
         self.fourier_degree = ((len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
                                if self.CALC_FOURIER_DEGREE_BY_DATA_LENGTH
                                else self.DEFAULT_FORIER_DEGREE)
-
-        actualData_x, actualData_y = zip(*data)
 
         # "math" data filling
         data = sorted(data, key=lambda x: x[0])
@@ -266,7 +263,7 @@ class FourierNN:
         # print(len(test_data), np.array(test_data).shape)
         # print(x_test_transformed.shape, y_test.shape)
         # input("paused")
-        return (x_train, x_train_transformed, y_train, actualData_x, actualData_y, x_test_transformed, y_test)
+        return (x_train_transformed, y_train, x_test_transformed, y_test)
 
     def create_model(self, input_shape):
         print(input_shape)
@@ -289,13 +286,13 @@ class FourierNN:
     def train(self, test_data, queue=None, quiet=False, stdout_queue=None):
         if stdout_queue:
             sys.stdout = QueueSTD_OUT(stdout_queue)
-        _, x_train_transformed, y_train, _, _, test_x, test_y = self.prepared_data
+        x_train_transformed, y_train, test_x, test_y = self.prepared_data
         if self.change_params:
             self.create_new_model()
         model = self.current_model
         indices = FourierNN.precompute_indices(self.fourier_degree)
         _x = FourierNN.fourier_basis_numba(test_data, indices)
-        #_x = [self.fourier_basis(x, indices) for x in test_data]
+        # _x = [self.fourier_basis(x, indices) for x in test_data]
         _x = np.array(_x)
         early_stopping = EarlyStopping(
             monitor='val_loss', patience=self.PATIENCE)
@@ -319,6 +316,9 @@ class FourierNN:
                   batch_size=int(self.SAMPLES/2), verbose=0)
         self.current_model.save('./tmp/tmp_model.keras')
 
+    def clean_memory(self):
+        del self.prepared_data
+
     def predict(self, data, batch_size=None):
         indices = FourierNN.precompute_indices(self.fourier_degree)
         if not hasattr(data, '__iter__'):
@@ -326,7 +326,7 @@ class FourierNN:
         else:
             data = np.array(data)
             x = FourierNN.fourier_basis_numba(data, indices)
-            #x = [FourierNN.fourier_basis(x, indices) for x in data]
+            # x = [FourierNN.fourier_basis(x, indices) for x in data]
             # def t():
             #     return [FourierNN.fourier_basis(x, indices) for x in data]
             # x = utils.messure_time_taken(

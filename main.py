@@ -22,6 +22,7 @@ from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 import psutil
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 dark_theme = {
@@ -289,6 +290,7 @@ class MainGUI(tk.Tk):
                 self.block_training = False
                 messagebox.showinfo(
                     "training Ended", f"exit code: {exit_code}")
+                self.fourier_nn.clean_memory()
                 return
         self.after(100, self.train_update)
 
@@ -415,7 +417,6 @@ class MainGUI(tk.Tk):
             self.fourier_nn = FourierNN(
                 lock=self.lock, stdout_queue=self.std_queue)
         self.fourier_nn.update_attribs(**{key: value})
-
 
 def main():
     os.environ['HAS_RUN_INIT'] = 'True'
