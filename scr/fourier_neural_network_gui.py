@@ -1,31 +1,25 @@
 import tkinter as tk
 from tkinter import ttk
-from tensorflow.keras import losses, optimizers
+import torch.nn.functional as F
+from torch.optim import Adam, SGD, RMSprop
 
 
 class NeuralNetworkGUI(ttk.Frame):
     def __init__(self, parent=None, defaults: dict = None, callback=None, **kwargs):
         ttk.Frame.__init__(self, parent, **kwargs)
-        # self.grid(sticky='NSEW')
         self.on_change_callback = callback
-        # self.config(background='black')
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
 
         # Define the list of loss functions and optimizers
-        self.loss_functions = [func for func in dir(
-            losses) if not func.startswith('_') and isinstance(getattr(losses, func), type)]
-
-        self.optimizers_list = [opt for opt in dir(
-            optimizers) if not opt.startswith('_') and isinstance(getattr(optimizers, opt), type)]
-
-        # print(self.loss_functions, self.optimizers_list, sep='\n-------------------------------\n')
+        self.loss_functions = ['mse_loss', 'cross_entropy',
+                               'nll_loss', 'poisson_nll_loss', 'kl_div']
+        self.optimizers_list = ['Adam', 'SGD', 'RMSprop']
 
         # Create labels and entry fields for the parameters
         self.params = ['SAMPLES', 'EPOCHS', 'DEFAULT_FORIER_DEGREE', 'CALC_FOURIER_DEGREE_BY_DATA_LENGTH',
                        'FORIER_DEGREE_DIVIDER', 'FORIER_DEGREE_OFFSET', 'PATIENCE', 'OPTIMIZER', 'LOSS_FUNCTION']
         for i, param in enumerate(self.params):
-            # self.rowconfigure(i, weight=1)
             label = ttk.Label(self, text=param)
             label.grid(row=i, column=0, sticky='NSW')
             default = defaults.get(
@@ -56,7 +50,6 @@ class NeuralNetworkGUI(ttk.Frame):
             var.set(default)
 
     def on_change(self, name, value):
-        # print(f"{name} changed to {value}")
         if hasattr(self, 'on_change_callback'):
             if self.on_change_callback:
                 self.on_change_callback(name, value)
@@ -78,7 +71,7 @@ if __name__ == "__main__":
         'FORIER_DEGREE_OFFSET': 0,
         'PATIENCE': 10,
         'OPTIMIZER': 'Adam',
-        'LOSS_FUNCTION': 'Huber'
+        'LOSS_FUNCTION': 'mse_loss'
     }
     gui = NeuralNetworkGUI(root, defaults=defaults)
     gui.grid(row=0, column=0, sticky='NSEW')

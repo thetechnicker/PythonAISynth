@@ -1,32 +1,32 @@
 import random
-from tensorflow import keras
 import numpy as np
+import torch
 
 from scr import utils
 
 
 def funny(x):
-    return np.tan(np.sin(x)*np.cos(x))
+    return np.tan(np.sin(x) * np.cos(x))
 
 
 def funny2(x):
-    return np.sin(np.cos(x) * keras.activations.elu(x))/np.cos(x)
+    return np.sin(np.cos(x) * torch.nn.functional.elu(torch.tensor(x)).numpy()) / np.cos(x)
 
 
 def funny3(x):
-    return np.sin(np.cos(x) * keras.activations.elu(x))/np.cos(1/x)
+    return np.sin(np.cos(x) * torch.nn.functional.elu(torch.tensor(x)).numpy()) / np.cos(1/x)
 
 
 def my_random(x):
-    return np.sin(x*random.uniform(-1, 1))
+    return np.sin(x * random.uniform(-1, 1))
 
 
 def my_complex_function(x):
     if x > 0:
-        return np.sin(x) * (np.sin(np.tan(x) * keras.activations.relu(x)) / np.cos(random.uniform(-1, 1) * x))
+        return np.sin(x) * (np.sin(np.tan(x) * torch.nn.functional.relu(torch.tensor(x)).numpy()) / np.cos(random.uniform(-1, 1) * x))
     else:
         x = -x
-        return -np.sin(x) * (np.sin(np.tan(x) * keras.activations.relu(x)) / np.cos(random.uniform(-1, 1) * x))
+        return -np.sin(x) * (np.sin(np.tan(x) * torch.nn.functional.relu(torch.tensor(x)).numpy()) / np.cos(random.uniform(-1, 1) * x))
 
 
 def nice(x):
@@ -34,7 +34,7 @@ def nice(x):
     x = utils.map_value(x, -np.pi, np.pi, 0, 2*np.pi)
     if x >= 2*np.pi:
         x_greater_pi = True
-        x = x-np.pi
+        x = x - np.pi
     if x > (np.pi/2):
         y = np.sin(np.tan(x))
     elif 0 < x and x < (np.pi/2):
@@ -50,10 +50,10 @@ def nice(x):
 
 def my_generated_function(x):
     # Apply a combination of trigonometric functions and activation functions
-    part1 = np.sin(x) * keras.activations.relu(x)
-    part2 = np.cos(x) * keras.activations.sigmoid(x)
-    part3 = np.tan(x) * keras.activations.tanh(x)
-    part4 = np.exp(x) * keras.activations.softplus(x)
+    part1 = np.sin(x) * torch.nn.functional.relu(torch.tensor(x)).numpy()
+    part2 = np.cos(x) * torch.sigmoid(torch.tensor(x)).numpy()
+    part3 = np.tan(x) * torch.tanh(torch.tensor(x)).numpy()
+    part4 = np.exp(x) * torch.nn.functional.softplus(torch.tensor(x)).numpy()
 
     # Combine the parts to create the final output
     # Adding a small value to avoid division by zero
@@ -81,11 +81,11 @@ predefined_functions_dict = {
     'sin': np.sin,
     'cos': np.cos,
     'tan': np.tan,
-    'relu': keras.activations.relu,
-    'elu': keras.activations.elu,
-    'linear': keras.activations.linear,
-    'sigmoid': keras.activations.sigmoid,
-    'exponential': keras.activations.exponential,
-    'selu': keras.activations.selu,
-    'gelu': keras.activations.gelu,
+    'relu': torch.nn.functional.relu,
+    'elu': torch.nn.functional.elu,
+    'linear': torch.nn.functional.linear,
+    'sigmoid': torch.sigmoid,
+    'exponential': torch.exp,
+    'selu': torch.nn.functional.selu,
+    'gelu': torch.nn.functional.gelu,
 }

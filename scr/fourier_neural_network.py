@@ -1,6 +1,5 @@
 import os
 import sys
-import multiprocessing
 from multiprocessing.pool import Pool
 import time
 from typing import Tuple
@@ -11,8 +10,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Input
 from keras.callbacks import Callback
 from keras.callbacks import EarlyStopping, CSVLogger
-from multiprocessing import Queue, current_process
-from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Queue
 from numba import njit, prange
 
 from scr import utils
@@ -165,7 +163,7 @@ class FourierNN:
         for i in prange(n_samples):
             # print("\n")
             x = data[i]
-            #print("generating fourier basis for:", x)
+            # print("generating fourier basis for:", x)
             sin_basis = np.sin(np.outer(indices, x))
             cos_basis = np.cos(np.outer(indices, x))
             basis = np.concatenate((sin_basis, cos_basis), axis=0)

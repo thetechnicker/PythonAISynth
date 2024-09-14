@@ -1,7 +1,7 @@
 from typing import Callable
 import pygame
 import scipy
-from scr.fourier_neural_network import FourierNN
+from scr.torch_model import FourierNN
 from scr import utils
 from pygame import mixer, midi, sndarray
 import atexit

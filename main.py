@@ -9,7 +9,7 @@ from scr.utils import DIE
 from scr.predefined_functions import predefined_functions_dict
 from scr.graph_canvas import GraphCanvas
 from scr.fourier_neural_network_gui import NeuralNetworkGUI
-from scr.fourier_neural_network import FourierNN
+from scr.torch_model import FourierNN
 from _version import version
 import atexit
 from multiprocessing import Process, Queue
@@ -303,7 +303,7 @@ class MainGUI(tk.Tk):
             print("".center(20, '#'))
             self.fourier_nn.update_data(self.graph.export_data())
 
-        self.fourier_nn.save_tmp_model()
+        self.fourier_nn.save_model()
         self.trainings_process = multiprocessing.Process(
             target=self.fourier_nn.train, args=(self.graph.lst, self.queue, ), kwargs={"stdout_queue": self.std_queue})
         self.trainings_process.start()
@@ -417,6 +417,7 @@ class MainGUI(tk.Tk):
             self.fourier_nn = FourierNN(
                 lock=self.lock, stdout_queue=self.std_queue)
         self.fourier_nn.update_attribs(**{key: value})
+
 
 def main():
     os.environ['HAS_RUN_INIT'] = 'True'
