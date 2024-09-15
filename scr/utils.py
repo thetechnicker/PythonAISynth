@@ -10,6 +10,8 @@ import numpy as np
 import psutil
 from scipy.fft import dst
 from numba import njit
+import torch.nn as nn
+import torch.optim as optim
 
 
 class QueueSTD_OUT(TextIO):
@@ -237,3 +239,19 @@ def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: 
 def kill_timer(timer):
     if timer.is_alive():
         timer.cancel()
+
+
+def get_optimizer(optimizer_name, model_parameters, **kwargs):
+    if hasattr(optim, optimizer_name):
+        optimizer_class = getattr(optim, optimizer_name)
+        if issubclass(optimizer_class, optim.Optimizer):
+            return optimizer_class(model_parameters, **kwargs)
+    raise ValueError(f"Optimizer '{optimizer_name}' not found in torch.optim")
+
+
+def get_loss_function(loss_name, **kwargs):
+    if hasattr(nn, loss_name):
+        loss_class = getattr(nn, loss_name)
+        if issubclass(loss_class, nn.modules.loss._Loss):
+            return loss_class(**kwargs)
+    raise ValueError(f"Loss function '{loss_name}' not found in torch.nn")

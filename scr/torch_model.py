@@ -14,6 +14,12 @@ from numba import njit, prange
 from scr import utils
 from scr.utils import QueueSTD_OUT, midi_to_freq
 
+try:
+    import torch_directml
+    DIRECTML = True
+except ImportError:
+    DIRECTML = False
+
 
 class MyCallback:
     def __init__(self, queue: Queue = None, test_data=None, quiet=False, std_queue: Queue = None):
@@ -26,12 +32,13 @@ class MyCallback:
         if not self.quiet:
             print(f"EPOCH {epoch + 1} STARTED")
 
-    def on_epoch_end(self, epoch, loss, val_loss):
+    def on_epoch_end(self, epoch, loss, val_loss, model):
         if self.queue:
             with torch.no_grad():
-                predictions = self.model(self.test_data)
-                self.queue.put(predictions.numpy())
+                predictions = model(self.test_data)
+                self.queue.put(predictions.cpu().numpy())
         if not self.quiet:
+            self.timestamp = time.perf_counter_ns()
             time_taken = time.perf_counter_ns() - self.timestamp
             print(
                 f"EPOCH {epoch + 1} ENDED, loss: {loss}, val_loss: {val_loss}. Time Taken: {time_taken / 1_000_000_000}s")
@@ -59,6 +66,17 @@ class FourierNN(nn.Module):
         if data is not None:
             self.update_data(data)
 
+        if DIRECTML:
+            self.device = torch_directml.device() if torch_directml.is_available() else None
+        if not self.device:
+            if torch.cuda.is_available() and torch.version.hip:
+                self.device = torch.device('rocm')
+            elif torch.cuda.is_available():
+                self.device = torch.device('cuda')
+            else:
+                self.device = torch.device('cpu')
+        print(self.device)
+
     def update_attribs(self, **kwargs):
         """
         Update model parameters.
@@ -77,9 +95,9 @@ class FourierNN(nn.Module):
 
     def create_model(self, input_shape):
         model = nn.Sequential(
-            nn.Linear(input_shape[0], 64),
-            nn.ReLU(),
-            nn.Linear(64, 1)
+            nn.Linear(input_shape[0], 1),
+            # nn.ReLU(),
+            # nn.Linear(64, 1)
         )
         return model
 
@@ -151,10 +169,14 @@ class FourierNN(nn.Module):
         x_train_transformed = np.array(result_a)
         x_test_transformed = np.array(result_b)
 
-        return (torch.tensor(x_train_transformed, dtype=torch.float32),
-                torch.tensor(y_train, dtype=torch.float32),
-                torch.tensor(x_test_transformed, dtype=torch.float32),
-                torch.tensor(y_test, dtype=torch.float32))
+        return (torch.tensor(x_train_transformed,
+                             dtype=torch.float32),
+                torch.tensor(y_train,
+                             dtype=torch.float32),
+                torch.tensor(x_test_transformed,
+                             dtype=torch.float32),
+                torch.tensor(y_test,
+                             dtype=torch.float32))
 
     @staticmethod
     @njit(parallel=True)
@@ -177,22 +199,52 @@ class FourierNN(nn.Module):
         return np.arange(1, n + 1)
 
     def train(self, test_data, queue=None, quiet=False, stdout_queue=None):
+        print(self.OPTIMIZER,
+              self.LOSS_FUNCTION,
+              sep="\n")
+        # exit(-1)
         if stdout_queue:
             sys.stdout = QueueSTD_OUT(stdout_queue)
 
         x_train_transformed, y_train, test_x, test_y = self.prepared_data
-        model = self.current_model
-        optimizer = optim.Adam(model.parameters())
-        criterion = self.LOSS_FUNCTION
+
+        model = self.current_model.to(self.device)
+
+        x_train_transformed.to(self.device)
+        y_train.to(self.device)
+        test_x.to(self.device)
+        test_y.to(self.device)
+
+        optimizer = utils.get_optimizer(
+            optimizer_name=self.OPTIMIZER,
+            model_parameters=model.parameters(),
+            lr=0.001)
+        criterion = utils.get_loss_function(self.LOSS_FUNCTION)
 
         train_dataset = TensorDataset(x_train_transformed, y_train)
         train_loader = DataLoader(
             train_dataset, batch_size=int(self.SAMPLES / 2), shuffle=True)
 
+        prepared_test_data = torch.tensor(
+            data=FourierNN.fourier_basis_numba(
+                data=test_data.flatten(),
+                indices=FourierNN.precompute_indices(self.fourier_degree)),
+            dtype=torch.float32).to(self.device)
+
+        # prepared_test_data.to(self.device)
+
+        # callback = MyCallback(
+        #     queue=queue, test_data=prepared_test_data, quiet=quiet)
+
         for epoch in range(self.EPOCHS):
+            # callback.on_epoch_begin(epoch)
+            print(f"epoch {epoch+1} beginns")
+            timestamp = time.perf_counter_ns()
             model.train()
             epoch_loss = 0
             for batch_x, batch_y in train_loader:
+                batch_x, batch_y = batch_x.to(
+                    self.device), batch_y.to(self.device)
                 optimizer.zero_grad()
                 outputs = model(batch_x)
                 loss = criterion(outputs.squeeze(), batch_y)
@@ -205,12 +257,19 @@ class FourierNN(nn.Module):
             # Validation
             model.eval()
             with torch.no_grad():
-                val_outputs = model(test_x)
-                val_loss = criterion(val_outputs.squeeze(), test_y)
+                val_outputs = model(test_x.to(self.device))
+                val_loss = criterion(val_outputs.squeeze(),
+                                     test_y.to(self.device))
+                if queue:
+                    predictions = model(prepared_test_data)
+                    queue.put(predictions.cpu().numpy())
 
-            callback = MyCallback(
-                queue=queue, test_data=test_data, quiet=quiet)
-            callback.on_epoch_end(epoch, epoch_loss, val_loss.item())
+            # callback.on_epoch_end(epoch, epoch_loss, val_loss.item(), model)
+            time_taken = time.perf_counter_ns() - timestamp
+            print(f"epoch {epoch+1} ends. "
+                  f"loss:{epoch_loss}, "
+                  f"val_loss: {val_loss}. "
+                  f"Time Taken: {time_taken / 1_000_000_000}s")
 
         torch.save(model.state_dict(), './tmp/tmp_model.pth')
 

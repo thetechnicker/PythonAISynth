@@ -1,3 +1,5 @@
+import torch.optim as optim
+import torch.nn as nn
 import tkinter as tk
 from tkinter import ttk
 import torch.nn.functional as F
@@ -12,10 +14,21 @@ class NeuralNetworkGUI(ttk.Frame):
         self.columnconfigure(1, weight=1)
 
         # Define the list of loss functions and optimizers
-        self.loss_functions = ['mse_loss', 'cross_entropy',
-                               'nll_loss', 'poisson_nll_loss', 'kl_div']
-        self.optimizers_list = ['Adam', 'SGD', 'RMSprop']
-
+        self.loss_functions = [func for func in dir(nn)
+                               if not func.startswith('_')
+                               and isinstance(getattr(nn, func), type)
+                               and issubclass(getattr(nn, func), nn.modules.loss._Loss)]
+        self.optimizers_list = [opt for opt in dir(optim)
+                                if not opt.startswith('_')
+                                and isinstance(getattr(optim, opt), type)
+                                and issubclass(getattr(optim, opt), optim.Optimizer)]
+        print("".center(40, "-"),
+              *self.loss_functions,
+              "".center(40, "-"),
+              *self.optimizers_list,
+              "".center(40, "-"),
+              sep="\n")
+        # exit(0)
         # Create labels and entry fields for the parameters
         self.params = ['SAMPLES', 'EPOCHS', 'DEFAULT_FORIER_DEGREE', 'CALC_FOURIER_DEGREE_BY_DATA_LENGTH',
                        'FORIER_DEGREE_DIVIDER', 'FORIER_DEGREE_OFFSET', 'PATIENCE', 'OPTIMIZER', 'LOSS_FUNCTION']
@@ -76,3 +89,14 @@ if __name__ == "__main__":
     gui = NeuralNetworkGUI(root, defaults=defaults)
     gui.grid(row=0, column=0, sticky='NSEW')
     root.mainloop()
+
+    exit()
+
+    # autopep8: off
+
+    loss_functions = [func for func in dir(nn) if not func.startswith('_') and isinstance(getattr(nn, func), type) and issubclass(getattr(nn, func), nn.modules.loss._Loss)]
+    print(loss_functions)
+
+
+    optimizers_list = [opt for opt in dir(optim) if not opt.startswith('_') and isinstance(getattr(optim, opt), type) and issubclass(getattr(optim, opt), optim.Optimizer)]
+    print(optimizers_list)

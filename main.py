@@ -131,7 +131,7 @@ class MainGUI(tk.Tk):
             'FORIER_DEGREE_OFFSET': 0,
             'PATIENCE': 50,
             'OPTIMIZER': 'Adam',
-            'LOSS_FUNCTION': 'Huber',
+            'LOSS_FUNCTION': 'HuberLoss',
         }
 
         self.gui = NeuralNetworkGUI(
@@ -279,7 +279,7 @@ class MainGUI(tk.Tk):
                     return
                 if exit_code == 0:
                     print("loading trained model")
-                    self.fourier_nn.load_tmp_model()
+                    self.fourier_nn.load_new_model_from_file()
                     print("model loaded")
                     self.graph.draw_extern_graph_from_func(
                         self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4, graph_type='crazy')
@@ -290,7 +290,7 @@ class MainGUI(tk.Tk):
                 self.block_training = False
                 messagebox.showinfo(
                     "training Ended", f"exit code: {exit_code}")
-                self.fourier_nn.clean_memory()
+                # self.fourier_nn.clean_memory()
                 return
         self.after(100, self.train_update)
 
