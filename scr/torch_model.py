@@ -272,7 +272,7 @@ class FourierNN(nn.Module):
                   f"val_loss: {val_loss}. "
                   f"Time Taken: {time_taken / 1_000_000_000}s")
 
-        torch.save(model.state_dict(), './tmp/tmp_model.pth')
+        self.save_model()
 
     def predict(self, data):
         indices = FourierNN.precompute_indices(self.fourier_degree)
@@ -295,7 +295,8 @@ class FourierNN(nn.Module):
     def load_new_model_from_file(self, filename='./tmp/model.pth'):
         self.current_model = self.create_model(
             (self.prepared_data[0].shape[1],))
-        self.current_model.load_state_dict(torch.load(filename))
+        self.current_model.load_state_dict(
+            torch.load(filename, weights_only=True))
         self.current_model.eval()
         print(self.current_model)
 

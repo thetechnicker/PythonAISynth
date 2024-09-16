@@ -292,7 +292,7 @@ class MainGUI(tk.Tk):
                     "training Ended", f"exit code: {exit_code}")
                 # self.fourier_nn.clean_memory()
                 return
-        self.after(100, self.train_update)
+        self.after(10, self.train_update)
 
     def init_or_update_nn(self, stdout=None):
         if not self.fourier_nn:
