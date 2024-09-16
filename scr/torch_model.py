@@ -66,6 +66,7 @@ class FourierNN(nn.Module):
         if data is not None:
             self.update_data(data)
 
+        self.device = None
         if DIRECTML:
             self.device = torch_directml.device() if torch_directml.is_available() else None
         if not self.device:
