@@ -3,8 +3,6 @@ import os
 from matplotlib import ticker
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow as tf
-import sounddevice as sd
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -12,7 +10,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 # autopep8: off
 from context import scr
 from scr import predefined_functions
-from scr.fourier_neural_network import FourierNN
+from scr.torch_model import FourierNN
 # autopep8: on
 
 

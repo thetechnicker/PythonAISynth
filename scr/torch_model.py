@@ -12,36 +12,13 @@ from multiprocessing import Queue, Pool
 from numba import njit, prange
 
 from scr import utils
-from scr.utils import QueueSTD_OUT, midi_to_freq
+from scr.utils import QueueSTD_OUT, linear_interpolation, midi_to_freq
 
 try:
     import torch_directml
     DIRECTML = True
 except ImportError:
     DIRECTML = False
-
-
-class MyCallback:
-    def __init__(self, queue: Queue = None, test_data=None, quiet=False, std_queue: Queue = None):
-        self.queue = queue
-        self.test_data = test_data
-        self.quiet = quiet
-
-    def on_epoch_begin(self, epoch):
-        self.timestamp = time.perf_counter_ns()
-        if not self.quiet:
-            print(f"EPOCH {epoch + 1} STARTED")
-
-    def on_epoch_end(self, epoch, loss, val_loss, model):
-        if self.queue:
-            with torch.no_grad():
-                predictions = model(self.test_data)
-                self.queue.put(predictions.cpu().numpy())
-        if not self.quiet:
-            self.timestamp = time.perf_counter_ns()
-            time_taken = time.perf_counter_ns() - self.timestamp
-            print(
-                f"EPOCH {epoch + 1} ENDED, loss: {loss}, val_loss: {val_loss}. Time Taken: {time_taken / 1_000_000_000}s")
 
 
 class FourierNN(nn.Module):
@@ -52,7 +29,7 @@ class FourierNN(nn.Module):
     FORIER_DEGREE_OFFSET = 0
     PATIENCE = 50
     OPTIMIZER = 'Adam'
-    LOSS_FUNCTION = nn.HuberLoss()
+    LOSS_FUNCTION = 'HuberLoss'
     CALC_FOURIER_DEGREE_BY_DATA_LENGTH = False
 
     def __init__(self, lock, data=None, stdout_queue=None):
@@ -63,9 +40,6 @@ class FourierNN(nn.Module):
         self.fourier_degree = self.DEFAULT_FORIER_DEGREE
         self.prepared_data = None
         self.stdout_queue = stdout_queue
-        if data is not None:
-            self.update_data(data)
-
         self.device = None
         if DIRECTML:
             self.device = torch_directml.device() if torch_directml.is_available() else None
@@ -77,6 +51,8 @@ class FourierNN(nn.Module):
             else:
                 self.device = torch.device('cpu')
         print(self.device)
+        if data is not None:
+            self.update_data(data)
 
     def update_attribs(self, **kwargs):
         """
@@ -118,66 +94,24 @@ class FourierNN(nn.Module):
         self.fourier_degree = (
             (len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET)
 
-        # "math" data filling
-        data = sorted(data, key=lambda x: x[0])
-        while len(data) < self.SAMPLES:
-            data_copy = sorted(data[:], key=lambda x: x[0])
-            pairs = ((data_copy[i], data_copy[i + 1], 0.5)
-                     for i in range(len(data_copy) - 1))
-            with Pool(processes=os.cpu_count()) as pool:
-                new_data = pool.starmap(utils.interpolate, pairs)
-            data.extend(new_data)
-            if len(data) >= self.SAMPLES:
-                break
-
-        while len(data) > self.SAMPLES:
-            data.pop()
-
-        data = sorted(data, key=lambda x: x[0])
-
-        # Generate test_data
-        test_data = []
-        test_samples = self.SAMPLES / 2
-        test_data = sorted(data, key=lambda x: x[0])
-        while len(test_data) < test_samples:
-            data_copy = sorted(test_data[:], key=lambda x: x[0])
-            pairs = ((data_copy[i], data_copy[i + 1],)
-                     for i in range(len(data_copy) - 1))
-            with Pool(processes=os.cpu_count()) as pool:
-                new_data = pool.starmap(utils.interpolate, pairs)
-            test_data.extend(new_data)
-            if len(test_data) >= test_samples:
-                break
-
-        while len(test_data) > test_samples:
-            test_data.pop()
-
-        test_data = sorted(test_data, key=lambda x: x[0])
-
-        x_train, y_train = zip(*data)
-        x_test, y_test = zip(*test_data)
-
-        x_train = np.array(x_train)
-        y_train = np.array(y_train)
-        x_test = np.array(x_test)
-        y_test = np.array(y_test)
+        x_train, y_train = linear_interpolation(
+            data, self.SAMPLES, self.device)
+        x_test, y_test = linear_interpolation(
+            data, self.SAMPLES//2, self.device)
 
         indices = FourierNN.precompute_indices(self.fourier_degree)
 
-        result_a = self.fourier_basis_numba(x_train, indices)
-        result_b = self.fourier_basis_numba(x_test, indices)
-
-        x_train_transformed = np.array(result_a)
-        x_test_transformed = np.array(result_b)
+        x_train_transformed = self.fourier_basis_numba(
+            np.array(x_train), indices)  # , self.device)
+        x_test_transformed = self.fourier_basis_numba(
+            np.array(x_test), indices)  # , self.device)
 
         return (torch.tensor(x_train_transformed,
                              dtype=torch.float32),
-                torch.tensor(y_train,
-                             dtype=torch.float32),
+                y_train,
                 torch.tensor(x_test_transformed,
                              dtype=torch.float32),
-                torch.tensor(y_test,
-                             dtype=torch.float32))
+                y_test)
 
     @staticmethod
     @njit(parallel=True)
@@ -232,10 +166,9 @@ class FourierNN(nn.Module):
                 indices=FourierNN.precompute_indices(self.fourier_degree)),
             dtype=torch.float32).to(self.device)
 
-        # prepared_test_data.to(self.device)
-
-        # callback = MyCallback(
-        #     queue=queue, test_data=prepared_test_data, quiet=quiet)
+        min_delta = 0.00001
+        epoch_without_change = 0
+        max_loss = torch.inf
 
         for epoch in range(self.EPOCHS):
             # callback.on_epoch_begin(epoch)
@@ -271,6 +204,13 @@ class FourierNN(nn.Module):
                   f"loss:{epoch_loss}, "
                   f"val_loss: {val_loss}. "
                   f"Time Taken: {time_taken / 1_000_000_000}s")
+            if epoch_loss < max_loss-min_delta:
+                max_loss = epoch_loss
+            else:
+                epoch_without_change += 1
+
+            if epoch_without_change == self.PATIENCE:
+                break
 
         self.save_model()
 
@@ -296,7 +236,7 @@ class FourierNN(nn.Module):
         self.current_model = self.create_model(
             (self.prepared_data[0].shape[1],))
         self.current_model.load_state_dict(
-            torch.load(filename, weights_only=True))
+            torch.load(filename, weights_only=False))
         self.current_model.eval()
         print(self.current_model)
 

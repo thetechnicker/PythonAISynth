@@ -10,6 +10,7 @@ import numpy as np
 import psutil
 from scipy.fft import dst
 from numba import njit
+import torch
 import torch.nn as nn
 import torch.optim as optim
 
@@ -255,3 +256,24 @@ def get_loss_function(loss_name, **kwargs):
         if issubclass(loss_class, nn.modules.loss._Loss):
             return loss_class(**kwargs)
     raise ValueError(f"Loss function '{loss_name}' not found in torch.nn")
+
+
+def linear_interpolation(data, target_length, device='cpu'):
+    # Convert data to a tensor and move to the specified device
+    data_tensor = torch.tensor(data, dtype=torch.float32).to(device)
+
+    # Extract x and y values
+    x_values = data_tensor[:, 0]
+    y_values = data_tensor[:, 1]
+
+    # Generate new x values
+    new_x_values = torch.linspace(
+        x_values.min(), x_values.max(), target_length).to(device)
+
+    # Perform linear interpolation
+    new_y_values = torch.lerp(
+        y_values[0],
+        y_values[-1],
+        (new_x_values - x_values[0]) / (x_values[-1] - x_values[0]))
+
+    return (new_x_values.cpu(), new_y_values.cpu(),)
