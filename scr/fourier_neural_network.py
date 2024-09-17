@@ -28,7 +28,8 @@ class FourierLayer(nn.Module):
 
     def forward(self, x):
         self.tensor = self.tensor.to(x.device)
-        y = x * self.tensor
+        # print(x.shape, self.tensor.shape)
+        y = x.unsqueeze(1) * self.tensor
         z = torch.concat((torch.sin(y), torch.cos(y)), dim=1)
         return z
 
@@ -82,9 +83,10 @@ class FourierNN():
         if self.prepared_data:
             self.create_new_model()
 
-    def create_model(self, input_shape):
+    def create_model(self):
         model = nn.Sequential(
-            nn.Linear(input_shape[0], 1),
+            FourierLayer(self.fourier_degree),
+            nn.Linear(self.fourier_degree*2, 1),
             # nn.ReLU(),
             # nn.Linear(64, 1)
         )
@@ -96,8 +98,7 @@ class FourierNN():
         self.prepared_data = self.prepare_data(
             list(data), std_queue=self.stdout_queue)
         if not self.current_model:
-            self.current_model = self.create_model(
-                (self.prepared_data[0].shape[1],))
+            self.current_model = self.create_model()
 
     def prepare_data(self, data, std_queue: Queue = None):
         if std_queue:
@@ -113,16 +114,14 @@ class FourierNN():
 
         indices = FourierNN.precompute_indices(self.fourier_degree)
 
-        x_train_transformed = self.fourier_basis_numba(
-            np.array(x_train), indices)  # , self.device)
-        x_test_transformed = self.fourier_basis_numba(
-            np.array(x_test), indices)  # , self.device)
+        # x_train_transformed = self.fourier_basis_numba(
+        #     np.array(x_train), indices)  # , self.device)
+        # x_test_transformed = self.fourier_basis_numba(
+        #     np.array(x_test), indices)  # , self.device)
 
-        return (torch.tensor(x_train_transformed,
-                             dtype=torch.float32),
+        return (x_train,
                 y_train,
-                torch.tensor(x_test_transformed,
-                             dtype=torch.float32),
+                x_test,
                 y_test)
 
     @staticmethod
@@ -172,10 +171,13 @@ class FourierNN():
         train_loader = DataLoader(
             train_dataset, batch_size=int(self.SAMPLES / 2), shuffle=True)
 
+        # prepared_test_data = torch.tensor(
+        #     data=FourierNN.fourier_basis_numba(
+        #         data=test_data.flatten(),
+        #         indices=FourierNN.precompute_indices(self.fourier_degree)),
+        #     dtype=torch.float32).to(self.device)
         prepared_test_data = torch.tensor(
-            data=FourierNN.fourier_basis_numba(
-                data=test_data.flatten(),
-                indices=FourierNN.precompute_indices(self.fourier_degree)),
+            test_data.flatten(),
             dtype=torch.float32).to(self.device)
 
         min_delta = 0.00001
@@ -246,8 +248,7 @@ class FourierNN():
         torch.save(self.current_model.state_dict(), filename)
 
     def load_new_model_from_file(self, filename='./tmp/model.pth'):
-        self.current_model = self.create_model(
-            (self.prepared_data[0].shape[1],))
+        self.current_model = self.create_model()
         self.current_model.load_state_dict(
             torch.load(filename, weights_only=False))
         self.current_model.eval()
@@ -256,8 +257,7 @@ class FourierNN():
     def create_new_model(self):
         if hasattr(self, "prepared_data"):
             if self.prepared_data:
-                self.current_model = self.create_model(
-                    (self.prepared_data[0].shape[1],))
+                self.current_model = self.create_model()
 
     def change_model(self, net_no):
         index = net_no - 1

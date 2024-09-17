@@ -39,8 +39,8 @@ def main():
         t2 = 2 * np.pi * f * np.linspace(0, 1, timestep)
         # buffer_size = 1024  # 512
         # a = np.zeros((timestep, 1))
-        x = FourierNN.fourier_basis_numba(
-            t2, FourierNN.precompute_indices(fourier_nn.fourier_degree))
+        # x = FourierNN.fourier_basis_numba(
+        #     t2, FourierNN.precompute_indices(fourier_nn.fourier_degree))
 
         # for i in range((len(x)//buffer_size)+1):
         #     a[i*buffer_size:(i+1)*buffer_size] = utils.messure_time_taken('predict',
@@ -53,7 +53,7 @@ def main():
         #     "predict", fourier_nn.predict, x[i*buffer_size:(i+1)*buffer_size], wait=False)
         with torch.no_grad():
             a = fourier_nn.current_model(torch.tensor(
-                x, dtype=torch.float32).to(fourier_nn.device)).cpu().numpy()
+                t2, dtype=torch.float32).to(fourier_nn.device)).cpu().numpy()
         # try:
         #     a = fourier_nn.current_model.predict(
         #         x,
