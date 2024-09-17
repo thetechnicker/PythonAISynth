@@ -31,24 +31,15 @@ def main():
     sine_components = output[:, :fourier_degree].detach().numpy()
     cosine_components = output[:, fourier_degree:].detach().numpy()
 
-    # Determine the number of rows and columns
-    total_functions = (fourier_degree // 5 + 1) * 2
-    cols = max(5, total_functions // 2)
-    rows = (total_functions + cols - 1) // cols
-    if rows % 2 != 0:
-        rows += 1
+    plt.figure(figsize=(15, 6))
 
-    # Plot every fourier_degree // 5 sine and cosine function
-    plt.figure(figsize=(12, 5))
-
-    for i in range(0, fourier_degree, fourier_degree//5):
-        plt.subplot(rows, cols, i//(fourier_degree//5) + 1)
-        plt.plot(x.numpy(), sine_components[:, i])
-        plt.title(f'Sine {i+1}')
-        plt.subplot(rows, cols, i//(fourier_degree//5) +
-                    total_functions//2 + 1)
-        plt.plot(x.numpy(), cosine_components[:, i])
-        plt.title(f'Cosine {i+1}')
+    for i in range(5):
+        plt.subplot(2, 5, i+1)
+        plt.plot(x.numpy(), sine_components[:, i*(fourier_degree//5)])
+        plt.title(f'Sine {i*(fourier_degree//5)}')
+        plt.subplot(2, 5, i+6)
+        plt.plot(x.numpy(), cosine_components[:, i*(fourier_degree//5)])
+        plt.title(f'Cosine {i*(fourier_degree//5)}')
 
     # plt.tight_layout()
     plt.show()
