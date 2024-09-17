@@ -11,7 +11,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 # autopep8: off
 from context import scr
 from scr import predefined_functions
-from scr.torch_model import FourierNN
+from scr.fourier_neural_network import FourierNN
 # autopep8: on
 
 
@@ -37,7 +37,7 @@ def main():
         # utils.messure_time_taken(
         #     "predict", lambda x: [fourier_nn.predict(_x, 1) for _x in x], 2*np.pi * f * np.linspace(0, 1, timestep))
         t2 = 2 * np.pi * f * np.linspace(0, 1, timestep)
-        buffer_size = 1024  # 512
+        # buffer_size = 1024  # 512
         # a = np.zeros((timestep, 1))
         x = FourierNN.fourier_basis_numba(
             t2, FourierNN.precompute_indices(fourier_nn.fourier_degree))

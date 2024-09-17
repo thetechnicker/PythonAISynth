@@ -9,7 +9,7 @@ from scr.utils import DIE
 from scr.predefined_functions import predefined_functions_dict
 from scr.graph_canvas import GraphCanvas
 from scr.fourier_neural_network_gui import NeuralNetworkGUI
-from scr.torch_model import FourierNN
+from scr.fourier_neural_network import FourierNN
 from _version import version
 import atexit
 from multiprocessing import Process, Queue
@@ -295,7 +295,7 @@ class MainGUI(tk.Tk):
                     "training Ended", f"exit code: {exit_code}")
                 # self.fourier_nn.clean_memory()
                 return
-        self.after(10, self.train_update)
+        self.after(50, self.train_update)
 
     def init_or_update_nn(self, stdout=None):
         if not self.fourier_nn:

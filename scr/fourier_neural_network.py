@@ -1,174 +1,143 @@
 import os
 import sys
-from multiprocessing.pool import Pool
 import time
-from typing import Tuple
 import numpy as np
-import tensorflow as tf
-from tensorflow import keras
-from keras.models import Sequential
-from keras.layers import Dense, Input
-from keras.callbacks import Callback
-from keras.callbacks import EarlyStopping, CSVLogger
-from multiprocessing import Queue
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+from typing import Tuple
+from numba import njit, prange
+from multiprocessing import Queue, Pool
 from numba import njit, prange
 
 from scr import utils
-from scr.utils import QueueSTD_OUT, calculate_max_batch_size, midi_to_freq
-# print(tf.__version__)
+from scr.utils import QueueSTD_OUT, linear_interpolation, midi_to_freq
+
+try:
+    import torch_directml
+    DIRECTML = True
+except ImportError:
+    DIRECTML = False
 
 
-class MyCallback(Callback):
-    def __init__(self, queue: Queue = None, test_data=None, quiet=False, std_queue: Queue = None):
-        # print(tf.__version__)
-        super().__init__()
-        sys.stdout = QueueSTD_OUT(std_queue)
-        self.queue: Queue = queue
-        self.test_data = test_data
-        self.quiet = quiet
+class FourierLayer(nn.Module):
+    def __init__(self, fourier_degree):
+        super(FourierLayer, self).__init__()
+        self.tensor = torch.arange(1, fourier_degree+1)
 
-    def on_epoch_begin(self, epoch, logs=None):
-        self.timestamp = time.perf_counter_ns()
-        if not self.quiet:
-            print(f"EPOCHE {epoch+1} STARTED")
-
-    def on_epoch_end(self, epoch, logs=None):
-        if self.queue:
-            self.queue.put(self.model.predict(
-                self.test_data, batch_size=len(self.test_data)))
-        if not self.quiet:
-            time_taken = time.perf_counter_ns()-self.timestamp
-            print(
-                f"EPOCHE {epoch+1} ENDED, loss: {logs['loss']}, val_loss: {logs['val_loss']}. Time Taken: {time_taken/1_000_000_000}s")
+    def forward(self, x):
+        self.tensor = self.tensor.to(x.device)
+        y = x * self.tensor
+        z = torch.concat((torch.sin(y), torch.cos(y)), dim=1)
+        return z
 
 
-class FourierNN:
-    SAMPLES = 1000  # 44100//2
+class FourierNN():
+    SAMPLES = 1000
     EPOCHS = 1000
-    CALC_FOURIER_DEGREE_BY_DATA_LENGTH = False
     DEFAULT_FORIER_DEGREE = 300
     FORIER_DEGREE_DIVIDER = 1
     FORIER_DEGREE_OFFSET = 0
     PATIENCE = 50
     OPTIMIZER = 'Adam'
-    LOSS_FUNCTION = 'Huber'
-    change_params = False
-    keys = [
-        'SAMPLES',
-        'EPOCHS',
-        'CALC_FOURIER_DEGREE_BY_DATA_LENGTH',
-        'DEFAULT_FORIER_DEGREE',
-        'FORIER_DEGREE_DIVIDER',
-        'FORIER_DEGREE_OFFSET',
-        'PATIENCE',
-        'OPTIMIZER',
-        'LOSS_FUNCTION',
-    ]
-
-    def update_attribs(self, **kwargs):
-        for key, val in kwargs.items():
-            if hasattr(self, key) and key in self.keys:
-                setattr(self, key, val)
-                # change_params = True
-                # if self.prepared_data:
-                #    self.create_new_model()
-            else:
-                raise Exception(
-                    f"The attribute '{key}' does not exist or can not be modified this way.")
-        for key in self.keys:
-            val = getattr(self, key, None)
-            # print(f"{key}: {val}")
-        self.new_model = True
-        # print("-------------------------")
-
-    def __getstate__(self):
-        # Save the model to a file before serialization
-        # self.current_model.save('./tmp/tmp_model.keras')
-        model = self.current_model
-        del self.current_model
-        fourier_nn_dict = self.__dict__.copy()
-        self.current_model = model
-        return fourier_nn_dict
-
-    def __setstate__(self, state):
-        # Load the model from a file after deserialization
-        self.__dict__.update(state)
-        if os.path.exists('./tmp/tmp_model.keras'):
-            with self.lock:
-                self.current_model = tf.keras.models.load_model(
-                    './tmp/tmp_model.keras')
-        if self.stdout_queue:  # and current_process().name != 'MainProcess'
-            sys.stdout = QueueSTD_OUT(self.stdout_queue)
-            # print("test")
-        # for key in self.keys:
-        #     val = getattr(self, key, None)
-        #     print(f"{key}: {val}")
-        # self.stdout_queue = None
-        # print("-------------------------")
-
-    def init_process(self):
-        if self.stdout_queue:
-            sys.stdout = QueueSTD_OUT(self.stdout_queue)
-
-    def load_tmp_model(self):
-        with self.lock:
-            self.current_model = tf.keras.models.load_model(
-                './tmp/tmp_model.keras')
-            self.current_model.summary()
-
-    def save_tmp_model(self):
-        self.current_model.save('./tmp/tmp_model.keras')
+    LOSS_FUNCTION = 'HuberLoss'
+    CALC_FOURIER_DEGREE_BY_DATA_LENGTH = False
 
     def __init__(self, lock, data=None, stdout_queue=None):
-        self.new_model = False
+        super(FourierNN, self).__init__()
         self.lock = lock
-        self.models: list = []
-        self.current_model: keras.Model = None
+        self.models = []
+        self.current_model = None
         self.fourier_degree = self.DEFAULT_FORIER_DEGREE
         self.prepared_data = None
         self.stdout_queue = stdout_queue
-        # print(self.stdout_queue)
+        self.device = None
+        if DIRECTML:
+            self.device = torch_directml.device() if torch_directml.is_available() else None
+        if not self.device:
+            if torch.cuda.is_available() and torch.version.hip:
+                self.device = torch.device('rocm')
+            elif torch.cuda.is_available():
+                self.device = torch.device('cuda')
+            else:
+                self.device = torch.device('cpu')
+        print(self.device)
         if data is not None:
             self.update_data(data)
 
-    def create_new_model(self):
-        if hasattr(self, "prepared_data"):
-            if self.prepared_data:
-                # if self.current_model:
-                #     self.models.append(self.current_model)
-                self.current_model = self.create_model(
-                    (self.prepared_data[0].shape[1],))
+    def update_attribs(self, **kwargs):
+        """
+        Update model parameters.
+        Accepts keyword arguments for parameters to update.
+        """
+        for key, val in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, val)
+            else:
+                raise ValueError(
+                    f"Parameter '{key}' does not exist in the model.")
 
-    def get_models(self) -> list[Sequential]:
-        return [self.current_model]+self.models
+        # If the data has been prepared, recreate the model with updated parameters
+        if self.prepared_data:
+            self.create_new_model()
+
+    def create_model(self, input_shape):
+        model = nn.Sequential(
+            nn.Linear(input_shape[0], 1),
+            # nn.ReLU(),
+            # nn.Linear(64, 1)
+        )
+        return model
 
     def update_data(self, data, stdout_queue=None):
         if stdout_queue:
             self.stdout_queue = stdout_queue
         self.prepared_data = self.prepare_data(
             list(data), std_queue=self.stdout_queue)
-        if (not self.current_model) or self.new_model:
-            self.create_new_model()
+        if not self.current_model:
+            self.current_model = self.create_model(
+                (self.prepared_data[0].shape[1],))
 
-    # def get_trainings_data(self):
-    #     return list(zip(self.prepared_data[0], self.prepared_data[2]))
+    def prepare_data(self, data, std_queue: Queue = None):
+        if std_queue:
+            self.stdout_queue = std_queue
+
+        self.fourier_degree = (
+            (len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET)
+
+        x_train, y_train = linear_interpolation(
+            data, self.SAMPLES, self.device)
+        x_test, y_test = linear_interpolation(
+            data, self.SAMPLES//2, self.device)
+
+        indices = FourierNN.precompute_indices(self.fourier_degree)
+
+        x_train_transformed = self.fourier_basis_numba(
+            np.array(x_train), indices)  # , self.device)
+        x_test_transformed = self.fourier_basis_numba(
+            np.array(x_test), indices)  # , self.device)
+
+        return (torch.tensor(x_train_transformed,
+                             dtype=torch.float32),
+                y_train,
+                torch.tensor(x_test_transformed,
+                             dtype=torch.float32),
+                y_test)
 
     @staticmethod
     @njit(parallel=True)
     def fourier_basis_numba(data, indices):
         n_samples = data.shape[0]
-        n_features = indices.size * 2
+        n_features = indices.size*2
         result = np.empty((n_samples, n_features), dtype=np.float64)
 
         for i in prange(n_samples):
-            # print("\n")
             x = data[i]
-            # print("generating fourier basis for:", x)
             sin_basis = np.sin(np.outer(indices, x))
             cos_basis = np.cos(np.outer(indices, x))
             basis = np.concatenate((sin_basis, cos_basis), axis=0)
             result[i, :] = basis.flatten()
-            # print("\n")
 
         return result
 
@@ -176,179 +145,137 @@ class FourierNN:
     def precompute_indices(n=DEFAULT_FORIER_DEGREE):
         return np.arange(1, n + 1)
 
-    @staticmethod
-    def fourier_basis(x, indices):
-        sin_basis = np.sin(np.outer(indices, x))
-        cos_basis = np.cos(np.outer(indices, x))
-        basis = np.concatenate((sin_basis, cos_basis), axis=0).flatten()
-        return basis
-
-    @staticmethod
-    def taylor_basis(x, n=DEFAULT_FORIER_DEGREE):
-        basis = [x**i / np.math.factorial(i) for i in range(n)]
-        return np.array(basis)
-
-    def prepare_data(self, data, std_queue: Queue = None):
-        if std_queue:
-            self.stdout_queue = std_queue
-
-        self.fourier_degree = ((len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET
-                               if self.CALC_FOURIER_DEGREE_BY_DATA_LENGTH
-                               else self.DEFAULT_FORIER_DEGREE)
-
-        # "math" data filling
-        data = sorted(data, key=lambda x: x[0])
-        while len(data) < self.SAMPLES:
-            data_copy = sorted(data[:], key=lambda x: x[0])
-            pairs = ((data_copy[i], data_copy[i+1], 0.5)
-                     for i in range(len(data_copy)-1))
-            # , initializer=self.init_process) as pool:
-            with Pool(processes=os.cpu_count()) as pool:
-                new_data = pool.starmap(utils.interpolate, pairs)
-            data.extend(new_data)
-            if len(data) >= self.SAMPLES:
-                # Delete every second element
-                # data = data[::2]
-                break
-
-        while len(data) > self.SAMPLES:
-            data.pop()
-
-        data = sorted(data, key=lambda x: x[0])
-
-        # gen test_data
-        test_data = []
-        test_samples = self.SAMPLES/2
-        # "math" data filling
-        test_data = sorted(data, key=lambda x: x[0])
-        while len(test_data) < test_samples:
-            data_copy = sorted(test_data[:], key=lambda x: x[0])
-            pairs = ((data_copy[i], data_copy[i+1],)
-                     for i in range(len(data_copy)-1))
-            # initargs=self.stdout_queue
-            with Pool(processes=os.cpu_count()) as pool:
-                new_data = pool.starmap(utils.interpolate, pairs)
-            test_data.extend(new_data)
-            if len(test_data) >= test_samples:
-                # Delete every second element
-                # test_data = test_data[::2]
-                break
-
-        while len(test_data) > test_samples:
-            test_data.pop()
-
-        test_data = sorted(test_data, key=lambda x: x[0])
-
-        x_train, y_train = zip(*data)
-        x_test, y_test = zip(*test_data)
-
-        x_train = np.array(x_train)
-        y_train = np.array(y_train)
-        x_test = np.array(x_test)
-        y_test = np.array(y_test)
-        print(" Generate Fourier-Basis ".center(50, '-'))
-        indices = FourierNN.precompute_indices(self.fourier_degree)
-
-        result_a = self.fourier_basis_numba(x_train, indices)
-        result_b = self.fourier_basis_numba(x_test, indices)
-
-        print(''.center(50, '-'))
-
-        # .reshape(-1, self.fourier_degree*2)
-        x_train_transformed = np.array(result_a)
-        x_test_transformed = np.array(result_b)
-        # print(len(x_train_transformed), len(y_train))
-        # print(len(test_data), np.array(test_data).shape)
-        # print(x_test_transformed.shape, y_test.shape)
-        # input("paused")
-        return (x_train_transformed, y_train, x_test_transformed, y_test)
-
-    def create_model(self, input_shape):
-        print(input_shape)
-        model: tf.keras.Model = Sequential([
-            Input(shape=input_shape),
-            Dense(64, activation='linear'),
-            Dense(1, activation='linear')
-        ])
-        model.compile(optimizer=self.OPTIMIZER,
-                      loss=tf.keras.losses.get(self.LOSS_FUNCTION),
-                      metrics=[
-                          'accuracy',
-                          tf.keras.metrics.MeanSquaredError(),
-                          tf.keras.metrics.MeanAbsoluteError(),
-                          tf.keras.metrics.RootMeanSquaredError(),
-                      ])
-        model.summary()
-        return model
-
     def train(self, test_data, queue=None, quiet=False, stdout_queue=None):
+        print(self.OPTIMIZER,
+              self.LOSS_FUNCTION,
+              sep="\n")
+        # exit(-1)
         if stdout_queue:
             sys.stdout = QueueSTD_OUT(stdout_queue)
+
         x_train_transformed, y_train, test_x, test_y = self.prepared_data
-        if self.change_params:
-            self.create_new_model()
-        model = self.current_model
-        indices = FourierNN.precompute_indices(self.fourier_degree)
-        _x = FourierNN.fourier_basis_numba(test_data, indices)
-        # _x = [self.fourier_basis(x, indices) for x in test_data]
-        _x = np.array(_x)
-        early_stopping = EarlyStopping(
-            monitor='val_loss', patience=self.PATIENCE)
-        csvlogger = CSVLogger("./tmp/training.csv")
 
-        print("model.input_shape", model.input_shape, "\n",
-              "model.output_shape", model.output_shape, "\n",
-              "x_train_transformed.shape", x_train_transformed.shape, "\n",
-              "y_train.shape", y_train.shape, "\n",
-              "test_x.shape", test_x.shape, "\n",
-              "test_y.shape", test_y.shape, "\n",
-              "_x.shape", _x.shape, "\n")
-        model.fit(x_train_transformed, y_train,
-                  epochs=self.EPOCHS, validation_data=(test_x, test_y),
-                  callbacks=[
-                      MyCallback(queue=queue, test_data=_x,
-                                 quiet=quiet, std_queue=stdout_queue),
-                      early_stopping,
-                      csvlogger,
-                  ],
-                  batch_size=int(self.SAMPLES/2), verbose=0)
-        self.current_model.save('./tmp/tmp_model.keras')
+        model = self.current_model.to(self.device)
 
-    def clean_memory(self):
-        del self.prepared_data
+        x_train_transformed.to(self.device)
+        y_train.to(self.device)
+        test_x.to(self.device)
+        test_y.to(self.device)
 
-    def predict(self, data, batch_size=None):
+        optimizer = utils.get_optimizer(
+            optimizer_name=self.OPTIMIZER,
+            model_parameters=model.parameters(),
+            lr=0.001)
+        criterion = utils.get_loss_function(self.LOSS_FUNCTION)
+
+        train_dataset = TensorDataset(x_train_transformed, y_train)
+        train_loader = DataLoader(
+            train_dataset, batch_size=int(self.SAMPLES / 2), shuffle=True)
+
+        prepared_test_data = torch.tensor(
+            data=FourierNN.fourier_basis_numba(
+                data=test_data.flatten(),
+                indices=FourierNN.precompute_indices(self.fourier_degree)),
+            dtype=torch.float32).to(self.device)
+
+        min_delta = 0.00001
+        epoch_without_change = 0
+        max_loss = torch.inf
+
+        for epoch in range(self.EPOCHS):
+            # callback.on_epoch_begin(epoch)
+            print(f"epoch {epoch+1} beginns")
+            timestamp = time.perf_counter_ns()
+            model.train()
+            epoch_loss = 0
+            for batch_x, batch_y in train_loader:
+                batch_x, batch_y = batch_x.to(
+                    self.device), batch_y.to(self.device)
+                optimizer.zero_grad()
+                outputs = model(batch_x)
+                loss = criterion(outputs.squeeze(), batch_y)
+                loss.backward()
+                optimizer.step()
+                epoch_loss += loss.item()
+
+            epoch_loss /= len(train_loader)
+
+            # Validation
+            model.eval()
+            with torch.no_grad():
+                val_outputs = model(test_x.to(self.device))
+                val_loss = criterion(val_outputs.squeeze(),
+                                     test_y.to(self.device))
+                if queue:
+                    predictions = model(prepared_test_data)
+                    queue.put(predictions.cpu().numpy())
+
+            # callback.on_epoch_end(epoch, epoch_loss, val_loss.item(), model)
+            time_taken = time.perf_counter_ns() - timestamp
+            print(f"epoch {epoch+1} ends. "
+                  f"loss:{epoch_loss}, "
+                  f"val_loss: {val_loss}. "
+                  f"Time Taken: {time_taken / 1_000_000_000}s")
+
+            if epoch_loss < max_loss-min_delta:
+                max_loss = epoch_loss
+            else:
+                epoch_without_change += 1
+
+            if epoch_without_change == self.PATIENCE:
+                break
+
+        self.save_model()
+
+    def predict(self, data):
         indices = FourierNN.precompute_indices(self.fourier_degree)
         if not hasattr(data, '__iter__'):
-            x = [FourierNN.fourier_basis(data, indices)]
+            x = torch.tensor(
+                [self.fourier_basis(data, indices)], dtype=torch.float32)
         else:
             data = np.array(data)
-            x = FourierNN.fourier_basis_numba(data, indices)
-            # x = [FourierNN.fourier_basis(x, indices) for x in data]
-            # def t():
-            #     return [FourierNN.fourier_basis(x, indices) for x in data]
-            # x = utils.messure_time_taken(
-            #     "fourier_basis", FourierNN.fourier_basis_numba, data, indices, wait=False)
-            # x = utils.messure_time_taken(
-            #     "fourier_basis", t, wait=False)
-        x = np.array(x)
-        print(x.shape)
-        # x = x.reshape(len(x), -1)
-        batch_size = int(calculate_max_batch_size(x.shape[1]))
-        print("batch_size:", batch_size)
-        y = self.current_model.predict(
-            x, batch_size=batch_size if batch_size else len(data))
+            x = self.fourier_basis_numba(data, indices)
+            x = torch.tensor(x, dtype=torch.float32)
 
-        return y
+        with torch.no_grad():
+            y = self.current_model(x)
+
+        return y.numpy()
+
+    def save_model(self, filename='./tmp/model.pth'):
+        torch.save(self.current_model.state_dict(), filename)
+
+    def load_new_model_from_file(self, filename='./tmp/model.pth'):
+        self.current_model = self.create_model(
+            (self.prepared_data[0].shape[1],))
+        self.current_model.load_state_dict(
+            torch.load(filename, weights_only=False))
+        self.current_model.eval()
+        print(self.current_model)
+
+    def create_new_model(self):
+        if hasattr(self, "prepared_data"):
+            if self.prepared_data:
+                self.current_model = self.create_model(
+                    (self.prepared_data[0].shape[1],))
+
+    def change_model(self, net_no):
+        index = net_no - 1
+        if index >= 0:
+            new_model = self.models.pop(index)
+            if self.current_model:
+                self.models.insert(index, self.current_model)
+            self.current_model = new_model
 
     def synthesize(self, midi_note, duration=1.0, sample_rate=44100):
         output = np.zeros(shape=int(sample_rate * duration))
         freq = midi_to_freq(midi_note)
         t = np.linspace(0, duration, int(sample_rate * duration), False)
-        t_scaled = t * 2 * np.pi / (1/freq)
-        batch_size = int(sample_rate*duration)
-        output = self.current_model.predict(np.array([self.fourier_basis(
-            x, self.fourier_degree) for x in t_scaled]), batch_size=batch_size)
+        t_scaled = t * 2 * np.pi / (1 / freq)
+        batch_size = int(sample_rate * duration)
+        x = torch.tensor([self.fourier_basis(x, self.fourier_degree)
+                         for x in t_scaled], dtype=torch.float32)
+        output = self.current_model(x).numpy()
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         return output.astype(np.int16)
 
@@ -357,39 +284,12 @@ class FourierNN:
         output = np.zeros(shape=int(sample_rate * duration))
         freq = midi_to_freq(midi_note)
         t = np.linspace(0, duration, int(sample_rate * duration), False)
-        t_scaled = (t * 2 * np.pi) / (1/freq)
-        batch_size = sample_rate//1
+        t_scaled = (t * 2 * np.pi) / (1 / freq)
+        batch_size = sample_rate // 1
         indices = FourierNN.precompute_indices(self.fourier_degree)
-        x = FourierNN.fourier_basis_numba(t_scaled, indices)
-        output = self.current_model.predict(x, batch_size=batch_size)
+        x = self.fourier_basis_numba(t_scaled, indices)
+        x = torch.tensor(x, dtype=torch.float32)
+        output = self.current_model(x).numpy()
         output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
         print(f"Generated sound for note: {midi_note}")
-        # gc.collect()
         return (midi_note, output.astype(np.int16))
-
-    def save_model(self, filename='./tmp/model.h5'):
-        self.current_model._name = os.path.basename(
-            filename).replace('/', '').split('.')[0]
-        self.current_model.save(filename)
-
-    def load_new_model_from_file(self, filename='./tmp/model.h5'):
-        if self.current_model:
-            self.models.append(self.current_model)
-        self.current_model = tf.keras.models.load_model(filename)
-        print(self.current_model.name)
-        self.current_model._name = os.path.basename(
-            filename).replace('/', '').split('.')[0]
-        print(self.current_model.name)
-        self.current_model.summary()
-        print(self.current_model.input_shape)
-        self.fourier_degree = self.current_model.input_shape[1]//2
-        print(self.fourier_degree)
-
-    def change_model(self, net_no):
-        index = net_no-1
-        if index >= 0:
-            new_model = self.models.pop(index)
-            if self.current_model:
-                self.models.insert(index, self.current_model)
-            # self.fourier_degree=
-            self.current_model = new_model

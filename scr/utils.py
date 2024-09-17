@@ -13,6 +13,7 @@ from numba import njit
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torch.nn.functional as F
 
 
 class QueueSTD_OUT(TextIO):
@@ -260,6 +261,7 @@ def get_loss_function(loss_name, **kwargs):
 
 def linear_interpolation(data, target_length, device='cpu'):
     # Convert data to a tensor and move to the specified device
+    data = np.array(data)
     data_tensor = torch.tensor(data, dtype=torch.float32).to(device)
 
     # Extract x and y values
@@ -271,9 +273,9 @@ def linear_interpolation(data, target_length, device='cpu'):
         x_values.min(), x_values.max(), target_length).to(device)
 
     # Perform linear interpolation
-    new_y_values = torch.lerp(
-        y_values[0],
-        y_values[-1],
-        (new_x_values - x_values[0]) / (x_values[-1] - x_values[0]))
+    new_y_values = F.interpolate(y_values.unsqueeze(0).unsqueeze(0),
+                                 size=new_x_values.size(0),
+                                 mode='linear',
+                                 align_corners=True).squeeze()
 
     return (new_x_values.cpu(), new_y_values.cpu(),)
