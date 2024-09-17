@@ -3,6 +3,7 @@ import os
 from matplotlib import ticker
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
@@ -50,9 +51,9 @@ def main():
         #                                                                   wait=False)
         # a[i*buffer_size:(i+1)*buffer_size] = utils.messure_time_taken(
         #     "predict", fourier_nn.predict, x[i*buffer_size:(i+1)*buffer_size], wait=False)
-        a = fourier_nn.current_model.predict(
-            x,
-            batch_size=len(x))
+        with torch.no_grad():
+            a = fourier_nn.current_model(torch.tensor(
+                x, dtype=torch.float32).to(fourier_nn.device)).cpu().numpy()
         # try:
         #     a = fourier_nn.current_model.predict(
         #         x,

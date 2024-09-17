@@ -124,7 +124,7 @@ class MainGUI(tk.Tk):
 
     def add_net_controll(self):
         defaults = {
-            'SAMPLES': 1000,
+            'SAMPLES': 500,
             'EPOCHS': 1000,
             'DEFAULT_FORIER_DEGREE': 300,
             'FORIER_DEGREE_DIVIDER': 1,
@@ -168,13 +168,16 @@ class MainGUI(tk.Tk):
         children = self.process_monitor.children(recursive=True)
         total_cpu = self.process_monitor.cpu_percent()
         total_mem = self.process_monitor.memory_percent()
-
+        i = 0
         for child in children:
             try:
                 total_cpu += child.cpu_percent(0.01)
                 total_mem += child.memory_percent()
+                i += 1
             except psutil.NoSuchProcess:
                 pass
+        # total_cpu /= i
+        # total_mem /= i
         self.cpu_label.config(
             text=f"CPU Usage: {total_cpu/os.cpu_count():.2f}%")
         self.ram_label.config(text=f"RAM Usage: {total_mem:.2f}%")
