@@ -112,37 +112,10 @@ class FourierNN():
         x_test, y_test = linear_interpolation(
             data, self.SAMPLES//2, self.device)
 
-        indices = FourierNN.precompute_indices(self.fourier_degree)
-
-        # x_train_transformed = self.fourier_basis_numba(
-        #     np.array(x_train), indices)  # , self.device)
-        # x_test_transformed = self.fourier_basis_numba(
-        #     np.array(x_test), indices)  # , self.device)
-
         return (x_train,
                 y_train,
                 x_test,
                 y_test)
-
-    @staticmethod
-    @njit(parallel=True)
-    def fourier_basis_numba(data, indices):
-        n_samples = data.shape[0]
-        n_features = indices.size*2
-        result = np.empty((n_samples, n_features), dtype=np.float64)
-
-        for i in prange(n_samples):
-            x = data[i]
-            sin_basis = np.sin(np.outer(indices, x))
-            cos_basis = np.cos(np.outer(indices, x))
-            basis = np.concatenate((sin_basis, cos_basis), axis=0)
-            result[i, :] = basis.flatten()
-
-        return result
-
-    @staticmethod
-    def precompute_indices(n=DEFAULT_FORIER_DEGREE):
-        return np.arange(1, n + 1)
 
     def train(self, test_data, queue=None, quiet=False, stdout_queue=None):
         print(self.OPTIMIZER,
@@ -230,14 +203,9 @@ class FourierNN():
         self.save_model()
 
     def predict(self, data):
-        indices = FourierNN.precompute_indices(self.fourier_degree)
-        if not hasattr(data, '__iter__'):
-            x = torch.tensor(
-                [self.fourier_basis(data, indices)], dtype=torch.float32)
-        else:
-            data = np.array(data)
-            x = self.fourier_basis_numba(data, indices)
-            x = torch.tensor(x, dtype=torch.float32)
+        x = torch.tensor(data, dtype=torch.float32)
+        if not x.dim():
+            x = x.unsqueeze(0)
 
         with torch.no_grad():
             y = self.current_model(x)
