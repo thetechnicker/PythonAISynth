@@ -87,8 +87,6 @@ class FourierNN():
         model = nn.Sequential(
             FourierLayer(self.fourier_degree),
             nn.Linear(self.fourier_degree*2, 1),
-            # nn.ReLU(),
-            # nn.Linear(64, 1)
         )
         return model
 
