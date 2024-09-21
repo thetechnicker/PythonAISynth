@@ -196,8 +196,10 @@ class FourierNN():
                 epoch_without_change += 1
 
             if epoch_without_change == self.PATIENCE:
+                print("Early Stopping")
                 break
 
+        print("Training Ended")
         self.save_model()
 
     def predict(self, data):
