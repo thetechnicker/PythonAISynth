@@ -27,6 +27,20 @@ def _1():
     scr
 
 
+def wrap_concat(tensor, idx1, idx2):
+    length = tensor.size(0)
+
+    if idx2 >= length:
+        idx2 = idx2 % length
+
+    if idx1 <= idx2:
+        result = tensor[idx1:idx2]
+    else:
+        result = torch.cat((tensor[idx1:], tensor[:idx2]))
+
+    return result
+
+
 def main():
     samplerate = 44100
     frequencies = [220, 440, 660, 880, 1100, 1320, 1540, 1760, 1980, 2200]
@@ -57,15 +71,11 @@ def main():
                 for j in range(max_parralel_notes):
                     # t_ = (i+j*10)
                     a[j, :] = fourier_nn.current_model(
-                        t2_tensor[j, i*frames:(i+1)*frames])
+                        wrap_concat(t2_tensor[j], i, i+frames))
             y = torch.clamp(torch.sum(a, dim=0), min=-1, max=1).cpu().numpy()
-            # y = a.cpu().numpy()
-            # Apply a simple gain effect
-            # print(y)
-            # gain = 0.5
-            # y = y
+
             outdata[:] = y.reshape(-1, 1)
-            audio_callback.i = (i+1) % (samplerate//buffer_size)
+            audio_callback.i = (audio_callback.i + frames) % samplerate
 
         try:
             # i = 0
@@ -80,6 +90,7 @@ def main():
                         # pass
 
         except KeyboardInterrupt:
+            print(f"{(utils.messure_time_taken.time_taken)/1_000_000_000}s")
             print("exit")
             exit()
 
