@@ -31,7 +31,7 @@ def main():
     samplerate = 44100
     frequencies = [220, 440, 660, 880, 1100, 1320, 1540, 1760, 1980, 2200]
     t = np.linspace(-np.pi, np.pi, 250)
-    max_parralel_notes = 1
+    max_parralel_notes = 3
     data = list(
         zip(t, (predefined_functions.predefined_functions_dict['sin'](x) for x in t)))
 
@@ -51,29 +51,33 @@ def main():
             if status:
                 print(status)
 
-            a = np.zeros((frames, 1))
+            a = torch.zeros((max_parralel_notes, frames, 1),
+                            device=fourier_nn.device)
             with torch.no_grad():
-                # for j in range(max_parralel_notes):
-                a[:] = fourier_nn.current_model(
-                    t2_tensor[0, i*frames:(i+1)*frames]).cpu().numpy()
-            # y = np.sum(a, 0)
-            y = a
+                for j in range(max_parralel_notes):
+                    # t_ = (i+j*10)
+                    a[j, :] = fourier_nn.current_model(
+                        t2_tensor[j, i*frames:(i+1)*frames])
+            y = torch.clamp(torch.sum(a, dim=0), min=-1, max=1).cpu().numpy()
+            # y = a.cpu().numpy()
             # Apply a simple gain effect
-            print(a)
-            gain = 0.5
-            y = y * gain
+            # print(y)
+            # gain = 0.5
+            # y = y
             outdata[:] = y.reshape(-1, 1)
             audio_callback.i = (i+1) % (samplerate//buffer_size)
 
         try:
             # i = 0
             stream = sd.OutputStream(
-                callback=audio_callback, samplerate=samplerate, channels=1, blocksize=buffer_size)
+                callback=lambda *args, **kwargs: utils.messure_time_taken('audio_callback', audio_callback, *args, **kwargs, wait=False), samplerate=samplerate, channels=1, blocksize=buffer_size)
             with stream:
-                while True:
-                    # print(i*buffer_size)
-                    # i = (i+1) % (samplerate//buffer_size)
-                    pass
+                with open(os.devnull, "w") as f:
+                    while True:
+                        if hasattr(audio_callback, 'i'):
+                            # print("", end="")
+                            print(audio_callback.i*buffer_size, file=f)
+                        # pass
 
         except KeyboardInterrupt:
             print("exit")
