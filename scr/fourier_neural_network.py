@@ -16,6 +16,8 @@ try:
 except ImportError:
     DIRECTML = False
 
+DISABLE_GPU = True
+
 
 class FourierLayer(nn.Module):
     def __init__(self, fourier_degree):
@@ -49,12 +51,12 @@ class FourierNN():
         self.prepared_data = None
         self.stdout_queue = stdout_queue
         self.device = None
-        if DIRECTML:
+        if DIRECTML and not DISABLE_GPU:
             self.device = torch_directml.device() if torch_directml.is_available() else None
         if not self.device:
-            if torch.cuda.is_available() and torch.version.hip:
+            if torch.cuda.is_available() and torch.version.hip and not DISABLE_GPU:
                 self.device = torch.device('rocm')
-            elif torch.cuda.is_available():
+            elif torch.cuda.is_available() and not DISABLE_GPU:
                 self.device = torch.device('cuda')
             else:
                 self.device = torch.device('cpu')

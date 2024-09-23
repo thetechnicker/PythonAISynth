@@ -59,9 +59,9 @@ def main():
             print(
                 f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
 
-        # x = 2*np.pi*np.linspace(0, 1, samplerate)
+        x = 2*np.pi*np.linspace(0, 1, samplerate)
         for i, (y) in enumerate(a):
-            plt.plot(t2[i], y, label=f"{i}")
+            plt.plot(x, y, label=f"{i}")
 
         plt.xlabel('x (radians)')
         plt.ylabel('sin(x)')
