@@ -27,10 +27,10 @@ def main():
     # f = 1
     frequencies = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
     t = np.linspace(-np.pi, np.pi, 250)
-    max_parralel_notes = 4
+    max_parralel_notes = 1
     max_parralel_notes = min(max(1, max_parralel_notes), len(frequencies))
     data = list(
-        zip(t, (predefined_functions.predefined_functions_dict['sin'](x) for x in t)))
+        zip(t, (predefined_functions.predefined_functions_dict['extreme'](x) for x in t)))
     # print(data)
     with multiprocessing.Manager() as manager:
         fourier_nn = FourierNN(lock=manager.Lock(), data=data)
@@ -59,9 +59,9 @@ def main():
             print(
                 f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
 
-        x = 2*np.pi*np.linspace(0, 1, samplerate)
+        # x = 2*np.pi*np.linspace(0, 1, samplerate)
         for i, (y) in enumerate(a):
-            plt.plot(x, y, label=f"{i}")
+            plt.plot(t2[i], y, label=f"{i}")
 
         plt.xlabel('x (radians)')
         plt.ylabel('sin(x)')

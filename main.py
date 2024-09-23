@@ -282,6 +282,9 @@ class MainGUI(tk.Tk):
                     self.after(100, self.train_update)
                     return
                 if exit_code == 0:
+                    for name, param in self.fourier_nn.current_model.named_parameters():
+                        print(
+                            f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
                     print("loading trained model")
                     self.fourier_nn.load_new_model_from_file()
                     print("model loaded")

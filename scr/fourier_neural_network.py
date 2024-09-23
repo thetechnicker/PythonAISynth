@@ -111,12 +111,13 @@ class FourierNN():
                 y_test)
 
     def train(self, test_data, queue=None, quiet=False, stdout_queue=None):
-        print(self.OPTIMIZER,
-              self.LOSS_FUNCTION,
-              sep="\n")
         # exit(-1)
         if stdout_queue:
             sys.stdout = QueueSTD_OUT(stdout_queue)
+
+        print(self.OPTIMIZER,
+              self.LOSS_FUNCTION,
+              sep="\n")
 
         x_train_transformed, y_train, test_x, test_y = self.prepared_data
 
