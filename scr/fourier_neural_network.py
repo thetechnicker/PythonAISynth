@@ -1,15 +1,11 @@
-import os
 import sys
 import time
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 from typing import Tuple
-from numba import njit, prange
-from multiprocessing import Queue, Pool
-from numba import njit, prange
+from multiprocessing import Queue
 
 from scr import utils
 from scr.utils import QueueSTD_OUT, linear_interpolation, midi_to_freq
@@ -36,7 +32,7 @@ class FourierLayer(nn.Module):
 class FourierNN():
     SAMPLES = 1000
     EPOCHS = 1000
-    DEFAULT_FORIER_DEGREE = 300
+    DEFAULT_FORIER_DEGREE = 100
     FORIER_DEGREE_DIVIDER = 1
     FORIER_DEGREE_OFFSET = 0
     PATIENCE = 50

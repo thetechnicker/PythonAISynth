@@ -67,9 +67,9 @@ def messure_time_taken(name, func, *args, wait=True, **kwargs):
         messure_time_taken.time_taken[name] = 0
     timestamp = time.perf_counter_ns()
     result = func(*args, **kwargs)
-    time_taken = time.perf_counter_ns()-timestamp
+    time_taken = (time.perf_counter_ns()-timestamp)/1_000_000_000
     print(
-        f"Time taken for {name}: {(time_taken)/1_000_000_000}s")
+        f"Time taken for {name}: {time_taken}s")
     if wait:
         input("paused")
     messure_time_taken.time_taken[name] = max(

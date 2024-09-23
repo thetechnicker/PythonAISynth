@@ -29,13 +29,14 @@ def main():
     # f = 1
     frequencies = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
     t = np.linspace(-np.pi, np.pi, 250)
-    max_parralel_notes = np.inf
+    max_parralel_notes = 4
     max_parralel_notes = min(max(1, max_parralel_notes), len(frequencies))
     data = list(
         zip(t, (predefined_functions.predefined_functions_dict['sin'](x) for x in t)))
     # print(data)
     with multiprocessing.Manager() as manager:
         fourier_nn = FourierNN(lock=manager.Lock(), data=data)
+        fourier_nn.update_attribs(fourier_degree=100)
         fourier_nn.train(test_data=t)
 
         # utils.messure_time_taken(
@@ -56,6 +57,10 @@ def main():
                 utils.messure_time_taken("predict", generate, wait=False)
 
         print(*utils.messure_time_taken.time_taken.items(), sep="\n")
+        for name, param in fourier_nn.current_model.named_parameters():
+            print(
+                f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
+
         x = 2*np.pi*np.linspace(0, 1, samplerate)
         for i, (y) in enumerate(a):
             plt.plot(x, y, label=f"{i}")
