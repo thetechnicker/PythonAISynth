@@ -122,10 +122,10 @@ class FourierNN():
 
         model = self.current_model.to(self.device)
 
-        x_train_transformed.to(self.device)
-        y_train.to(self.device)
-        test_x.to(self.device)
-        test_y.to(self.device)
+        x_train_transformed = x_train_transformed.to(self.device)
+        y_train = y_train.to(self.device)
+        test_x = test_x.to(self.device)
+        test_y = test_y.to(self.device)
 
         optimizer = utils.get_optimizer(
             optimizer_name=self.OPTIMIZER,
@@ -144,7 +144,8 @@ class FourierNN():
         #     dtype=torch.float32).to(self.device)
         prepared_test_data = torch.tensor(
             test_data.flatten(),
-            dtype=torch.float32).to(self.device)
+            dtype=torch.float32, device=self.device)
+        print(prepared_test_data.shape)
 
         min_delta = 0.00001
         epoch_without_change = 0
@@ -171,7 +172,7 @@ class FourierNN():
             # Validation
             model.eval()
             with torch.no_grad():
-                val_outputs = model(test_x.to(self.device))
+                val_outputs = model(test_x)
                 val_loss = criterion(val_outputs.squeeze(),
                                      test_y.to(self.device))
                 if queue:

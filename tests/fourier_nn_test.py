@@ -1,10 +1,8 @@
 import multiprocessing
 import os
-from matplotlib import ticker
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-import sounddevice as sd
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 

@@ -270,6 +270,7 @@ class MainGUI(tk.Tk):
                     data = self.queue.get_nowait()
                     # print("!!!check!!!")
                     data = list(zip(self.graph.lst, data.reshape(-1)))
+                    # print(data)
                     # graph.data=data
                     self.graph.draw_extern_graph_from_data(
                         data, "training", color="red", width=self.graph.point_radius/4)
@@ -284,8 +285,11 @@ class MainGUI(tk.Tk):
                     print("loading trained model")
                     self.fourier_nn.load_new_model_from_file()
                     print("model loaded")
+                    for name, param in self.fourier_nn.current_model.named_parameters():
+                        print(
+                            f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
                     self.graph.draw_extern_graph_from_func(
-                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4, graph_type='crazy')
+                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type = 'crazy')
                     self.synth = Synth(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
