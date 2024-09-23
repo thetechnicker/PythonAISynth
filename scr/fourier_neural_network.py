@@ -28,7 +28,6 @@ class FourierLayer(nn.Module):
 
     def forward(self, x):
         self.tensor = self.tensor.to(x.device)
-        # print(x.shape, self.tensor.shape)
         y = x.unsqueeze(1) * self.tensor
         z = torch.concat((torch.sin(y), torch.cos(y)), dim=1)
         return z

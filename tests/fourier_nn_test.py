@@ -27,9 +27,10 @@ def main():
     # Initialize variables
     samplerate = 44100
     # f = 1
-    frequencies = [220, 440, 660, 880, 1100, 1320, 1540, 1760, 1980, 2200]
+    frequencies = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
     t = np.linspace(-np.pi, np.pi, 250)
-    max_parralel_notes = 5
+    max_parralel_notes = np.inf
+    max_parralel_notes = min(max(1, max_parralel_notes), len(frequencies))
     data = list(
         zip(t, (predefined_functions.predefined_functions_dict['sin'](x) for x in t)))
     # print(data)
@@ -40,7 +41,7 @@ def main():
         # utils.messure_time_taken(
         #     "predict", lambda x: [fourier_nn.predict(_x, 1) for _x in x], 2*np.pi * f * np.linspace(0, 1, timestep))
         t2 = np.array([2 * np.pi * frequencies[f] *
-                       np.linspace(0, 1, samplerate).reshape(-1, 1) for f in range(max_parralel_notes)])
+                       np.linspace(0, 1, samplerate) for f in range(max_parralel_notes)])
         t2_tensor = torch.tensor(t2, dtype=torch.float32).to(fourier_nn.device)
         print(t2_tensor.shape)
         buffer_size = 512
@@ -50,28 +51,13 @@ def main():
             for i in range((t2.shape[1]//buffer_size)+1):
                 def generate():
                     for j in range(max_parralel_notes):
-                        a[:, i*buffer_size:(i+1)*buffer_size] = fourier_nn.current_model(
+                        a[j, i*buffer_size:(i+1)*buffer_size] = fourier_nn.current_model(
                             t2_tensor[j, i*buffer_size:(i+1)*buffer_size]).cpu().numpy()
                 utils.messure_time_taken("predict", generate, wait=False)
 
-        # try:
-        #     with torch.no_grad():
-        #         i = 0
-        #         while True:
-        #             def generate():
-        #                 y = []
-        #                 for j in range(max_parralel_notes):
-        #                     x = fourier_nn.current_model(
-        #                         t2_tensor[j, i*buffer_size:(i+1)*buffer_size]).cpu().numpy()
-        #                     # sd.play(x, blocking=False)
-        #             utils.messure_time_taken("predict", generate, wait=False)
-        #             i = (i+1) % (samplerate//buffer_size)
-
-        # except KeyboardInterrupt:
-        #     print("exit")
-        #     exit()
-
-        for i, (x, y) in enumerate(zip(t2, a)):
+        print(*utils.messure_time_taken.time_taken.items(), sep="\n")
+        x = 2*np.pi*np.linspace(0, 1, samplerate)
+        for i, (y) in enumerate(a):
             plt.plot(x, y, label=f"{i}")
 
         plt.xlabel('x (radians)')

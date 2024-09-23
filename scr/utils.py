@@ -62,7 +62,9 @@ def calculate_max_batch_size(num_features, dtype=np.float32, memory_buffer=0.1):
 
 def messure_time_taken(name, func, *args, wait=True, **kwargs):
     if not hasattr(messure_time_taken, 'time_taken'):
-        messure_time_taken.time_taken = 0
+        messure_time_taken.time_taken = {}
+    if name not in messure_time_taken.time_taken:
+        messure_time_taken.time_taken[name] = 0
     timestamp = time.perf_counter_ns()
     result = func(*args, **kwargs)
     time_taken = time.perf_counter_ns()-timestamp
@@ -70,8 +72,8 @@ def messure_time_taken(name, func, *args, wait=True, **kwargs):
         f"Time taken for {name}: {(time_taken)/1_000_000_000}s")
     if wait:
         input("paused")
-    messure_time_taken.time_taken = max(
-        messure_time_taken.time_taken, time_taken)
+    messure_time_taken.time_taken[name] = max(
+        messure_time_taken.time_taken[name], time_taken)
     return result
 
 

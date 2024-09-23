@@ -45,7 +45,7 @@ def main():
     samplerate = 44100
     frequencies = [220, 440, 660, 880, 1100, 1320, 1540, 1760, 1980, 2200]
     t = np.linspace(-np.pi, np.pi, 250)
-    max_parralel_notes = 3
+    max_parralel_notes = 1
     data = list(
         zip(t, (predefined_functions.predefined_functions_dict['sin'](x) for x in t)))
 
@@ -90,7 +90,7 @@ def main():
                         # pass
 
         except KeyboardInterrupt:
-            print(f"{(utils.messure_time_taken.time_taken)/1_000_000_000}s")
+            print(*utils.messure_time_taken.time_taken.items(), sep="\n")
             print("exit")
             exit()
 
