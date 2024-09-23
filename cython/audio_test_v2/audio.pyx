@@ -1,3 +1,4 @@
+# cython: language_level=3
 import multiprocessing
 import os
 from matplotlib import ticker
@@ -5,23 +6,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 import sounddevice as sd
-
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-# autopep8: off
 from context import scr
 from scr import predefined_functions, utils
 from scr.fourier_neural_network import FourierNN
-# autopep8: on
 
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 def _1():
     # to avoid removing importent import of scr
     scr
 
-
-def wrap_concat(tensor, idx1, idx2):
-    length = tensor.size(0)
+cdef wrap_concat(tensor, idx1, idx2):
+    cdef int length = tensor.size(0)
 
     if idx2 >= length:
         idx2 = idx2 % length
@@ -33,13 +29,12 @@ def wrap_concat(tensor, idx1, idx2):
 
     return result
 
-
-def main():
-    samplerate = 44100
-    frequencies = [220, 440, 660, 880, 1100, 1320, 1540, 1760, 1980, 2200]
+cdef main():
+    cdef int samplerate = 44100
+    cdef list frequencies = [220, 440, 660, 880, 1100, 1320, 1540, 1760, 1980, 2200]
     t = np.linspace(-np.pi, np.pi, 250)
-    max_parralel_notes = 1
-    data = list(
+    cdef int max_parralel_notes = 1
+    cdef list data = list(
         zip(t, (predefined_functions.predefined_functions_dict['sin'](x) for x in t)))
 
     with multiprocessing.Manager() as manager:
@@ -87,6 +82,8 @@ def main():
             print("exit")
             exit()
 
+cpdef run():
+    main()
 
 if __name__ == "__main__":
     main()
