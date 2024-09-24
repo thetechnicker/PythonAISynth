@@ -16,10 +16,10 @@ MAX_FOURIER_DEGREE = 500
 BATCH_SIZE = 100
 NUM_EPOCHS = 10000
 PATIENCE = 50
-MIN_DIFF = 0.001
+MIN_DIFF = 0.00001
 LEARNING_RATE = 0.01
 EARLY_STOP_LOSS_THRESHOLD = 0.05
-FUNCTION_NAME = 'sin'
+FUNCTION_NAME = 'extreme'
 EPOCHS_BEFORE_ADJUSTMENT = 100
 TRAIN_SAMPLES = 1000
 
@@ -95,7 +95,8 @@ class SimpleModel(nn.Module):
 def train_model(model, optimizer, criterion, train_loader, val_loader, num_epochs, min_degree, max_degree, patience=PATIENCE):
     last_lowest_loss = torch.inf
     last_action = 0
-    for i in range(10):
+    i = 0
+    while True:
         lowest_loss = torch.inf
         epochs_without_improvement = 0
         for epoch in range(num_epochs):
@@ -122,7 +123,7 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, num_epoch
 
             val_loss /= len(val_loader)
 
-            print(f"Try {(i + 1):5}, Epoch {(epoch + 1):5}/{num_epochs:5}, Train Loss: {train_loss:5.7f}, Val Loss: {val_loss:5.7f}, Lowest Loss: {lowest_loss:5.7f}, Fourier Degree: {model.fourier_degree:5}")
+            print(f"Try {(i + 1):5}, Epoch {(epoch + 1):5}/{num_epochs:5}, Train Loss: {train_loss:5.7f}, Val Loss: {val_loss:5.7f}, Lowest Loss: {lowest_loss:5.7f}(this try)/{last_lowest_loss:5.7f}(total), Fourier Degree: {model.fourier_degree:5}")
 
             # Dynamic adjustment of fourier_degree
             if train_loss < lowest_loss:
@@ -134,11 +135,15 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, num_epoch
             if epochs_without_improvement >= patience:  # or val_loss < 0.0002:
                 print(f"Early stopping triggered after {epoch + 1} epochs.")
                 break
+        # break
         # models.append(model.)
+        if lowest_loss < 0.1:
+            break
+
         optimizer = optim.Adam(
             model.parameters(), lr=LEARNING_RATE)
 
-        if last_action == 0:
+        if last_action == 0 and False:
             model.update_fourier_degree(model.fourier_degree + 1)
             last_action = 1
         elif last_action == 1:
@@ -160,6 +165,8 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, num_epoch
 
         if lowest_loss < last_lowest_loss:
             last_lowest_loss = lowest_loss
+
+        i += 1
 
 
 class DualOutput:
