@@ -1,4 +1,6 @@
 from datetime import datetime
+import glob
+import os
 import sys
 import numpy as np
 import torch
@@ -13,10 +15,10 @@ MIN_FOURIER_DEGREE = 1
 MAX_FOURIER_DEGREE = 500
 BATCH_SIZE = 100
 NUM_EPOCHS = 10000
-PATIENCE = 50
+PATIENCE = 75
 MIN_DIFF = 0.001
 LEARNING_RATE = 0.01
-EARLY_STOP_LOSS_THRESHOLD = 0.1
+EARLY_STOP_LOSS_THRESHOLD = 0.05
 FUNCTION_NAME = 'sin'
 EPOCHS_BEFORE_ADJUSTMENT = 100
 TRAIN_SAMPLES = 1000
@@ -120,7 +122,7 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, num_epoch
 
         val_loss /= len(val_loader)
 
-        print(f"Epoch {(epoch + 1):10}/{num_epochs:10}, Train Loss: {train_loss:10.4f}, Val Loss: {val_loss:10.4f}, Lowest Loss: {lowest_loss:10.4f} ({lowest_loss_degree:3}), Fourier Degree: {model.fourier_degree:10}")
+        print(f"Epoch {(epoch + 1):10}/{num_epochs:10}, Train Loss: {train_loss:10.5f}, Val Loss: {val_loss:10.5f}, Lowest Loss: {lowest_loss:10.5f} ({lowest_loss_degree:3}), Fourier Degree: {model.fourier_degree:10}")
 
         # Dynamic adjustment of fourier_degree
         if train_loss < lowest_loss:
@@ -131,7 +133,7 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, num_epoch
             epochs_without_improvement += 1
 
         # Adjust Fourier degree based on loss
-        if (epoch+1) % EPOCHS_BEFORE_ADJUSTMENT == 0:
+        if (epoch + 1) % EPOCHS_BEFORE_ADJUSTMENT == 0:
             if abs(lowest_loss - train_loss) < MIN_DIFF:
                 if model.fourier_degree < max_degree:
                     model.update_fourier_degree(model.fourier_degree + 1)
@@ -147,6 +149,7 @@ def train_model(model, optimizer, criterion, train_loader, val_loader, num_epoch
                     print(
                         f"Decreasing Fourier degree to {model.fourier_degree}")
 
+        # Check for early stopping condition
         if epochs_without_improvement >= patience or val_loss < 0.0002:
             print(f"Early stopping triggered after {epoch + 1} epochs.")
             break
@@ -169,11 +172,39 @@ class DualOutput:
         self.file.close()
 
 
-# Example usage
+def filter_and_keep_newest_files(folder_path, identifier_str, num_files_to_keep=10):
+    # Create the search pattern
+    search_pattern = os.path.join(folder_path, f"*{identifier_str}.txt")
+
+    # Get a list of files matching the pattern
+    matching_files = glob.glob(search_pattern)
+
+    # Sort the files by modification time (newest first)
+    matching_files.sort(key=os.path.getmtime, reverse=True)
+
+    # Keep only the newest files
+    files_to_keep = matching_files[:num_files_to_keep]
+
+    # Determine which files to delete
+    files_to_delete = matching_files[num_files_to_keep:]
+
+    # Print the files to keep and delete (for verification)
+    print("Keeping the following files:")
+    for file in files_to_keep:
+        print(file)
+
+    print("\nDeleting the following files:")
+    for file in files_to_delete:
+        print(file)
+        os.remove(file)  # Uncomment this line to actually delete the files
+
+
 if __name__ == "__main__":
+    filter_and_keep_newest_files("tests/tmp/", "_log_12345")
+
     timestamp = datetime.now()
     dual_output = DualOutput(
-        f'tests/tmp/{timestamp.strftime("%Y-%m-%d-%H:%M")}_log.txt')
+        f'tests/tmp/{timestamp.strftime("%Y-%m-%d-%H:%M")}_log_12345.txt')
     sys.stdout = dual_output
 
     # Create a simple dataset
