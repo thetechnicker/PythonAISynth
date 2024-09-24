@@ -126,10 +126,10 @@ class MainGUI(tk.Tk):
         defaults = {
             'SAMPLES': 500,
             'EPOCHS': 1000,
-            'DEFAULT_FORIER_DEGREE': 300,
+            'DEFAULT_FORIER_DEGREE': 100,
             'FORIER_DEGREE_DIVIDER': 1,
             'FORIER_DEGREE_OFFSET': 0,
-            'PATIENCE': 50,
+            'PATIENCE': 100,
             'OPTIMIZER': 'Adam',
             'LOSS_FUNCTION': 'HuberLoss',
         }
@@ -282,15 +282,15 @@ class MainGUI(tk.Tk):
                     self.after(100, self.train_update)
                     return
                 if exit_code == 0:
-                    for name, param in self.fourier_nn.current_model.named_parameters():
-                        print(
-                            f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
+                    # for name, param in self.fourier_nn.current_model.named_parameters():
+                    #     print(
+                    #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
                     print("loading trained model")
                     self.fourier_nn.load_new_model_from_file()
                     print("model loaded")
-                    for name, param in self.fourier_nn.current_model.named_parameters():
-                        print(
-                            f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
+                    # for name, param in self.fourier_nn.current_model.named_parameters():
+                    #     print(
+                    #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
                     self.graph.draw_extern_graph_from_func(
                         self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type = 'crazy')
                     self.synth = Synth(self.fourier_nn, self.std_queue)

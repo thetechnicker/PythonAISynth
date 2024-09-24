@@ -37,7 +37,7 @@ class FourierNN():
     DEFAULT_FORIER_DEGREE = 100
     FORIER_DEGREE_DIVIDER = 1
     FORIER_DEGREE_OFFSET = 0
-    PATIENCE = 50
+    PATIENCE = 100
     OPTIMIZER = 'Adam'
     LOSS_FUNCTION = 'HuberLoss'
     CALC_FOURIER_DEGREE_BY_DATA_LENGTH = False
@@ -133,7 +133,7 @@ class FourierNN():
         optimizer = utils.get_optimizer(
             optimizer_name=self.OPTIMIZER,
             model_parameters=model.parameters(),
-            lr=0.001)
+            lr=0.01)
         criterion = utils.get_loss_function(self.LOSS_FUNCTION)
 
         train_dataset = TensorDataset(x_train_transformed, y_train)
@@ -150,7 +150,7 @@ class FourierNN():
             dtype=torch.float32, device=self.device)
         print(prepared_test_data.shape)
 
-        min_delta = 0.00001
+        min_delta = 0.000001  # 4.337714676382401e-14
         epoch_without_change = 0
         max_loss = torch.inf
 
@@ -185,12 +185,13 @@ class FourierNN():
             # callback.on_epoch_end(epoch, epoch_loss, val_loss.item(), model)
             time_taken = time.perf_counter_ns() - timestamp
             print(f"epoch {epoch+1} ends. "
-                  f"loss:{epoch_loss}, "
+                  f"loss: {epoch_loss}, "
                   f"val_loss: {val_loss}. "
                   f"Time Taken: {time_taken / 1_000_000_000}s")
 
-            if epoch_loss < max_loss-min_delta:
+            if val_loss < max_loss-min_delta:
                 max_loss = epoch_loss
+                epoch_without_change = 0
             else:
                 epoch_without_change += 1
 
