@@ -145,7 +145,7 @@ class MainGUI(tk.Tk):
         self.gui = NeuralNetworkGUI(
             self.frame, defaults=defaults, callback=self.update_frourier_params)
         self.gui.grid(row=0, sticky='NSEW')
-        self.frame.grid(row=1, column=3, sticky='NSEW')
+        self.frame.grid(row=1, column=3, rowspan=2, sticky='NSEW')
 
     def create_status_bar(self):
         # Create a status bar with two labels
@@ -171,7 +171,7 @@ class MainGUI(tk.Tk):
         self.ram_label.pack(side=tk.RIGHT)
 
         self.frame_no = 0
-        self.after(500, self.update_status_bar)
+        utils.tk_after_errorless(self, 500, self.update_status_bar)
 
     def update_status_bar(self):
         children = self.process_monitor.children(recursive=True)
@@ -201,7 +201,7 @@ class MainGUI(tk.Tk):
 
         self.processes_label.config(
             text=f"Children Processes: {len(children)}")
-        self.after(500, self.update_status_bar)
+        utils.tk_after_errorless(self, 500, self.update_status_bar)
 
     def create_row_one(self):
         self.label = ttk.Label(self, text="Predefined Functions:")
@@ -288,7 +288,7 @@ class MainGUI(tk.Tk):
             else:
                 exit_code = self.trainings_process.exitcode
                 if exit_code == None:
-                    self.after(100, self.train_update)
+                    utils.tk_after_errorless(self, 100, self.train_update)
                     return
                 if exit_code == 0:
                     # for name, param in self.fourier_nn.current_model.named_parameters():
@@ -311,7 +311,7 @@ class MainGUI(tk.Tk):
                     "training Ended", f"exit code: {exit_code}")
                 # self.fourier_nn.clean_memory()
                 return
-        self.after(50, self.train_update)
+        utils.tk_after_errorless(self, 50, self.train_update)
 
     def init_or_update_nn(self, stdout=None):
         if not self.fourier_nn:
@@ -342,7 +342,7 @@ class MainGUI(tk.Tk):
         t = Thread(target=self.init_or_update_nn, args=(self.std_queue,))
         t.daemon = True
         t.start()
-        self.after(100, self.train_update)
+        utils.tk_after_errorless(self, 100, self.train_update)
         atexit.register(DIE, self.trainings_process)
         self.graph.draw_extern_graph_from_data(
             self.graph.export_data(), "train_data", color="blue")

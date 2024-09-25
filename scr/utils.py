@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+import tkinter as tk
 
 
 class QueueSTD_OUT(TextIO):
@@ -250,9 +251,9 @@ def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: 
     # timers.append(timer)  # Keep track of the timer
 
 
-# def kill_timer(timer: threading.Timer):
-#     if timer.is_alive():
-#         timer.cancel()
+def kill_timer(timer: threading.Timer):
+    if timer.is_alive():
+        timer.cancel()
 
 
 # def cleanup_timers():
@@ -261,6 +262,12 @@ def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: 
 
 
 # atexit.register(cleanup_timers)
+
+def tk_after_errorless(master: tk.Tk, delay_ms: int, func: Callable[..., Any], *args: Any):
+    try:
+        master.after(delay_ms, func, *args)
+    except:
+        pass
 
 
 def get_optimizer(optimizer_name, model_parameters, **kwargs):

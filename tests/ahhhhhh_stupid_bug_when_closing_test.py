@@ -4,8 +4,6 @@ import subprocess
 import sys
 import time
 from context import path
-import pyautogui
-# import pygetwindow as gw
 
 
 def listen_for_status():
@@ -26,6 +24,8 @@ def listen_for_status():
                 print(f"Connection refused. Retrying... {i} Tries Left")
                 if exit:
                     return False
+            except (ConnectionAbortedError, ConnectionResetError):
+                return False
 
             time.sleep(1)  # Wait before trying again
         i -= 1
@@ -52,8 +52,8 @@ def run_and_find_window(script_path):
                 if any(x):
                     print("noooo")
                     failed += 1
-    except:
-        pass
+    except KeyboardInterrupt as e:
+        print(e)  # , type(e))
     print(f"{failed}/{i} had an error")
 
 

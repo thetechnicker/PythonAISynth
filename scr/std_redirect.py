@@ -27,7 +27,7 @@ class RedirectedOutputFrame(tk.Frame):
         self.old_stdout = sys.stdout
         # self.old_stderr = copy(sys.stderr)
         sys.stdout = utils.QueueSTD_OUT(self.queue)
-        master.after(100, self.check_queue)
+        utils.tk_after_errorless(self, 100, self.check_queue)
 
         # dictionaries to replace formatting code with tags
         self.ansi_font_format = {1: 'bold',
@@ -167,7 +167,10 @@ class RedirectedOutputFrame(tk.Frame):
                 self.redirector(msg)
             except queue.Empty:
                 break
-        self.master.after(100, self.check_queue)
+        try:
+            self.utils.tk_after_errorless(self, 100, self.check_queue)
+        except:
+            return
 
     def __del__(self):
         sys.stdout = self.old_stdout
