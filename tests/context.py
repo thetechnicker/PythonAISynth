@@ -1,6 +1,10 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# autopep8: off
+path=os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, path)
 
 import scr
 import main
+# autopep8: on

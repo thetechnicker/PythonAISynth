@@ -230,6 +230,9 @@ def calculate_peak_frequency(signal):
     return peak_freq
 
 
+timers = []
+
+
 def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
     """
     Schedules a function to be run after a specified delay in milliseconds.
@@ -242,12 +245,22 @@ def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: 
     """
     delay_seconds = delay_ms / 1000.0
     timer = threading.Timer(delay_seconds, func, args=args, kwargs=kwargs)
+    timer.setDaemon(True)
     timer.start()
+    # timers.append(timer)  # Keep track of the timer
 
 
-def kill_timer(timer):
-    if timer.is_alive():
-        timer.cancel()
+# def kill_timer(timer: threading.Timer):
+#     if timer.is_alive():
+#         timer.cancel()
+
+
+# def cleanup_timers():
+#     for timer in timers:
+#         kill_timer(timer)
+
+
+# atexit.register(cleanup_timers)
 
 
 def get_optimizer(optimizer_name, model_parameters, **kwargs):

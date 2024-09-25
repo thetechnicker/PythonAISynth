@@ -5,6 +5,8 @@ from matplotlib.widgets import Cursor
 import tkinter as tk
 from tkinter import ttk
 
+from scr.utils import run_after_ms
+
 
 class GraphCanvas(ttk.Frame):
     def __init__(self, master, *args, **kwargs):
@@ -53,10 +55,22 @@ class GraphCanvas(ttk.Frame):
             'motion_notify_event', self.on_mouse_motion)
 
         # Create a canvas to embed the plot in Tkinter
+
+        self.redraw_needed = False
+        run_after_ms(100, self.draw_idle)
+
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
+    def draw_idle(self):
+        if self.redraw_needed:
+            self.canvas.draw_idle()
+            run_after_ms(10, self.draw_idle)
+        else:
+            run_after_ms(100, self.draw_idle)
+
     # Function to find the closest point to the mouse
+
     def find_closest_point(self, x_mouse):
         distances = np.sqrt((self.x - x_mouse) ** 2)
         return np.argmin(distances)
@@ -79,7 +93,8 @@ class GraphCanvas(ttk.Frame):
             # Jump to mouse y position
             self.y[self.selected_index] = event.ydata
             self.line.set_ydata(self.y)
-            self.canvas.draw_idle()
+            # self.canvas.draw_idle()
+            self.redraw_needed = True
 
     # Function to handle mouse motion
     def on_mouse_motion(self, event):
@@ -91,29 +106,39 @@ class GraphCanvas(ttk.Frame):
                 if self.last_index is not None:
                     start_index = self.last_index
                     end_index = new_index
-                    if new_index > self.selected_index:
-                        for i in range(start_index, end_index + 1):
-                            percentage = (i - start_index) / \
-                                (end_index - start_index)
-                            # Linear interpolation
-                            self.y[i] = event.ydata * percentage + \
-                                self.y[start_index] * (1 - percentage)
-                    else:
-                        for i in range(start_index, end_index - 1, -1):
-                            percentage = (i - start_index) / \
-                                (end_index - start_index)
-                            # Linear interpolation
-                            self.y[i] = event.ydata * percentage + \
-                                self.y[start_index] * (1 - percentage)
+                    indices = np.arange(
+                        start_index, end_index + 1) if new_index > self.selected_index else np.arange(start_index, end_index - 1, -1)
+                    percentages = (indices - start_index) / \
+                        (end_index - start_index)
+                    self.y[indices] = event.ydata * percentages + \
+                        self.y[start_index] * (1 - percentages)
+                    # start_index = self.last_index
+                    # end_index = new_index
+                    # if new_index > self.selected_index:
+                    #     for i in range(start_index, end_index + 1):
+                    #         percentage = (i - start_index) / \
+                    #             (end_index - start_index)
+                    #         # Linear interpolation
+                    #         self.y[i] = event.ydata * percentage + \
+                    #             self.y[start_index] * (1 - percentage)
+                    # else:
+                    #     for i in range(start_index, end_index - 1, -1):
+                    #         percentage = (i - start_index) / \
+                    #             (end_index - start_index)
+                    #         # Linear interpolation
+                    #         self.y[i] = event.ydata * percentage + \
+                    #             self.y[start_index] * (1 - percentage)
                 self.selected_index = new_index
                 self.line.set_ydata(self.y)
                 self.last_index = new_index
-                self.canvas.draw_idle()
+            self.redraw_needed = True
+            # self.canvas.draw_idle()
 
     # Function to handle mouse button release
     def on_mouse_release(self, event):
         self.last_index = self.selected_index  # Update last index on release
         self.selected_index = None  # Reset the selected index
+        self.redraw_needed = False
 
     def destroy(self):
         plt.close(self.fig)  # Close the matplotlib figure
@@ -124,7 +149,7 @@ class GraphCanvas(ttk.Frame):
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Interactive Plot in Tkinter")
-    root.protocol("WM_DELETE_WINDOW", root.quit)
+    # root.protocol("WM_DELETE_WINDOW", root.quit)
     app = GraphCanvas(root)
     app.pack(fill=tk.BOTH, expand=True)
     root.mainloop()
