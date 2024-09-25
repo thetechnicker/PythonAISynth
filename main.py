@@ -1,5 +1,7 @@
 import copy
+import socket
 import sys
+import threading
 from scr import music
 from scr import utils
 from scr.music import Synth, musik_from_file
@@ -24,6 +26,10 @@ from tkinter import messagebox
 import psutil
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+
+state = "bootup"
+window = None
 
 dark_theme = {
     ".": {
@@ -429,13 +435,44 @@ class MainGUI(tk.Tk):
         self.fourier_nn.update_attribs(**{key: value})
 
 
+# def start_server():
+#     global window
+#     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+#         while True:
+#             try:
+#                 s.bind(('localhost', 65432))
+#                 break
+#             except:
+#                 pass
+#         s.listen()
+#         while True:
+#             conn, addr = s.accept()
+#             with conn:
+#                 print('Connected by', addr)
+#                 conn.sendall(state.encode())  # Send the current state
+#                 msg = ""
+#                 try:
+#                     # Receive message from client
+#                     msg = conn.recv(1024).decode()
+#                     print("Received message:", msg)
+#                 except Exception as e:
+#                     print("Error receiving message:", e)
+#                 if msg == "exit":
+#                     # Close the Tkinter window
+#                     window.after(10, window.destroy)
+
+
 def main():
+    # global state, window
+    # threading.Thread(target=start_server, daemon=True).start()
+
     os.environ['HAS_RUN_INIT'] = 'True'
     multiprocessing.set_start_method("spawn")
     with multiprocessing.Manager() as manager:
         std_write = copy.copy(sys.stdout.write)
         window = MainGUI(manager=manager)
         # window.protocol("WM_DELETE_WINDOW", window.quit)
+        state = "running"
         window.mainloop()
         sys.stdout.write = std_write
 
