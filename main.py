@@ -7,7 +7,7 @@ from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
 from scr.utils import DIE
 from scr.predefined_functions import predefined_functions_dict
-from scr.graph_canvas import GraphCanvas
+from scr.graph_canvas_v2 import GraphCanvas
 from scr.fourier_neural_network_gui import NeuralNetworkGUI
 from scr.fourier_neural_network import FourierNN
 from _version import version
@@ -435,10 +435,10 @@ def main():
     with multiprocessing.Manager() as manager:
         std_write = copy.copy(sys.stdout.write)
         window = MainGUI(manager=manager)
+        # window.protocol("WM_DELETE_WINDOW", window.quit)
         window.mainloop()
         sys.stdout.write = std_write
 
 
 if __name__ == "__main__":
     main()
-    # manager.
