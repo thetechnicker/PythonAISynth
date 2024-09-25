@@ -44,12 +44,16 @@ def run_and_find_window(script_path):
                 if t:
                     app_process.kill()
                 app_process.wait()
-            with open(out_file, 'r')as f:
+            with open(out_file, 'r') as f, open('tmp/total_errors.txt', 'a') as f2:
                 a = f.readlines()
                 print(a)
                 x = ["invalid command name" in line for line in a]
                 print(x)
                 if any(x):
+                    for l in zip(a, x):
+                        if l[1]:
+                            f2.writelines(l[0].replace("\n", ""))
+                    f2.writelines("----------------------------")
                     print("noooo")
                     failed += 1
     except KeyboardInterrupt as e:

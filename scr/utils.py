@@ -265,6 +265,7 @@ def kill_timer(timer: threading.Timer):
 
 def tk_after_errorless(master: tk.Tk, delay_ms: int, func: Callable[..., Any], *args: Any):
     try:
+        master.update_idletasks()
         master.after(delay_ms, func, *args)
     except:
         pass
