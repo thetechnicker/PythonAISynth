@@ -17,6 +17,7 @@ class GraphCanvas(ttk.Frame):
         self.x = np.linspace(0, 2 * np.pi, 250)
         self.y = np.zeros_like(self.x)  # Initial y values set to 0
 
+        plt.style.use('dark_background')
         # Create the plot
         self.fig, self.ax = plt.subplots(figsize=(10, 6))
         self.line, = self.ax.plot(

@@ -119,7 +119,7 @@ class MainGUI(tk.Tk):
         self.create_row_one()
         self.graph = GraphCanvas(self, (900, 300), DARKMODE)
         self.graph.grid(row=1, column=0, columnspan=3, sticky='NSEW')
-        self.add_net_controll()
+        self.create_controll_column()
         self.create_status_bar()
         # sys.stdout = utils.QueueSTD_OUT(self.std_queue)
 
@@ -128,7 +128,9 @@ class MainGUI(tk.Tk):
         # self.std_queue = self.std_redirect.queue
         self.std_redirect.grid(row=2, column=0, columnspan=3, sticky='NSEW')
 
-    def add_net_controll(self):
+    def create_controll_column(self):
+        self.frame = ttk.Frame(self)
+
         defaults = {
             'SAMPLES': 500,
             'EPOCHS': 1000,
@@ -141,8 +143,9 @@ class MainGUI(tk.Tk):
         }
 
         self.gui = NeuralNetworkGUI(
-            self, defaults=defaults, callback=self.update_frourier_params)
-        self.gui.grid(row=1, column=3, sticky='NSEW')
+            self.frame, defaults=defaults, callback=self.update_frourier_params)
+        self.gui.grid(row=0, sticky='NSEW')
+        self.frame.grid(row=1, column=3, sticky='NSEW')
 
     def create_status_bar(self):
         # Create a status bar with two labels

@@ -167,7 +167,7 @@ class RedirectedOutputFrame(tk.Frame):
                 self.redirector(msg)
             except queue.Empty:
                 break
-        self.after(100, self.check_queue)
+        self.master.after(100, self.check_queue)
 
     def __del__(self):
         sys.stdout = self.old_stdout
