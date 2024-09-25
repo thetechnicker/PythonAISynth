@@ -83,7 +83,8 @@ class FourierNN():
     def create_model(self):
         model = nn.Sequential(
             FourierLayer(self.fourier_degree),
-            nn.Linear(self.fourier_degree*2, 1),
+            nn.Linear(self.fourier_degree*2, 1),  # bias=False),
+            # nn.Tanh()
         )
         return model
 
@@ -133,7 +134,7 @@ class FourierNN():
         optimizer = utils.get_optimizer(
             optimizer_name=self.OPTIMIZER,
             model_parameters=model.parameters(),
-            lr=0.01)
+            lr=0.1)
         criterion = utils.get_loss_function(self.LOSS_FUNCTION)
 
         train_dataset = TensorDataset(x_train_transformed, y_train)
@@ -185,8 +186,8 @@ class FourierNN():
             # callback.on_epoch_end(epoch, epoch_loss, val_loss.item(), model)
             time_taken = time.perf_counter_ns() - timestamp
             print(f"epoch {epoch+1} ends. "
-                  f"loss: {epoch_loss}, "
-                  f"val_loss: {val_loss}. "
+                  f"loss: {epoch_loss:3.5f}, "
+                  f"val_loss: {val_loss:3.5f}. "
                   f"Time Taken: {time_taken / 1_000_000_000}s")
 
             if val_loss < max_loss-min_delta:

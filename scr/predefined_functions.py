@@ -89,3 +89,7 @@ predefined_functions_dict = {
     'selu': torch.nn.functional.selu,
     'gelu': torch.nn.functional.gelu,
 }
+
+
+def call_func(name, x):
+    return min(1, max(-1, predefined_functions_dict[name](x)))
