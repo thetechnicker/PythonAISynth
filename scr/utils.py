@@ -105,7 +105,7 @@ def find_two_closest(num_list, x):
     return sorted_list[:2]
 
 
-@njit
+@ njit
 def interpolate(point1, point2, t=0.5):
     """
     Interpolate between two 2D points.
@@ -127,7 +127,7 @@ def interpolate(point1, point2, t=0.5):
     return (x, y)
 
 
-@njit
+@ njit
 def interpolate_vectorized(point1, point2, t_values):
     """
     Vectorized interpolation between two 2D points.
@@ -248,7 +248,7 @@ def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: 
     timer = threading.Timer(delay_seconds, func, args=args, kwargs=kwargs)
     timer.setDaemon(True)
     timer.start()
-    # timers.append(timer)  # Keep track of the timer
+    timers.append(timer)  # Keep track of the timer
 
 
 def kill_timer(timer: threading.Timer):
@@ -256,12 +256,13 @@ def kill_timer(timer: threading.Timer):
         timer.cancel()
 
 
-# def cleanup_timers():
-#     for timer in timers:
-#         kill_timer(timer)
+def cleanup_timers():
+    for timer in timers:
+        kill_timer(timer)
 
 
-# atexit.register(cleanup_timers)
+atexit.register(cleanup_timers)
+
 
 def tk_after_errorless(master: tk.Tk, delay_ms: int, func: Callable[..., Any], *args: Any):
     try:

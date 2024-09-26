@@ -1,6 +1,5 @@
 import random
 import numpy as np
-import torch
 
 from scr import utils
 
@@ -10,23 +9,23 @@ def funny(x):
 
 
 def funny2(x):
-    return np.sin(np.cos(x) * torch.nn.functional.elu(torch.tensor(x)).numpy()) / np.cos(x)
+    return np.sin(np.cos(x) * np.maximum(0, x)) / np.cos(x)
 
 
 def funny3(x):
-    return np.sin(np.cos(x) * torch.nn.functional.elu(torch.tensor(x)).numpy()) / np.cos(1/x)
+    return np.sin(np.cos(x) * np.maximum(0, x)) / np.cos(1/x)
 
 
 def my_random(x):
-    return np.sin(x * random.uniform(-1, 1))
+    return np.sin(x * np.random.uniform(-1, 1, size=x.shape))
 
 
 def my_complex_function(x):
-    if x > 0:
-        return np.sin(x) * (np.sin(np.tan(x) * torch.nn.functional.relu(torch.tensor(x)).numpy()) / np.cos(random.uniform(-1, 1) * x))
-    else:
-        x = -x
-        return -np.sin(x) * (np.sin(np.tan(x) * torch.nn.functional.relu(torch.tensor(x)).numpy()) / np.cos(random.uniform(-1, 1) * x))
+    x = np.abs(x)  # Ensure x is non-negative for relu
+    return np.where(x > 0,
+                    np.sin(x) * (np.sin(np.tan(x) * x) /
+                                 np.cos(np.random.uniform(-1, 1, size=x.shape) * x)),
+                    -np.sin(-x) * (np.sin(np.tan(-x) * -x) / np.cos(np.random.uniform(-1, 1, size=x.shape) * -x)))
 
 
 def nice(x):
@@ -50,10 +49,10 @@ def nice(x):
 
 def my_generated_function(x):
     # Apply a combination of trigonometric functions and activation functions
-    part1 = np.sin(x) * torch.nn.functional.relu(torch.tensor(x)).numpy()
-    part2 = np.cos(x) * torch.sigmoid(torch.tensor(x)).numpy()
-    part3 = np.tan(x) * torch.tanh(torch.tensor(x)).numpy()
-    part4 = np.exp(x) * torch.nn.functional.softplus(torch.tensor(x)).numpy()
+    part1 = np.sin(x) * np.maximum(0, x)
+    part2 = np.cos(x) * (1 / (1 + np.exp(-x)))  # Sigmoid approximation
+    part3 = np.tan(x) * np.tanh(x)
+    part4 = np.exp(x) * np.log1p(np.exp(x))  # Softplus approximation
 
     # Combine the parts to create the final output
     # Adding a small value to avoid division by zero
@@ -62,11 +61,10 @@ def my_generated_function(x):
 
 
 def extreme(x):
-    if not hasattr(extreme, 'prev'):
-        extreme.prev = -1
-    else:
-        extreme.prev = -extreme.prev
-    return extreme.prev
+    y = np.tile(np.array([-1, 1]), len(x)//2).flatten()
+    if len(y) < len(x):
+        y = np.append(y, [y[-2]])
+    return y
 
 
 predefined_functions_dict = {
@@ -76,20 +74,22 @@ predefined_functions_dict = {
     'random': my_random,
     'cool': my_complex_function,
     'bing': my_generated_function,
-    'nice': nice,
+    # 'nice': nice,
     'extreme': extreme,
     'sin': np.sin,
     'cos': np.cos,
     'tan': np.tan,
-    'relu': torch.nn.functional.relu,
-    'elu': torch.nn.functional.elu,
-    'linear': torch.nn.functional.linear,
-    'sigmoid': torch.sigmoid,
-    'exponential': torch.exp,
-    'selu': torch.nn.functional.selu,
-    'gelu': torch.nn.functional.gelu,
+    'relu': np.maximum,
+    'elu': lambda x: np.where(x > 0, x, np.expm1(x)),  # ELU approximation
+    'linear': lambda x: x,  # Linear function
+    'sigmoid': lambda x: 1 / (1 + np.exp(-x)),
+    'exponential': np.exp,
+    # SELU approximation
+    'selu': lambda x: np.where(x > 0, 1.0507 * x, 1.0507 * (np.exp(x) - 1)),
+    # GELU approximation
+    'gelu': lambda x: 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))),
 }
 
 
 def call_func(name, x):
-    return min(1, max(-1, predefined_functions_dict[name](x)))
+    return np.clip(predefined_functions_dict[name](x), -1, 1)

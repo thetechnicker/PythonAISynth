@@ -115,6 +115,7 @@ class FourierNN():
 
     def train(self, test_data, queue=None, quiet=False, stdout_queue=None):
         # exit(-1)
+        print("WHAT THE F?")
         if stdout_queue:
             sys.stdout = QueueSTD_OUT(stdout_queue)
 

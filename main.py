@@ -2,6 +2,8 @@ import copy
 import socket
 import sys
 import threading
+
+import numpy as np
 from scr import music
 from scr import utils
 from scr.music import Synth, musik_from_file
@@ -249,7 +251,7 @@ class MainGUI(tk.Tk):
         # Create a 'Graph' menu
         self.create_menu_item("Graph", [
             ("Clear Graph", self.clear_graph),
-            ("Redraw Graph", self.redraw_graph)
+            # ("Redraw Graph", self.redraw_graph)
         ])
 
         # Create a 'Music' menu
@@ -278,12 +280,12 @@ class MainGUI(tk.Tk):
                 try:
                     data = self.queue.get_nowait()
                     # print("!!!check!!!")
-                    data = list(zip(self.graph.lst, data.reshape(-1)))
+                    data = list(zip(self.graph.x, data.reshape(-1)))
                     # print(data)
                     # graph.data=data
-                    self.graph.draw_extern_graph_from_data(
-                        data, "training", color="red", width=self.graph.point_radius/4)
-                except:
+                    self.graph.plot_points(data, name="training", type='line')
+                except Exception as e:
+                    # print(e)
                     pass
             else:
                 exit_code = self.trainings_process.exitcode
@@ -300,8 +302,11 @@ class MainGUI(tk.Tk):
                     # for name, param in self.fourier_nn.current_model.named_parameters():
                     #     print(
                     #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
-                    self.graph.draw_extern_graph_from_func(
-                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type = 'crazy')
+                    # , graph_type = 'crazy')
+                    # if self.fourier_nn.predict.__name__ == "asfd":
+                    #     print("ASDFAS")
+                    self.graph.plot_function(
+                        self.fourier_nn.predict, x_range=(0, 2*np.pi, 44100))
                     self.synth = Synth(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
@@ -324,7 +329,7 @@ class MainGUI(tk.Tk):
 
         self.fourier_nn.save_model()
         self.trainings_process = multiprocessing.Process(
-            target=self.fourier_nn.train, args=(self.graph.lst, self.queue, ), kwargs={"stdout_queue": self.std_queue})
+            target=self.fourier_nn.train, args=(self.graph.x, self.queue, ), kwargs={"stdout_queue": self.std_queue})
         self.trainings_process.start()
         self.training_started = True
 
@@ -344,8 +349,9 @@ class MainGUI(tk.Tk):
         t.start()
         utils.tk_after_errorless(self, 100, self.train_update)
         atexit.register(DIE, self.trainings_process)
-        self.graph.draw_extern_graph_from_data(
-            self.graph.export_data(), "train_data", color="blue")
+        # self.graph.plot_points(data, name="training", type='line')
+        # self.graph.draw_extern_graph_from_data(
+        #     self.graph.export_data(), "train_data", color="blue")
 
     def play_music(self):
         print("play_music")
@@ -418,17 +424,17 @@ class MainGUI(tk.Tk):
             # self.fourier_nn.update_data(
             #     data=self.graph.get_graph(name=name)[0])
 
-    def redraw_graph(self):
-        # now idea when usefull
-        print("redraw_graph")
-        self.graph.draw_extern_graph_from_func(
-            self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
-        # self.graph._draw()
+    # def redraw_graph(self):
+    #     # now idea when usefull
+    #     print("redraw_graph")
+    #     self.graph.draw_extern_graph_from_func(
+    #         self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
+    #     # self.graph._draw()
 
     def draw_graph_from_func(self, *args, **kwargs):
         print("draw_graph_from_func:", self.combo_selected_value.get())
-        self.graph.use_preconfig_drawing(
-            predefined_functions_dict[self.combo_selected_value.get()])
+        self.graph.plot_function(
+            predefined_functions_dict[self.combo_selected_value.get()], overwrite=True)
 
     def update_frourier_params(self, key, value):
         if not self.fourier_nn:
@@ -438,36 +444,36 @@ class MainGUI(tk.Tk):
         self.fourier_nn.update_attribs(**{key: value})
 
 
-def start_server():
-    global window
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        while True:
-            try:
-                s.bind(('localhost', 65432))
-                break
-            except:
-                pass
-        s.listen()
-        while True:
-            conn, addr = s.accept()
-            with conn:
-                print('Connected by', addr)
-                conn.sendall(state.encode())  # Send the current state
-                msg = ""
-                try:
-                    # Receive message from client
-                    msg = conn.recv(1024).decode()
-                    print("Received message:", msg)
-                except Exception as e:
-                    print("Error receiving message:", e)
-                if msg == "exit":
-                    # Close the Tkinter window
-                    window.after(10, window.destroy)
+# def start_server():
+#     global window
+#     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+#         while True:
+#             try:
+#                 s.bind(('localhost', 65432))
+#                 break
+#             except:
+#                 pass
+#         s.listen()
+#         while True:
+#             conn, addr = s.accept()
+#             with conn:
+#                 print('Connected by', addr)
+#                 conn.sendall(state.encode())  # Send the current state
+#                 msg = ""
+#                 try:
+#                     # Receive message from client
+#                     msg = conn.recv(1024).decode()
+#                     print("Received message:", msg)
+#                 except Exception as e:
+#                     print("Error receiving message:", e)
+#                 if msg == "exit":
+#                     # Close the Tkinter window
+#                     window.after(10, window.destroy)
 
 
 def main():
-    global state, window
-    threading.Thread(target=start_server, daemon=True).start()
+    # global state, window
+    # threading.Thread(target=start_server, daemon=True).start()
 
     os.environ['HAS_RUN_INIT'] = 'True'
     multiprocessing.set_start_method("spawn")

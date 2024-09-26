@@ -8,6 +8,16 @@ from tkinter import ttk
 from scr.utils import run_after_ms
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.widgets import Cursor
+import tkinter as tk
+from tkinter import ttk
+
+from scr.utils import run_after_ms
+
+
 class GraphCanvas(ttk.Frame):
     def __init__(self, master, *args, **kwargs):
         super().__init__(master)
@@ -25,7 +35,7 @@ class GraphCanvas(ttk.Frame):
 
         # Set the x and y axis limits
         self.ax.set_xlim(0, 2 * np.pi)
-        self.ax.set_ylim(-1, 1)
+        self.ax.set_ylim(-2, 2)
 
         # Set the x and y axis labels
         self.ax.set_xlabel('x (radians)')
@@ -48,6 +58,9 @@ class GraphCanvas(ttk.Frame):
         self.selected_index = None
         self.last_index = None
 
+        # Dictionary to track existing plots by name
+        self.existing_plots = {}
+
         # Connect the events to the functions
         self.fig.canvas.mpl_connect('button_press_event', self.on_mouse_press)
         self.fig.canvas.mpl_connect(
@@ -56,7 +69,6 @@ class GraphCanvas(ttk.Frame):
             'motion_notify_event', self.on_mouse_motion)
 
         # Create a canvas to embed the plot in Tkinter
-
         self.redraw_needed = False
         run_after_ms(100, self.draw_idle)
 
@@ -70,40 +82,29 @@ class GraphCanvas(ttk.Frame):
         else:
             run_after_ms(100, self.draw_idle)
 
-    # Function to find the closest point to the mouse
-
     def find_closest_point(self, x_mouse):
         distances = np.sqrt((self.x - x_mouse) ** 2)
         return np.argmin(distances)
 
-    # Function to update the y-values of the selected dot
     def update_y(self, event):
         if event.inaxes == self.ax and self.selected_index is not None:
-            # Get the y-coordinate of the mouse event
             y_new = event.ydata
-            # Update the y-value of the selected dot
             self.y[self.selected_index] = y_new
             self.line.set_ydata(self.y)
             self.canvas.draw_idle()
 
-    # Function to handle mouse button press
     def on_mouse_press(self, event):
         if event.inaxes == self.ax and event.button == 1:  # Left mouse button
             self.selected_index = self.find_closest_point(event.xdata)
-            self.last_index = self.selected_index  # Store the last index
-            # Jump to mouse y position
+            self.last_index = self.selected_index
             self.y[self.selected_index] = event.ydata
             self.line.set_ydata(self.y)
-            # self.canvas.draw_idle()
             self.redraw_needed = True
 
-    # Function to handle mouse motion
     def on_mouse_motion(self, event):
         if event.inaxes == self.ax and self.selected_index is not None:
-            # Find the closest point again based on the current mouse position
             new_index = self.find_closest_point(event.xdata)
             if new_index != self.selected_index:
-                # Interpolate between last_index and new_index
                 if self.last_index is not None:
                     start_index = self.last_index
                     end_index = new_index
@@ -113,37 +114,104 @@ class GraphCanvas(ttk.Frame):
                         (end_index - start_index)
                     self.y[indices] = event.ydata * percentages + \
                         self.y[start_index] * (1 - percentages)
-                    # start_index = self.last_index
-                    # end_index = new_index
-                    # if new_index > self.selected_index:
-                    #     for i in range(start_index, end_index + 1):
-                    #         percentage = (i - start_index) / \
-                    #             (end_index - start_index)
-                    #         # Linear interpolation
-                    #         self.y[i] = event.ydata * percentage + \
-                    #             self.y[start_index] * (1 - percentage)
-                    # else:
-                    #     for i in range(start_index, end_index - 1, -1):
-                    #         percentage = (i - start_index) / \
-                    #             (end_index - start_index)
-                    #         # Linear interpolation
-                    #         self.y[i] = event.ydata * percentage + \
-                    #             self.y[start_index] * (1 - percentage)
                 self.selected_index = new_index
                 self.line.set_ydata(self.y)
                 self.last_index = new_index
             self.redraw_needed = True
-            # self.canvas.draw_idle()
 
-    # Function to handle mouse button release
     def on_mouse_release(self, event):
-        self.last_index = self.selected_index  # Update last index on release
-        self.selected_index = None  # Reset the selected index
+        self.last_index = self.selected_index
+        self.selected_index = None
         self.redraw_needed = False
 
     def destroy(self):
-        plt.close(self.fig)  # Close the matplotlib figure
-        super().destroy()  # Call the parent destroy method
+        plt.close(self.fig)
+        super().destroy()
+
+    def plot_points(self, points, name=None, type="points"):
+        """Plot multiple points on the graph.
+
+        Args:
+            points (list of tuples): List of (x, y) tuples to plot.
+            name (str, optional): Name for the plot legend.
+            type (str): Type of plot - "points" for individual points, "line" for connecting points.
+        """
+        # Unzip the list of tuples into x and y values
+        x_values, y_values = zip(*points)
+
+        # Check if a plot with the same name already exists
+        if name in self.existing_plots:
+            # Remove the existing plot
+            self.existing_plots[name].remove()
+
+        if type == "points":
+            plot_line, = self.ax.plot(
+                x_values, y_values, 'ro', label=name)  # 'ro' for red dots
+        elif type == "line":
+            plot_line, = self.ax.plot(
+                x_values, y_values, 'r-', label=name)  # 'r-' for red line
+        else:
+            raise ValueError("Invalid type. Use 'points' or 'line'.")
+
+        if name:
+            self.ax.legend()
+            self.existing_plots[name] = plot_line  # Store the new plot line
+
+        self.canvas.draw_idle()
+
+    def plot_function(self, func, x_range=None, overwrite=False, name=None):
+        """Plot a function over a specified range or use self.x if no range is provided.
+        If overwrite is True, update the existing y-values of the red dots.
+        If name is provided, update the plot with that name if it exists."""
+        if x_range is None:
+            x_values = self.x  # Use the existing x values
+        else:
+            num = 250
+            if len(x_range) == 3:
+                num = x_range[2]
+            x_values = np.linspace(x_range[0], x_range[1], num)
+
+        y_values = np.clip(func(x_values), -1, 1)
+
+        if name:
+            # Check if a plot with the specified name already exists
+            if name in self.existing_plots:
+                # Update the y-values of the existing plot
+                self.existing_plots[name].set_ydata(y_values)
+            else:
+                # Create a new plot for the function
+                plot_line, = self.ax.plot(
+                    x_values, y_values, label=f'Function: {name}')
+                self.ax.legend()
+                # Store the new plot line
+                self.existing_plots[name] = plot_line
+        else:
+            if overwrite:
+                # Update the y-values of the existing red dots
+                self.y = y_values
+                self.line.set_ydata(self.y)
+            else:
+                # Check if a plot with the same name already exists
+                if func.__name__ in self.existing_plots:
+                    # Remove the existing plot
+                    self.existing_plots[func.__name__].remove()
+
+                # Create a new plot for the function
+                plot_line, = self.ax.plot(
+                    x_values, y_values, label=f'Function: {func.__name__}')
+                self.ax.legend()
+                # Store the new plot line
+                self.existing_plots[func.__name__] = plot_line
+
+        self.canvas.draw_idle()
+
+    def export_data(self):
+        return list(zip(self.x, self.y))
+
+    def clear(self):
+        self.y = np.zeros_like(self.x)
+        self.line.set_ydata(self.y)
+        self.canvas.draw_idle()
 
 
 # Create the main Tkinter window
