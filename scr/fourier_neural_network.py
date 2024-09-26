@@ -212,7 +212,7 @@ class FourierNN():
         with torch.no_grad():
             y = self.current_model(x)
 
-        return y.numpy()
+        return y.cpu().numpy()
 
     def save_model(self, filename='./tmp/model.pth'):
         torch.save(self.current_model.state_dict(), filename)
