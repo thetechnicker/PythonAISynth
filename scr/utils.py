@@ -265,9 +265,14 @@ atexit.register(cleanup_timers)
 
 
 def tk_after_errorless(master: tk.Tk, delay_ms: int, func: Callable[..., Any], *args: Any):
+    def safe_call(master: tk.Tk, func: Callable[..., Any], *args: Any):
+        if master.winfo_exists():
+            func(*args)
+
     try:
-        master.update_idletasks()
-        master.after(delay_ms, func, *args)
+        if master.winfo_exists():
+            master.update_idletasks()
+            master.after(delay_ms, safe_call, master, func, *args)
     except:
         pass
 

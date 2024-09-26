@@ -9,7 +9,7 @@ from scr import utils
 from scr.music import Synth, musik_from_file
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
-from scr.utils import DIE
+from scr.utils import DIE, tk_after_errorless
 from scr.predefined_functions import predefined_functions_dict
 from scr.graph_canvas_v2 import GraphCanvas
 from scr.fourier_neural_network_gui import NeuralNetworkGUI
@@ -28,7 +28,6 @@ from tkinter import messagebox
 import psutil
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 
 state = "bootup"
 window = None
@@ -139,7 +138,7 @@ class MainGUI(tk.Tk):
             'DEFAULT_FORIER_DEGREE': 100,
             'FORIER_DEGREE_DIVIDER': 1,
             'FORIER_DEGREE_OFFSET': 0,
-            'PATIENCE': 100,
+            'PATIENCE': 50,
             'OPTIMIZER': 'Adam',
             'LOSS_FUNCTION': 'HuberLoss',
         }
@@ -173,7 +172,7 @@ class MainGUI(tk.Tk):
         self.ram_label.pack(side=tk.RIGHT)
 
         self.frame_no = 0
-        utils.tk_after_errorless(self, 500, self.update_status_bar)
+        tk_after_errorless(self, 500, self.update_status_bar)
 
     def update_status_bar(self):
         children = self.process_monitor.children(recursive=True)
@@ -203,7 +202,7 @@ class MainGUI(tk.Tk):
 
         self.processes_label.config(
             text=f"Children Processes: {len(children)}")
-        utils.tk_after_errorless(self, 500, self.update_status_bar)
+        tk_after_errorless(self, 500, self.update_status_bar)
 
     def create_row_one(self):
         self.label = ttk.Label(self, text="Predefined Functions:")
@@ -290,7 +289,7 @@ class MainGUI(tk.Tk):
             else:
                 exit_code = self.trainings_process.exitcode
                 if exit_code == None:
-                    utils.tk_after_errorless(self, 100, self.train_update)
+                    tk_after_errorless(self, 100, self.train_update)
                     return
                 if exit_code == 0:
                     # for name, param in self.fourier_nn.current_model.named_parameters():
@@ -316,7 +315,7 @@ class MainGUI(tk.Tk):
                     "training Ended", f"exit code: {exit_code}")
                 # self.fourier_nn.clean_memory()
                 return
-        utils.tk_after_errorless(self, 50, self.train_update)
+        tk_after_errorless(self, 50, self.train_update)
 
     def init_or_update_nn(self, stdout=None):
         if not self.fourier_nn:
@@ -347,7 +346,7 @@ class MainGUI(tk.Tk):
         t = Thread(target=self.init_or_update_nn, args=(self.std_queue,))
         t.daemon = True
         t.start()
-        utils.tk_after_errorless(self, 100, self.train_update)
+        tk_after_errorless(self, 100, self.train_update)
         atexit.register(DIE, self.trainings_process)
         # self.graph.plot_points(data, name="training", type='line')
         # self.graph.draw_extern_graph_from_data(

@@ -1,3 +1,4 @@
+import matplotlib
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -7,15 +8,7 @@ from tkinter import ttk
 
 from scr.utils import run_after_ms
 
-
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.widgets import Cursor
-import tkinter as tk
-from tkinter import ttk
-
-from scr.utils import run_after_ms
+matplotlib.use('TkAgg')
 
 
 class GraphCanvas(ttk.Frame):
