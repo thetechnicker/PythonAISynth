@@ -2,6 +2,7 @@ import copy
 import socket
 import sys
 import threading
+import time
 
 import numpy as np
 from scr import music
@@ -123,6 +124,13 @@ class MainGUI(tk.Tk):
         self.create_controll_column()
         self.create_status_bar()
         # sys.stdout = utils.QueueSTD_OUT(self.std_queue)
+
+    # def destroy(self):
+    #     self.graph.destroy()
+    #     print("CLOSING")
+    #     time.sleep(1+max(tk_after_errorless.max_time)/1000)
+
+    #     super().destroy()
 
     def init_terminal_frame(self):
         self.std_redirect = RedirectedOutputFrame(self, self.std_queue)
@@ -479,7 +487,7 @@ def main():
     with multiprocessing.Manager() as manager:
         std_write = copy.copy(sys.stdout.write)
         window = MainGUI(manager=manager)
-        # window.protocol("WM_DELETE_WINDOW", window.quit)
+        window.protocol("WM_DELETE_WINDOW", window.quit)
         state = "running"
         window.mainloop()
         sys.stdout.write = std_write

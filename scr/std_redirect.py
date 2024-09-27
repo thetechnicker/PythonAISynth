@@ -7,6 +7,7 @@ from copy import copy
 import sys
 from multiprocessing import Queue
 
+from scr import utils
 from scr.utils import tk_after_errorless
 
 

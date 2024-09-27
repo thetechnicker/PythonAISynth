@@ -6,7 +6,7 @@ from matplotlib.widgets import Cursor
 import tkinter as tk
 from tkinter import ttk
 
-from scr.utils import run_after_ms
+from scr.utils import run_after_ms, tk_after_errorless
 
 matplotlib.use('TkAgg')
 
@@ -63,7 +63,7 @@ class GraphCanvas(ttk.Frame):
 
         # Create a canvas to embed the plot in Tkinter
         self.redraw_needed = False
-        run_after_ms(100, self.draw_idle)
+        tk_after_errorless(self, 100, self.draw_idle)
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=self)
         self.canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
@@ -71,9 +71,9 @@ class GraphCanvas(ttk.Frame):
     def draw_idle(self):
         if self.redraw_needed:
             self.canvas.draw_idle()
-            run_after_ms(10, self.draw_idle)
+            tk_after_errorless(self, 10, self.draw_idle)
         else:
-            run_after_ms(100, self.draw_idle)
+            tk_after_errorless(self, 100, self.draw_idle)
 
     def find_closest_point(self, x_mouse):
         distances = np.sqrt((self.x - x_mouse) ** 2)
@@ -164,7 +164,7 @@ class GraphCanvas(ttk.Frame):
                 num = x_range[2]
             x_values = np.linspace(x_range[0], x_range[1], num)
 
-        y_values = np.clip(func(x_values), -1, 1)
+        y_values = func(x_values)  # np.clip(, -1, 1)
 
         if name:
             # Check if a plot with the specified name already exists
@@ -211,7 +211,7 @@ class GraphCanvas(ttk.Frame):
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Interactive Plot in Tkinter")
-    # root.protocol("WM_DELETE_WINDOW", root.quit)
+    root.protocol("WM_DELETE_WINDOW", root.quit)
     app = GraphCanvas(root)
     app.pack(fill=tk.BOTH, expand=True)
     root.mainloop()
