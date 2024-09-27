@@ -147,7 +147,7 @@ class MainGUI(tk.Tk):
             'FORIER_DEGREE_DIVIDER': 1,
             'FORIER_DEGREE_OFFSET': 0,
             'PATIENCE': 50,
-            'OPTIMIZER': 'Adam',
+            'OPTIMIZER': 'SGD',
             'LOSS_FUNCTION': 'HuberLoss',
         }
 
@@ -196,6 +196,10 @@ class MainGUI(tk.Tk):
                 pass
         # total_cpu /= i
         # total_mem /= i
+        if total_mem >= 90:
+            print(total_mem)
+            self.quit()
+            # input("press key to continue")
         self.cpu_label.config(
             text=f"CPU Usage: {total_cpu/os.cpu_count():.2f}%")
         self.ram_label.config(text=f"RAM Usage: {total_mem:.2f}%")
@@ -300,18 +304,13 @@ class MainGUI(tk.Tk):
                     tk_after_errorless(self, 100, self.train_update)
                     return
                 if exit_code == 0:
-                    # for name, param in self.fourier_nn.current_model.named_parameters():
-                    #     print(
-                    #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
+                    self.queue.clear()
                     print("loading trained model")
                     self.fourier_nn.load_new_model_from_file()
                     print("model loaded")
                     # for name, param in self.fourier_nn.current_model.named_parameters():
                     #     print(
                     #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
-                    # , graph_type = 'crazy')
-                    # if self.fourier_nn.predict.__name__ == "asfd":
-                    #     print("ASDFAS")
                     self.graph.plot_function(
                         self.fourier_nn.predict, x_range=(0, 2*np.pi, 100000))
                     self.synth = Synth(self.fourier_nn, self.std_queue)
@@ -348,17 +347,12 @@ class MainGUI(tk.Tk):
             return
         self.block_training = True
         print("STARTING TRAINING")
-        # , args=(self.std_redirect.queue,))
-        # print(self.std_queue)
-        # input("dasfasdf")
         t = Thread(target=self.init_or_update_nn, args=(self.std_queue,))
         t.daemon = True
         t.start()
         tk_after_errorless(self, 100, self.train_update)
         atexit.register(DIE, self.trainings_process)
-        # self.graph.plot_points(data, name="training", type='line')
-        # self.graph.draw_extern_graph_from_data(
-        #     self.graph.export_data(), "train_data", color="blue")
+        self.graph.remove_plot("predict")
 
     def play_music(self):
         print("play_music")

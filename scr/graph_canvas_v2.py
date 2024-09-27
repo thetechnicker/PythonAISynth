@@ -216,6 +216,16 @@ class GraphCanvas(ttk.Frame):
         self.line.set_ydata(self.y)
         self.canvas.draw_idle()
 
+    def remove_plot(self, name):
+        """Remove a plot by its name."""
+        if name in self.existing_plots:
+            self.existing_plots[name].remove()
+            del self.existing_plots[name]
+            self.ax.legend()  # Update the legend
+            self.canvas.draw_idle()
+        else:
+            print(f"No plot found with the name '{name}'")
+
 
 # Create the main Tkinter window
 if __name__ == "__main__":

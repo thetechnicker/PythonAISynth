@@ -116,7 +116,7 @@ class FourierNN():
 
     def train(self, test_data, queue=None, quiet=False, stdout_queue=None):
         # exit(-1)
-        print("WHAT THE F?")
+        # print("WHAT THE F?")
         if stdout_queue:
             sys.stdout = QueueSTD_OUT(stdout_queue)
 
@@ -129,6 +129,9 @@ class FourierNN():
         x_train_transformed, y_train, test_x, test_y = self.prepared_data
 
         model = self.current_model.to(self.device)
+        for param in self.current_model.parameters():
+            param.requires_grad = True
+        model.train()
 
         x_train_transformed = x_train_transformed.to(self.device)
         y_train = y_train.to(self.device)

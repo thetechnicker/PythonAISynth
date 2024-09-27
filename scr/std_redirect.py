@@ -28,6 +28,7 @@ class RedirectedOutputFrame(tk.Frame):
         self.old_stdout = sys.stdout
         # self.old_stderr = copy(sys.stderr)
         sys.stdout = utils.QueueSTD_OUT(self.queue)
+        sys.stderr = sys.stdout
         tk_after_errorless(self, 100, self.check_queue)
 
         # dictionaries to replace formatting code with tags

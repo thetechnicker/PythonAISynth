@@ -18,6 +18,7 @@ class NeuralNetworkGUI(ttk.Frame):
                                if not func.startswith('_')
                                and isinstance(getattr(nn, func), type)
                                and issubclass(getattr(nn, func), nn.modules.loss._Loss)]
+        self.loss_functions.append("CustomHuberLoss")
         self.optimizers_list = [opt for opt in dir(optim)
                                 if not opt.startswith('_')
                                 and isinstance(getattr(optim, opt), type)

@@ -13,7 +13,7 @@ def funny2(x):
 
 
 def funny3(x):
-    return np.sin(np.cos(x) * np.maximum(0, x)) / np.cos(1/x)
+    return np.sin(np.cos(x) * np.maximum(0, x)) / np.cos(1 / (x+0.001))
 
 
 def my_random(x):
@@ -31,7 +31,7 @@ def my_complex_function(x):
 
 def nice(x):
     x_greater_pi = False
-    x = utils.map_value(x, -np.pi, np.pi, 0, 2*np.pi)
+    # x = utils.map_value(x, -np.pi, np.pi, 0, 2*np.pi)
     if x >= 2*np.pi:
         x_greater_pi = True
         x = x - np.pi
@@ -45,6 +45,20 @@ def nice(x):
         y = np.sin(-np.tan(x))
     if x_greater_pi:
         return -y
+    return y
+
+
+def nice_2(x):
+    x = np.array(x)
+    x_greater_pi = x >= 2 * np.pi
+    x = np.where(x_greater_pi, x - np.pi, x)
+
+    y = np.where(x > (np.pi / 2), np.sin(np.tan(x)),
+                 np.where((0 < x) & (x < (np.pi / 2)), np.cos(-np.tan(x)),
+                          np.where(((-np.pi / 2) < x) & (x < 0), np.cos(np.tan(x)),
+                                   np.sin(-np.tan(x)))))
+
+    y = np.where(x_greater_pi, -y, y)
     return y
 
 
@@ -75,7 +89,7 @@ predefined_functions_dict = {
     'random': my_random,
     'cool': my_complex_function,
     'bing': my_generated_function,
-    # 'nice': nice,
+    'nice': nice_2,
     'extreme': extreme,
     'sin': np.sin,
     'cos': np.cos,
