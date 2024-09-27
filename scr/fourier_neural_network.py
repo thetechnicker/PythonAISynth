@@ -38,7 +38,7 @@ class FourierNN():
     FORIER_DEGREE_DIVIDER = 1
     FORIER_DEGREE_OFFSET = 0
     PATIENCE = 100
-    OPTIMIZER = 'Adam'
+    OPTIMIZER = 'SGD'
     LOSS_FUNCTION = 'HuberLoss'
     CALC_FOURIER_DEGREE_BY_DATA_LENGTH = False
 
@@ -186,7 +186,7 @@ class FourierNN():
                 val_outputs = model(test_x)
                 val_loss = criterion(val_outputs.squeeze(),
                                      test_y.to(self.device))
-                if queue:
+                if queue and epoch % 10 == 0:
                     predictions = model(prepared_test_data)
                     queue.put(predictions.cpu().numpy())
 

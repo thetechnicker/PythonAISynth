@@ -20,20 +20,6 @@ def _1():
     scr
 
 
-def wrap_concat(tensor, idx1, idx2):
-    length = tensor.size(0)
-
-    if idx2 >= length:
-        idx2 = idx2 % length
-
-    if idx1 <= idx2:
-        result = tensor[idx1:idx2]
-    else:
-        result = torch.cat((tensor[idx1:], tensor[:idx2]))
-
-    return result
-
-
 def main():
     samplerate = 44100
     frequencies = [220, 440, 660, 880, 1100, 1320, 1540, 1760, 1980, 2200]
@@ -64,7 +50,7 @@ def main():
                 for j in range(max_parralel_notes):
                     # t_ = (i+j*10)
                     a[j, :] = fourier_nn.current_model(
-                        wrap_concat(t2_tensor[j], i, i+frames))
+                        utils.wrap_concat(t2_tensor[j], i, i+frames))
             y = torch.clamp(torch.sum(a, dim=0), min=-1, max=1).cpu().numpy()
 
             outdata[:] = y.reshape(-1, 1)

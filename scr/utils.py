@@ -337,3 +337,17 @@ def center_and_scale(arr):
     # Scale to [-1, 1]
     scaled_arr = 2 * (centered_arr - min_val) / (max_val - min_val) - 1
     return scaled_arr
+
+
+def wrap_concat(tensor, idx1, idx2):
+    length = tensor.size(0)
+
+    if idx2 >= length:
+        idx2 = idx2 % length
+
+    if idx1 <= idx2:
+        result = tensor[idx1:idx2]
+    else:
+        result = torch.cat((tensor[idx1:], tensor[:idx2]))
+    print(result.shape)
+    return result

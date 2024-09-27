@@ -1,6 +1,9 @@
+import copy
+import threading
 from typing import Callable
 import pygame
 import scipy
+import torch
 from scr.fourier_neural_network import FourierNN
 from scr import utils
 from pygame import mixer, midi, sndarray
@@ -12,6 +15,7 @@ import sys
 from tkinter import filedialog
 import numpy as np
 import pretty_midi
+import sounddevice as sd
 
 
 def musik_from_file(fourier_nn: FourierNN):
@@ -304,3 +308,134 @@ def apply_distortion(audio, gain=2.0, threshold=0.5):
     distorted_audio[distorted_audio > threshold] = threshold
     distorted_audio[distorted_audio < -threshold] = -threshold
     return distorted_audio
+
+
+class Synth2():
+    # MIDI_NOTE_OF_FREQ_ONE = midi.frequency_to_midi(1)
+    def __init__(self, fourier_nn, stdout: Queue):
+        self.stdout = stdout
+        self.live_synth: Process = None
+        self.notes_ready = False
+        self.fourier_nn: FourierNN = fourier_nn
+        self.fs = 44100  # Sample rate
+        self.max_parralel_notes = 3
+        self.current_notes: set = set()
+        self.effects: list[Callable] = [
+            # apply_reverb,
+            # apply_echo,
+            # apply_chorus,
+            # apply_distortion,
+        ]
+        self.current_frame = 0
+        t = np.array([2 * np.pi * midi.midi_to_frequency(f) *
+                     np.linspace(0, 1, self.fs) for f in range(128)])
+        self.t_buffer = torch.tensor(t, dtype=torch.float32)
+
+    def play_init_sound(self):
+        f1 = 440  # Frequency of the "duuu" sound (in Hz)
+        f2 = 880  # Frequency of the "dib" sound (in Hz)
+        t1 = 0.8  # Duration of the "duuu" sound (in seconds)
+        t2 = 0.2  # Duration of the "dib" sound (in seconds)
+        t = np.arange(int(t1 * self.fs)) / self.fs
+        sound1 = 0.5 * np.sin(2 * np.pi * f1 * t)
+
+        # Generate the "dib" sound
+        t = np.arange(int(t2 * self.fs)) / self.fs
+        sound2 = 0.5 * np.sin(2 * np.pi * f2 * t)
+
+        # Concatenate the two sounds
+        audio = np.concatenate([sound1, sound2])
+        output = np.array(
+            audio * 32767 / np.max(np.abs(audio)) / 2).astype(np.int16)
+        # stereo_sine_wave = np.repeat(output.reshape(-1, 1), 2, axis=1)
+        sd.play(output, blocking=True)
+        print("Ready")
+
+    def audio_callback(self, outdata, frames, time, status):
+        current_notes = set(self.current_notes)
+        if status:
+            print(status)
+        with torch.no_grad():
+            for j, note in enumerate(current_notes):
+                if j >= self.max_parralel_notes:
+                    break
+                self.pre_audio_buffer[j, :] = self.fourier_nn.current_model(
+                    utils.wrap_concat(self.t_buffer[note], self.current_frame, self.current_frame+frames))
+        y = torch.clamp(torch.sum(self.pre_audio_buffer, dim=0),
+                        min=-1, max=1).cpu().numpy()
+        # print(y.shape)
+        outdata[:] = y.reshape(-1, 1)
+        self.current_frame = (self.current_frame + frames) % self.fs
+
+    def apply_effects(self, sound):
+        for effect in self.effects:
+            print(effect.__name__)
+            sound[:] = effect(sound)
+        sound = sound-np.mean(sound)
+        sound[:] = rescale_audio(sound)
+        return sound
+
+    def live_synth_loop(self):
+        print("Live Synth is running")
+        self.fourier_nn.current_model.to(self.fourier_nn.device)
+        self.t_buffer.to(self.fourier_nn.device)
+        stream = sd.OutputStream(
+            callback=self.audio_callback, samplerate=self.fs, channels=1, blocksize=512)
+        self.play_init_sound()
+        threading.Thread(target=self.midi_thread, daemon=True).start()
+
+        self.pre_audio_buffer = torch.zeros((self.max_parralel_notes, 512, 1),
+                                            device=self.fourier_nn.device)
+        with stream, open(os.devnull, "w") as f:
+            sys.stdout = f
+            while True:
+                print("asdfasdf")
+                # pass
+
+    def midi_thread(self):
+        midi.init()
+        input_id = midi.get_default_input_id()
+        if input_id == -1:
+            print("No MIDI input device found.")
+            return
+        midi_input = midi.Input(input_id)
+        while True:
+            if midi_input.poll():
+                midi_events = midi_input.read(1)
+                for midi_event, timestamp in midi_events:
+                    if midi_event[0] == 144:
+                        print("Note on",
+                              midi_event[1],
+                              midi.midi_to_frequency(midi_event[1]))
+                        self.current_notes.add(midi_event[1])
+                    elif midi_event[0] == 128:
+                        print("Note off",
+                              midi_event[1],
+                              midi.midi_to_frequency(midi_event[1]))
+                        self.current_notes.discard(midi_event[1])
+
+    def run_live_synth(self):
+        if not self.live_synth:
+            print("spawning live synth")
+            self.live_synth = Process(target=self.live_synth_loop)
+            self.live_synth.start()
+        else:
+            print("killing live synth")
+            self.live_synth.terminate()
+            self.live_synth.join()
+            self.live_synth = None
+            print("live synth killed")
+        atexit.register(utils.DIE, self.live_synth, 0, 0)
+
+    def __getstate__(self) -> object:
+        live_synth = self.live_synth
+        del self.live_synth
+        Synth_dict = self.__dict__.copy()
+        self.live_synth = live_synth
+        return Synth_dict
+
+    def __setstate__(self, state):
+        # Load the model from a file after deserialization
+        self.__dict__.update(state)
+        if current_process().name != 'MainProcess':
+            sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)

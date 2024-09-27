@@ -7,7 +7,7 @@ import time
 import numpy as np
 from scr import music
 from scr import utils
-from scr.music import Synth, musik_from_file
+from scr.music import Synth, Synth2, musik_from_file
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
 from scr.utils import DIE, tk_after_errorless
@@ -115,7 +115,7 @@ class MainGUI(tk.Tk):
         self.block_training = False
         self.queue = Queue(-1)
         self.fourier_nn = None
-        self.synth: Synth = None
+        self.synth: Synth2 = None
         self.init_terminal_frame()
         self.create_menu()
         self.create_row_one()
@@ -287,7 +287,7 @@ class MainGUI(tk.Tk):
     def train_update(self):
         # print("!!!check!!!")
         if self.trainings_process and self.training_started:
-            if self.trainings_process.is_alive():
+            if self.trainings_process.is_alive() or self.queue.empty():
                 try:
                     data = self.queue.get_nowait()
                     # print("!!!check!!!")
@@ -304,7 +304,6 @@ class MainGUI(tk.Tk):
                     tk_after_errorless(self, 100, self.train_update)
                     return
                 if exit_code == 0:
-                    self.queue.clear()
                     print("loading trained model")
                     self.fourier_nn.load_new_model_from_file()
                     print("model loaded")
@@ -313,7 +312,7 @@ class MainGUI(tk.Tk):
                     #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
                     self.graph.plot_function(
                         self.fourier_nn.predict, x_range=(0, 2*np.pi, 100000))
-                    self.synth = Synth(self.fourier_nn, self.std_queue)
+                    self.synth = Synth2(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
                 self.training_started = False
@@ -421,7 +420,7 @@ class MainGUI(tk.Tk):
             self.graph.draw_extern_graph_from_func(
                 self.fourier_nn.predict, name)
             print(name)
-            self.synth = Synth(self.fourier_nn, self.std_queue)
+            self.synth = Synth2(self.fourier_nn, self.std_queue)
             # self.fourier_nn.update_data(
             #     data=self.graph.get_graph(name=name)[0])
 
@@ -483,7 +482,14 @@ def main():
         window = MainGUI(manager=manager)
         window.protocol("WM_DELETE_WINDOW", window.quit)
         state = "running"
-        window.mainloop()
+        try:
+            window.after(1000, lambda: window.graph.plot_function(
+                predefined_functions_dict['nice'], overwrite=True))
+            window.after(2000, window.start_training)
+            window.mainloop()
+        except KeyboardInterrupt:
+            print("exiting via keybord interupt")
+            # window.quit()
         sys.stdout.write = std_write
 
 

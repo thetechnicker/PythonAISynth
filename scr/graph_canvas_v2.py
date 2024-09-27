@@ -17,7 +17,7 @@ class GraphCanvas(ttk.Frame):
         self.master = master
 
         # Define the range for x from 0 to 2π with 250 evenly spaced points
-        self.x = np.linspace(0, 2 * np.pi, 250)
+        self.x = np.linspace(0, 2 * np.pi, 100)
         self.y = np.zeros_like(self.x)  # Initial y values set to 0
 
         plt.style.use('dark_background')
