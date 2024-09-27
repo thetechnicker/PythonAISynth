@@ -70,6 +70,7 @@ class FourierNN():
         Accepts keyword arguments for parameters to update.
         """
         for key, val in kwargs.items():
+            print(key, val)
             if hasattr(self, key):
                 setattr(self, key, val)
             else:
@@ -101,7 +102,7 @@ class FourierNN():
             self.stdout_queue = std_queue
 
         self.fourier_degree = (
-            (len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET)
+            (len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET) if self.CALC_FOURIER_DEGREE_BY_DATA_LENGTH else self.DEFAULT_FORIER_DEGREE
 
         x_train, y_train = linear_interpolation(
             data, self.SAMPLES, self.device)
@@ -121,6 +122,8 @@ class FourierNN():
 
         print(self.OPTIMIZER,
               self.LOSS_FUNCTION,
+              self.fourier_degree,
+              self.PATIENCE,
               sep="\n")
 
         x_train_transformed, y_train, test_x, test_y = self.prepared_data

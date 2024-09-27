@@ -17,6 +17,7 @@ def funny3(x):
 
 
 def my_random(x):
+    x = x-np.pi
     return np.sin(x * np.random.uniform(-1, 1, size=x.shape))
 
 
@@ -79,15 +80,16 @@ predefined_functions_dict = {
     'sin': np.sin,
     'cos': np.cos,
     'tan': np.tan,
-    'relu': np.maximum,
-    'elu': lambda x: np.where(x > 0, x, np.expm1(x)),  # ELU approximation
-    'linear': lambda x: x,  # Linear function
-    'sigmoid': lambda x: 1 / (1 + np.exp(-x)),
-    'exponential': np.exp,
+    'relu': lambda x: np.maximum(0, x - np.pi),
+    # ELU approximation
+    'elu': lambda x: np.where(x - np.pi > 0, x - np.pi, np.expm1(x - np.pi)),
+    'linear': lambda x: x - np.pi,  # Linear function
+    'sigmoid': lambda x: 1 / (1 + np.exp(-(x - np.pi))),
+    'exponential': lambda x: np.exp(x - np.pi),
     # SELU approximation
-    'selu': lambda x: np.where(x > 0, 1.0507 * x, 1.0507 * (np.exp(x) - 1)),
+    'selu': lambda x: np.where(x - np.pi > 0, 1.0507 * (x - np.pi), 1.0507 * (np.exp(x - np.pi) - 1)),
     # GELU approximation
-    'gelu': lambda x: 0.5 * x * (1 + np.tanh(np.sqrt(2 / np.pi) * (x + 0.044715 * np.power(x, 3)))),
+    'gelu': lambda x: 0.5 * (x - np.pi) * (1 + np.tanh(np.sqrt(2 / np.pi) * ((x - np.pi) + 0.044715 * np.power((x - np.pi), 3))))
 }
 
 

@@ -313,7 +313,7 @@ class MainGUI(tk.Tk):
                     # if self.fourier_nn.predict.__name__ == "asfd":
                     #     print("ASDFAS")
                     self.graph.plot_function(
-                        self.fourier_nn.predict, x_range=(0, 2*np.pi, 44100))
+                        self.fourier_nn.predict, x_range=(0, 2*np.pi, 100000))
                     self.synth = Synth(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None

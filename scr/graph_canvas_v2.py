@@ -6,7 +6,7 @@ from matplotlib.widgets import Cursor
 import tkinter as tk
 from tkinter import ttk
 
-from scr.utils import run_after_ms, tk_after_errorless
+from scr.utils import center_and_scale, run_after_ms, tk_after_errorless
 
 matplotlib.use('TkAgg')
 
@@ -79,19 +79,16 @@ class GraphCanvas(ttk.Frame):
         distances = np.sqrt((self.x - x_mouse) ** 2)
         return np.argmin(distances)
 
-    def update_y(self, event):
-        if event.inaxes == self.ax and self.selected_index is not None:
-            y_new = event.ydata
-            self.y[self.selected_index] = y_new
-            self.line.set_ydata(self.y)
-            self.canvas.draw_idle()
+    def update_y(self):
+        self.y = np.clip(self.y, -1, 1)
+        self.line.set_ydata(self.y)
 
     def on_mouse_press(self, event):
         if event.inaxes == self.ax and event.button == 1:  # Left mouse button
             self.selected_index = self.find_closest_point(event.xdata)
             self.last_index = self.selected_index
             self.y[self.selected_index] = event.ydata
-            self.line.set_ydata(self.y)
+            self.update_y()
             self.redraw_needed = True
 
     def on_mouse_motion(self, event):
@@ -108,7 +105,7 @@ class GraphCanvas(ttk.Frame):
                     self.y[indices] = event.ydata * percentages + \
                         self.y[start_index] * (1 - percentages)
                 self.selected_index = new_index
-                self.line.set_ydata(self.y)
+                self.update_y()
                 self.last_index = new_index
             self.redraw_needed = True
 
@@ -181,8 +178,21 @@ class GraphCanvas(ttk.Frame):
         else:
             if overwrite:
                 # Update the y-values of the existing red dots
-                self.y = y_values
-                self.line.set_ydata(self.y)
+                self.y = center_and_scale(y_values)
+                self.update_y()
+
+                # name = "stupid"
+                # if name in self.existing_plots:
+                #     # Remove the existing plot
+                #     self.existing_plots[name].remove()
+
+                # # Create a new plot for the function
+                # plot_line, = self.ax.plot(
+                #     x_values, y_values, label=f'Function: {name}')
+                # self.ax.legend()
+                # # Store the new plot line
+                # self.existing_plots[name] = plot_line
+
             else:
                 # Check if a plot with the same name already exists
                 if func.__name__ in self.existing_plots:
