@@ -1,5 +1,6 @@
 import copy
 import threading
+import time
 from typing import Callable
 import pygame
 import scipy
@@ -357,11 +358,12 @@ class Synth2():
             print(status)
         with torch.no_grad():
             for j, note in enumerate(current_notes):
+                # pass
                 if j >= self.max_parralel_notes:
                     break
-                self.pre_audio_buffer[j, :] = self.fourier_nn.current_model(
+                self.pre_audio_buffer[:] += self.fourier_nn.current_model(
                     utils.wrap_concat(self.t_buffer[note], self.current_frame, self.current_frame+frames))
-        y = torch.clamp(torch.sum(self.pre_audio_buffer, dim=0),
+        y = torch.clamp(self.pre_audio_buffer,
                         min=-1, max=1).cpu().numpy()
         # print(y.shape)
         outdata[:] = y.reshape(-1, 1)
@@ -380,17 +382,19 @@ class Synth2():
         self.fourier_nn.current_model.to(self.fourier_nn.device)
         self.t_buffer.to(self.fourier_nn.device)
         stream = sd.OutputStream(
-            callback=self.audio_callback, samplerate=self.fs, channels=1, blocksize=512)
+            callback=lambda *args, **kwargs: utils.messure_time_taken('audio_callback', self.audio_callback, *args, **kwargs, wait=False), samplerate=self.fs, channels=1, blocksize=512)
         self.play_init_sound()
         threading.Thread(target=self.midi_thread, daemon=True).start()
 
-        self.pre_audio_buffer = torch.zeros((self.max_parralel_notes, 512, 1),
+        self.pre_audio_buffer = torch.zeros((512, 1),
                                             device=self.fourier_nn.device)
-        with stream, open(os.devnull, "w") as f:
-            sys.stdout = f
+        with stream:
+            # sys.stdout = f
             while True:
-                print("asdfasdf")
-                # pass
+                time.sleep(0.1)
+                # print("asdfasdf")
+                pass
+        print(*utils.messure_time_taken.time_taken.items(), sep="\n")
 
     def midi_thread(self):
         midi.init()

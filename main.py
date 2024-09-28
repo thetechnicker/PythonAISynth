@@ -287,7 +287,7 @@ class MainGUI(tk.Tk):
     def train_update(self):
         # print("!!!check!!!")
         if self.trainings_process and self.training_started:
-            if self.trainings_process.is_alive() or self.queue.empty():
+            if self.trainings_process.is_alive() or not self.queue.empty():
                 try:
                     data = self.queue.get_nowait()
                     # print("!!!check!!!")
@@ -483,9 +483,9 @@ def main():
         window.protocol("WM_DELETE_WINDOW", window.quit)
         state = "running"
         try:
-            window.after(1000, lambda: window.graph.plot_function(
-                predefined_functions_dict['nice'], overwrite=True))
-            window.after(2000, window.start_training)
+            # window.after(1000, lambda: window.graph.plot_function(
+            #     predefined_functions_dict['nice'], overwrite=True))
+            # window.after(2000, window.start_training)
             window.mainloop()
         except KeyboardInterrupt:
             print("exiting via keybord interupt")

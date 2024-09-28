@@ -168,16 +168,19 @@ class FourierNN():
             timestamp = time.perf_counter_ns()
             model.train()
             epoch_loss = 0
-            for batch_x, batch_y in train_loader:
-                batch_x, batch_y = batch_x.to(
-                    self.device), batch_y.to(self.device)
-                optimizer.zero_grad()
-                outputs = model(batch_x)
-                loss = criterion(outputs.squeeze(), batch_y)
-                loss.backward()
-                optimizer.step()
-                epoch_loss += loss.item()
-
+            try:
+                for batch_x, batch_y in train_loader:
+                    batch_x, batch_y = batch_x.to(
+                        self.device), batch_y.to(self.device)
+                    optimizer.zero_grad()
+                    outputs = model(batch_x)
+                    loss = criterion(outputs.squeeze(), batch_y)
+                    loss.backward()
+                    optimizer.step()
+                    epoch_loss += loss.item()
+            except Exception as e:
+                print(f"Exception while training: {e}")
+                exit(1)
             epoch_loss /= len(train_loader)
 
             # Validation
