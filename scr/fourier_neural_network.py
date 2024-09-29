@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 import numpy as np
@@ -226,10 +227,13 @@ class FourierNN():
     def save_model(self, filename='./tmp/model.pth'):
         torch.save(self.current_model.state_dict(), filename)
 
-    def load_new_model_from_file(self, filename='./tmp/model.pth'):
+    def load_new_model_from_file(self, filename='./tmp/model.pth', *, delete_tmp=False):
         self.current_model = self.create_model()
-        self.current_model.load_state_dict(
-            torch.load(filename, weights_only=False))
+        model = torch.load(filename, weights_only=False)
+        if delete_tmp:
+            os.remove(filename)
+        print(model)
+        self.current_model.load_state_dict(model)
         self.current_model.eval()
         print(self.current_model)
 
@@ -245,30 +249,3 @@ class FourierNN():
             if self.current_model:
                 self.models.insert(index, self.current_model)
             self.current_model = new_model
-
-    def synthesize(self, midi_note, duration=1.0, sample_rate=44100):
-        output = np.zeros(shape=int(sample_rate * duration))
-        freq = midi_to_freq(midi_note)
-        t = np.linspace(0, duration, int(sample_rate * duration), False)
-        t_scaled = t * 2 * np.pi / (1 / freq)
-        batch_size = int(sample_rate * duration)
-        x = torch.tensor([self.fourier_basis(x, self.fourier_degree)
-                         for x in t_scaled], dtype=torch.float32)
-        output = self.current_model(x).numpy()
-        output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
-        return output.astype(np.int16)
-
-    def synthesize_tuple(self, midi_note, duration=1.0, sample_rate=44100) -> Tuple[int, np.array]:
-        print(f"begin generating sound for note: {midi_note}", flush=True)
-        output = np.zeros(shape=int(sample_rate * duration))
-        freq = midi_to_freq(midi_note)
-        t = np.linspace(0, duration, int(sample_rate * duration), False)
-        t_scaled = (t * 2 * np.pi) / (1 / freq)
-        batch_size = sample_rate // 1
-        indices = FourierNN.precompute_indices(self.fourier_degree)
-        x = self.fourier_basis_numba(t_scaled, indices)
-        x = torch.tensor(x, dtype=torch.float32)
-        output = self.current_model(x).numpy()
-        output = (output * 32767 / np.max(np.abs(output))) / 2  # Normalize
-        print(f"Generated sound for note: {midi_note}")
-        return (midi_note, output.astype(np.int16))

@@ -4,7 +4,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import torch
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 # autopep8: off

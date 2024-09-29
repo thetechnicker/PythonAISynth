@@ -10,8 +10,6 @@ from context import scr
 from scr import predefined_functions, utils
 from scr.fourier_neural_network import FourierNN
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 def _1():
     # to avoid removing importent import of scr
     scr

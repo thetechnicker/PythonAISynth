@@ -28,8 +28,6 @@ from tkinter import filedialog
 from tkinter import messagebox
 import psutil
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 state = "bootup"
 window = None
 
@@ -441,7 +439,10 @@ class MainGUI(tk.Tk):
             # print(self.std_queue)
             self.fourier_nn = FourierNN(
                 lock=self.lock, stdout_queue=self.std_queue)
-        self.fourier_nn.update_attribs(**{key: value})
+        if not self.trainings_process and not self.block_training:
+            self.fourier_nn.update_attribs(**{key: value})
+            return True
+        return False
 
 
 # def start_server():

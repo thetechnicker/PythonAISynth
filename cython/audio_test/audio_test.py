@@ -5,8 +5,6 @@ import torch
 import sounddevice as sd
 import audio_callback
 
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 
 # autopep8: off
 from context import scr
