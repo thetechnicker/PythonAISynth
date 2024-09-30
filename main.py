@@ -303,7 +303,7 @@ class MainGUI(tk.Tk):
                     return
                 if exit_code == 0:
                     print("loading trained model")
-                    self.fourier_nn.load_new_model_from_file()
+                    self.fourier_nn.load_new_model_from_file(delete_tmp=True)
                     print("model loaded")
                     # for name, param in self.fourier_nn.current_model.named_parameters():
                     #     print(
@@ -386,7 +386,7 @@ class MainGUI(tk.Tk):
                                                  default_str=f"model{i}",
                                                  label_select="Select Format",
                                                  default_select=default_format,
-                                                 values_to_select_from=["keras", "h5"])
+                                                 values_to_select_from=["pth"])
             name, file_format = dialog.result
             if not name:
                 name = f"model{i}"
@@ -405,8 +405,8 @@ class MainGUI(tk.Tk):
 
     def load_neural_net(self):
         print("load_neural_net")
-        filetypes = (('Keras files', '*.keras'),
-                     ('HDF5 files', '*.h5'), ('All files', '*.*'))
+        filetypes = (('Torch Model File', '*.pth'),
+                     ('All files', '*.*'))
         filename = filedialog.askopenfilename(
             title='Open a file', initialdir='.', filetypes=filetypes, parent=self)
         if os.path.exists(filename):

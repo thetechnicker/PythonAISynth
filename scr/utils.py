@@ -70,7 +70,7 @@ def messure_time_taken(name, func, *args, wait=True, **kwargs):
     result = func(*args, **kwargs)
     time_taken = (time.perf_counter_ns()-timestamp)/1_000_000_000
     print(
-        f"Time taken for {name}: {time_taken}s")
+        f"Time taken for {name}: {time_taken:6.6f}s")
     if wait:
         input("paused")
     messure_time_taken.time_taken[name] = max(
@@ -349,5 +349,5 @@ def wrap_concat(tensor, idx1, idx2):
         result = tensor[idx1:idx2]
     else:
         result = torch.cat((tensor[idx1:], tensor[:idx2]))
-    print(result.shape)
+    # print(result.shape)
     return result

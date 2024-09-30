@@ -1,5 +1,6 @@
 import multiprocessing
 import os
+from threading import Thread
 from matplotlib import ticker
 import numpy as np
 import matplotlib.pyplot as plt
@@ -10,6 +11,7 @@ import sounddevice as sd
 from context import scr
 from scr import predefined_functions, utils
 from scr.fourier_neural_network import FourierNN
+from scr.music import Synth2
 # autopep8: on
 
 
@@ -23,7 +25,7 @@ t2_tensor = None
 samplerate = 44100
 frequencies = [220, 440, 660, 880, 1100, 1320, 1540, 1760, 1980, 2200]
 t = np.linspace(-np.pi, np.pi, 250)
-max_parralel_notes = 5
+max_parralel_notes = 1
 buffer_size = 512
 
 
@@ -36,13 +38,31 @@ def main():
         fourier_nn = FourierNN(lock=manager.Lock(), data=data)
         fourier_nn.train(test_data=t)
 
-        process = multiprocessing.Process(target=stupid, args=(fourier_nn,))
-        process.start()
-        try:
-            while process.is_alive():
-                pass
-        except:
+
+def stupid_thread(fourier_nn):
+    synth = Synth2(fourier_nn)
+    synth.run_live_synth()
+    try:
+        while synth.live_synth.is_alive():
             pass
+    except KeyboardInterrupt:
+        if synth.live_synth.is_alive():
+            synth.run_live_synth()
+
+    # process = multiprocessing.Process(target=stupid, args=(fourier_nn,))
+    # print("starting process")
+    # process.start()
+    # print("process has started")
+    # good = False
+    # try:
+    #     while process.is_alive():
+    #         pass
+    # except KeyboardInterrupt:
+    #     if process.is_alive():
+    #         process.kill()
+    # except:
+    #     pass
+    # print(process.exitcode)
 
 
 def audio_callback(outdata, frames, time, status):
@@ -81,9 +101,7 @@ def stupid(_fourier_nn):
             with open(os.devnull, "w") as f:
                 while True:
                     if hasattr(audio_callback, 'i'):
-                        # print("", end="")
                         print(audio_callback.i*buffer_size, file=f)
-                    # pass
 
     except KeyboardInterrupt:
         print(*utils.messure_time_taken.time_taken.items(), sep="\n")
@@ -92,4 +110,5 @@ def stupid(_fourier_nn):
 
 
 if __name__ == "__main__":
+    multiprocessing.set_start_method("spawn")
     main()

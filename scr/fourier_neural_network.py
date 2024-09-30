@@ -49,6 +49,7 @@ class FourierNN():
         self.models = []
         self.current_model = None
         self.fourier_degree = self.DEFAULT_FORIER_DEGREE
+        self.orig_data_len = 0
         self.prepared_data = None
         self.stdout_queue = stdout_queue
         self.device = None
@@ -80,6 +81,7 @@ class FourierNN():
 
         # If the data has been prepared, recreate the model with updated parameters
         if self.prepared_data:
+            self.update_fourier_degree()
             self.create_new_model()
 
     def create_model(self):
@@ -98,12 +100,18 @@ class FourierNN():
         if not self.current_model:
             self.current_model = self.create_model()
 
+    def update_fourier_degree(self):
+        self.fourier_degree = ((
+            (self.orig_data_len // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET)
+            if self.CALC_FOURIER_DEGREE_BY_DATA_LENGTH else self.DEFAULT_FORIER_DEGREE)
+
     def prepare_data(self, data, std_queue: Queue = None):
         if std_queue:
             self.stdout_queue = std_queue
 
-        self.fourier_degree = (
-            (len(data) // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET) if self.CALC_FOURIER_DEGREE_BY_DATA_LENGTH else self.DEFAULT_FORIER_DEGREE
+        self.orig_data_len = len(data)
+
+        self.update_fourier_degree()
 
         x_train, y_train = linear_interpolation(
             data, self.SAMPLES, self.device)
@@ -113,7 +121,8 @@ class FourierNN():
         return (x_train,
                 y_train,
                 x_test,
-                y_test)
+                y_test,
+                )
 
     def train(self, test_data, queue=None, quiet=False, stdout_queue=None):
         # exit(-1)

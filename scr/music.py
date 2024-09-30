@@ -313,7 +313,7 @@ def apply_distortion(audio, gain=2.0, threshold=0.5):
 
 class Synth2():
     # MIDI_NOTE_OF_FREQ_ONE = midi.frequency_to_midi(1)
-    def __init__(self, fourier_nn, stdout: Queue):
+    def __init__(self, fourier_nn, stdout: Queue = None):
         self.stdout = stdout
         self.live_synth: Process = None
         self.notes_ready = False
@@ -354,6 +354,7 @@ class Synth2():
 
     def audio_callback(self, outdata, frames, time, status):
         current_notes = set(self.current_notes)
+        # print(current_notes, self.current_notes)
         if status:
             print(status)
         with torch.no_grad():
@@ -380,32 +381,32 @@ class Synth2():
     def live_synth_loop(self):
         print("Live Synth is running")
         self.fourier_nn.current_model.to(self.fourier_nn.device)
-        self.t_buffer.to(self.fourier_nn.device)
+        self.t_buffer = self.t_buffer.to(self.fourier_nn.device)
         stream = sd.OutputStream(
             callback=lambda *args, **kwargs: utils.messure_time_taken('audio_callback', self.audio_callback, *args, **kwargs, wait=False), samplerate=self.fs, channels=1, blocksize=512)
         self.play_init_sound()
-        threading.Thread(target=self.midi_thread, daemon=True).start()
+        midi_thread = threading.Thread(target=self.midi_thread, daemon=True)
+        midi_thread.start()
 
         self.pre_audio_buffer = torch.zeros((512, 1),
                                             device=self.fourier_nn.device)
         with stream:
-            # sys.stdout = f
-            while True:
+            while midi_thread.is_alive():
                 time.sleep(0.1)
-                # print("asdfasdf")
-                pass
-        print(*utils.messure_time_taken.time_taken.items(), sep="\n")
+        if hasattr(utils.messure_time_taken, 'time_taken'):
+            print(*utils.messure_time_taken.time_taken.items(), sep="\n")
 
     def midi_thread(self):
         midi.init()
         input_id = midi.get_default_input_id()
+        # print(input_id)
         if input_id == -1:
             print("No MIDI input device found.")
             return
         midi_input = midi.Input(input_id)
         while True:
             if midi_input.poll():
-                midi_events = midi_input.read(1)
+                midi_events = midi_input.read(10)
                 for midi_event, timestamp in midi_events:
                     if midi_event[0] == 144:
                         print("Note on",
@@ -441,5 +442,6 @@ class Synth2():
     def __setstate__(self, state):
         # Load the model from a file after deserialization
         self.__dict__.update(state)
-        if current_process().name != 'MainProcess':
-            sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)
+        if self.stdout is not None:
+            if current_process().name != 'MainProcess':
+                sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)

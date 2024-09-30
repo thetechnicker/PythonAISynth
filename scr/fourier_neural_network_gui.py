@@ -84,7 +84,7 @@ class NeuralNetworkGUI(ttk.Frame):
 if __name__ == "__main__":
 
     def stupid(*args, **kwargs):
-        print(*args, **kwargs, sep="\n")
+        print(*args, *kwargs.items(), sep="\n")
         return False
     # Usage
     root = tk.Tk()
