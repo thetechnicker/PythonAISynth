@@ -28,7 +28,7 @@ def main():
     max_parralel_notes = 1
     max_parralel_notes = min(max(1, max_parralel_notes), len(frequencies))
     data = list(
-        zip(t, (predefined_functions.call_func('bing', x) for x in t)))
+        zip(t, (predefined_functions.call_func('nice', x) for x in t)))
     # print(data)
     with multiprocessing.Manager() as manager:
         fourier_nn = FourierNN(lock=manager.Lock(), data=data)
@@ -43,7 +43,7 @@ def main():
         t2_tensor = torch.tensor(t2, dtype=torch.float32).to(fourier_nn.device)
         print(t2_tensor.shape)
         buffer_size = 512
-        a = np.zeros((max_parralel_notes, samplerate, 1))
+        a = np.zeros((max_parralel_notes, samplerate))
 
         with torch.no_grad():
             for i in range((t2.shape[1]//buffer_size)+1):
@@ -56,12 +56,13 @@ def main():
         print(*utils.messure_time_taken.time_taken.items(), sep="\n")
         for name, param in fourier_nn.current_model.named_parameters():
             print(
-                f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
+                f"Layer: {name} | Size: {param.size()} | Values:\n{param}\n------------------------------")
 
         x = 2*np.pi*np.linspace(0, 1, samplerate)
         for i, (y) in enumerate(a):
-            plt.plot(x, y, label=f"{i}")
-        plt.plot(*zip(*data), label=f"what")
+            plt.plot(x, y, label=f"func_{i}")
+
+        plt.plot(*zip(*data), label=f"orig_data")
 
         plt.xlabel('x (radians)')
         plt.ylabel('sin(x)')

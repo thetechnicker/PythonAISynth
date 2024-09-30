@@ -32,6 +32,21 @@ class FourierLayer(nn.Module):
         return z
 
 
+class FourierRegresionModel(nn.Module):
+    def __init__(self, degree):
+        super(FourierRegresionModel, self).__init__()
+        self.frequencies = torch.arange(
+            1, degree+1, 1, dtype=torch.float32)
+        self.a = nn.Parameter(torch.ones((2, 1, degree)))
+        self.c = nn.Parameter(torch.zeros(1))
+
+    def forward(self, x):
+        x = x.unsqueeze(1)
+        y1 = self.a[0] * torch.sin(self.frequencies * x)
+        y2 = self.a[1] * torch.cos(self.frequencies * x)
+        return torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1) + self.c
+
+
 class FourierNN():
     SAMPLES = 1000
     EPOCHS = 1000
@@ -85,11 +100,12 @@ class FourierNN():
             self.create_new_model()
 
     def create_model(self):
-        model = nn.Sequential(
-            FourierLayer(self.fourier_degree),
-            nn.Linear(self.fourier_degree*2, 1),  # bias=False),
-            # nn.Tanh()
-        )
+        # model = nn.Sequential(
+        #     FourierLayer(self.fourier_degree),
+        #     nn.Linear(self.fourier_degree*2, 1),  # bias=False),
+        #     # nn.Tanh()
+        # )
+        model = FourierRegresionModel(self.fourier_degree)
         return model
 
     def update_data(self, data, stdout_queue=None):
