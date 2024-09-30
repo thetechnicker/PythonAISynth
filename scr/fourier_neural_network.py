@@ -240,7 +240,10 @@ class FourierNN():
         self.save_model()
 
     def predict(self, data):
-        x = torch.tensor(data, dtype=torch.float32)
+        if not isinstance(data, torch.Tensor):
+            x = torch.tensor(data, dtype=torch.float32, device=self.device)
+        else:
+            x = x.to(self.device)
         if not x.dim():
             x = x.unsqueeze(0)
 

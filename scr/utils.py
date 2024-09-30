@@ -351,3 +351,21 @@ def wrap_concat(tensor, idx1, idx2):
         result = torch.cat((tensor[idx1:], tensor[:idx2]))
     # print(result.shape)
     return result
+
+
+def timed_generator(iterable):
+    for item in iterable:
+        start_time = time.time()
+        yield item
+        end_time = time.time()
+        print(
+            f"Time taken for this iteration: {((end_time - start_time)/1_000_000_000):10.9f}s")
+
+
+def timed_loop(condition):
+    while condition:
+        start_time = time.perf_counter_ns()
+        yield
+        end_time = time.perf_counter_ns()
+        print(
+            f"Time taken for this iteration: {((end_time - start_time)/1_000_000_000):10.9f}ms")
