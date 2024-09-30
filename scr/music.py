@@ -506,7 +506,7 @@ class Synth3():
             return
         midi_input = midi.Input(input_id)
         p = pyaudio.PyAudio()
-        CHUNK = 4096
+        CHUNK = 2048  # Increased chunk size
         stream = p.open(format=pyaudio.paFloat32,
                         channels=1,
                         rate=self.fs,
@@ -517,26 +517,23 @@ class Synth3():
 
         for _ in utils.timed_loop(True):
             if midi_input.poll():
-                midi_events = midi_input.read(1)  # Read fewer events
-                midi_event, timestamp = midi_events[0]
-                # for  in midi_events:
+                midi_event, timestamp = midi_input.read(1)[0]  # Read and process one event
                 if midi_event[0] == 144:  # Note on
-                    # print("Note on", midi_event[1], midi.midi_to_frequency(
-                    #     midi_event[1]))
+                    print("Note on", midi_event[1], midi.midi_to_frequency(midi_event[1]))
                     notes.add(midi_event[1])
                 elif midi_event[0] == 128:  # Note off
-                    # print("Note off", midi_event[1], midi.midi_to_frequency(
-                    #     midi_event[1]))
+                    print("Note off", midi_event[1], midi.midi_to_frequency(midi_event[1]))
                     notes.discard(midi_event[1])
 
             y.zero_()  # Reset tensor instead of creating a new one
             for note in notes:
                 with torch.no_grad():
-                    y += self.fourier_nn.current_model(utils.wrap_concat(
-                        self.t_buffer[note], current_frame, current_frame + CHUNK))
-            print(y)
+                    x = utils.wrap_concat(self.t_buffer[note], current_frame, current_frame + CHUNK)
+                    y += self.fourier_nn.current_model(x)
+
             stream.write(y.cpu().numpy())
             current_frame = (current_frame + CHUNK) % self.fs
+
 
     def run_live_synth(self):
         if not self.live_synth:
