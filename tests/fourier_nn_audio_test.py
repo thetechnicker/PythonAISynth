@@ -26,7 +26,7 @@ samplerate = 44100
 frequencies = [220, 440, 660, 880, 1100, 1320, 1540, 1760, 1980, 2200]
 t = np.linspace(-np.pi, np.pi, 250)
 max_parralel_notes = 1
-buffer_size = 512
+buffer_size = 265
 
 
 def main():
@@ -38,33 +38,46 @@ def main():
         fourier_nn = FourierNN(lock=manager.Lock(), data=data)
         fourier_nn.train(test_data=t)
 
-        stupid_thread(fourier_nn)
+        # thread = Thread(target=stupid_thread, args=(fourier_nn,))
+        # thread.start()
+        # try:
+        #     while thread.is_alive():
+        #         pass
+        # except KeyboardInterrupt:
+        #     pass
+
+        # stupid(fourier_nn)
+        # stupid_thread(fourier_nn)
+
+        # process = multiprocessing.Process(target=stupid, args=(fourier_nn,))
+        # print("starting process")
+        # process.start()
+        # print("process has started")
+        # good = False
+        # try:
+        #     while process.is_alive():
+        #         pass
+        # except KeyboardInterrupt:
+        #     if process.is_alive():
+        #         process.kill()
+        # except:
+        #     pass
+        # print(process.exitcode)
 
 
 def stupid_thread(fourier_nn):
     synth = Synth3(fourier_nn)
+    # synth.current_notes.add(45)
     synth.run_live_synth()
+    while True:
+        if synth.live_synth:
+            break
     try:
         while synth.live_synth.is_alive():
             pass
     except KeyboardInterrupt:
         if synth.live_synth.is_alive():
             synth.run_live_synth()
-
-    # process = multiprocessing.Process(target=stupid, args=(fourier_nn,))
-    # print("starting process")
-    # process.start()
-    # print("process has started")
-    # good = False
-    # try:
-    #     while process.is_alive():
-    #         pass
-    # except KeyboardInterrupt:
-    #     if process.is_alive():
-    #         process.kill()
-    # except:
-    #     pass
-    # print(process.exitcode)
 
 
 def audio_callback(outdata, frames, time, status):
@@ -75,14 +88,13 @@ def audio_callback(outdata, frames, time, status):
     if status:
         print(status)
 
-    a = torch.zeros((max_parralel_notes, frames, 1),
-                    device=fourier_nn.device)
+    a = torch.zeros((max_parralel_notes, frames))
     with torch.no_grad():
         for j in range(max_parralel_notes):
-            # t_ = (i+j*10)
             a[j, :] = fourier_nn.current_model(
                 utils.wrap_concat(t2_tensor[j], i, i+frames))
-    y = torch.clamp(torch.sum(a, dim=0), min=-1, max=1).cpu().numpy()
+
+    y = torch.clamp(torch.sum(a, dim=0), min=-1, max=1).numpy()
 
     outdata[:] = y.reshape(-1, 1)
     audio_callback.i = (audio_callback.i + frames) % samplerate
@@ -91,10 +103,10 @@ def audio_callback(outdata, frames, time, status):
 def stupid(_fourier_nn):
     global fourier_nn, samplerate, frequencies, t, max_parralel_notes, buffer_size, t2_tensor
     fourier_nn = _fourier_nn
-
+    fourier_nn.current_model.eval()
     t2 = np.array([2 * np.pi * frequencies[f] *
                    np.linspace(0, 1, samplerate) for f in range(max_parralel_notes)])
-    t2_tensor = torch.tensor(t2, dtype=torch.float32).to(fourier_nn.device)
+    t2_tensor = torch.tensor(t2, dtype=torch.float32)
     try:
         # i = 0
         stream = sd.OutputStream(

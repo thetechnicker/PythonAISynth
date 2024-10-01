@@ -76,7 +76,7 @@ class Synth():
 
     MIDI_NOTE_OF_FREQ_ONE = midi.frequency_to_midi(1)
 
-    def __init__(self, fourier_nn, stdout: Queue, num_channels: int = 20):
+    def __init__(self, fourier_nn, stdout: Queue = None, num_channels: int = 20):
         self.stdout = stdout
         self.pool = None
         self.live_synth: Process = None
@@ -262,8 +262,9 @@ class Synth():
     def __setstate__(self, state):
         # Load the model from a file after deserialization
         self.__dict__.update(state)
-        if current_process().name != 'MainProcess':
-            sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)
+        if self.stdout is not None:
+            if current_process().name != 'MainProcess':
+                sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)
 
 
 def get_raw_audio(sound):
@@ -516,24 +517,31 @@ class Synth3():
         y = torch.zeros(CHUNK)
 
         for _ in utils.timed_loop(True):
+            y.zero_()  # Reset tensor instead of creating a new one
             if midi_input.poll():
-                midi_event, timestamp = midi_input.read(1)[0]  # Read and process one event
+                midi_event, timestamp = midi_input.read(
+                    1)[0]  # Read and process one event
                 if midi_event[0] == 144:  # Note on
-                    print("Note on", midi_event[1], midi.midi_to_frequency(midi_event[1]))
+                    print("Note on",
+                          midi_event[1],
+                          midi.midi_to_frequency(midi_event[1]))
+
                     notes.add(midi_event[1])
                 elif midi_event[0] == 128:  # Note off
-                    print("Note off", midi_event[1], midi.midi_to_frequency(midi_event[1]))
+                    print("Note off",
+                          midi_event[1],
+                          midi.midi_to_frequency(midi_event[1]))
+
                     notes.discard(midi_event[1])
 
-            y.zero_()  # Reset tensor instead of creating a new one
             for note in notes:
                 with torch.no_grad():
-                    x = utils.wrap_concat(self.t_buffer[note], current_frame, current_frame + CHUNK)
+                    x = utils.wrap_concat(
+                        self.t_buffer[note], current_frame, current_frame + CHUNK)
                     y += self.fourier_nn.current_model(x)
 
             stream.write(y.cpu().numpy())
             current_frame = (current_frame + CHUNK) % self.fs
-
 
     def run_live_synth(self):
         if not self.live_synth:

@@ -44,7 +44,8 @@ class FourierRegresionModel(nn.Module):
         x = x.unsqueeze(1)
         y1 = self.a[0] * torch.sin(self.frequencies * x)
         y2 = self.a[1] * torch.cos(self.frequencies * x)
-        return torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1) + self.c
+        z = torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1) + self.c
+        return z
 
 
 class FourierNN():
@@ -103,7 +104,6 @@ class FourierNN():
         # model = nn.Sequential(
         #     FourierLayer(self.fourier_degree),
         #     nn.Linear(self.fourier_degree*2, 1),  # bias=False),
-        #     # nn.Tanh()
         # )
         model = FourierRegresionModel(self.fourier_degree)
         return model
