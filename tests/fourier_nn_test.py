@@ -33,12 +33,12 @@ def main():
     with multiprocessing.Manager() as manager:
         fourier_nn = FourierNN(lock=manager.Lock(), data=data)
         # fourier_nn.load_new_model_from_file()
-        fourier_nn.update_attribs(fourier_degree=100)
+        fourier_nn.update_attribs(DEFAULT_FORIER_DEGREE=50)
         fourier_nn.train(test_data=t)
 
         # utils.messure_time_taken(
         #     "predict", lambda x: [fourier_nn.predict(_x, 1) for _x in x], 2*np.pi * f * np.linspace(0, 1, timestep))
-        t2 = np.array([2 * np.pi * frequencies[f] *
+        t2 = np.array([2 * np.pi * frequencies[f+1] *
                       np.linspace(0, 1, samplerate) for f in range(max_parralel_notes)])
         t2_tensor = torch.tensor(t2, dtype=torch.float32).to(fourier_nn.device)
         print(t2_tensor.shape)
@@ -50,7 +50,7 @@ def main():
                 def generate():
                     for j in range(max_parralel_notes):
                         a[j, i*buffer_size:(i+1)*buffer_size] = fourier_nn.current_model(
-                            t2_tensor[j, i*buffer_size:(i+1)*buffer_size]).cpu().numpy()
+                            t2_tensor[j, i*buffer_size:(i+1)*buffer_size].unsqueeze(1)).cpu().numpy()
                 utils.messure_time_taken("predict", generate, wait=False)
 
         print(*utils.messure_time_taken.time_taken.items(), sep="\n")
@@ -58,9 +58,9 @@ def main():
             print(
                 f"Layer: {name} | Size: {param.size()} | Values:\n{param}\n------------------------------")
 
-        x = 2*np.pi*np.linspace(0, 1, samplerate)
+        x = np.linspace(0, 2*np.pi, samplerate)
         for i, (y) in enumerate(a):
-            plt.plot(x, y, label=f"func_{i}")
+            plt.plot(t2[i], y, label=f"func_{i}")
 
         plt.plot(*zip(*data), label=f"orig_data")
 

@@ -23,7 +23,10 @@ class QueueSTD_OUT(TextIO):
         self.queue = queue
 
     def write(self, msg):
-        self.queue.put(msg)
+        try:
+            self.queue.put(msg)
+        except EOFError:
+            exit()
 
 
 def DIE(process: Process, join_timeout=30, term_iterations=50):
@@ -323,20 +326,32 @@ def center_and_scale(arr):
     centered_arr = arr - np.mean(arr)
 
     # Clip the centered array to the range [-1, 1]
-    clipped_arr = np.clip(centered_arr, -1, 1)
+    # clipped_arr = np.clip(centered_arr, -1, 1)
 
     # Scale the values to fit exactly within [-1, 1]
     min_val = np.min(centered_arr)
     max_val = np.max(centered_arr)
 
     # Avoid division by zero if all values are the same
-    if max_val - min_val == 0:
+    if abs(max_val) - abs(min_val) == 0:
         # or return clipped_arr if you prefer
         return np.zeros_like(centered_arr)
 
     # Scale to [-1, 1]
     scaled_arr = 2 * (centered_arr - min_val) / (max_val - min_val) - 1
     return scaled_arr
+
+
+def center_and_clip(arr):
+    # Convert the input list to a NumPy array
+    arr = np.array(arr)
+
+    # Center the array around 0
+    centered_arr = arr - np.mean(arr)
+
+    # Clip the centered array to the range [-1, 1]
+    clipped_arr = np.clip(centered_arr, -1, 1)
+    return clipped_arr
 
 
 def wrap_concat(tensor, idx1, idx2):

@@ -17,7 +17,7 @@ class GraphCanvas(ttk.Frame):
         self.master = master
 
         # Define the range for x from 0 to 2π with 250 evenly spaced points
-        self.x = np.linspace(0, 2 * np.pi, 100)
+        self.x = np.linspace(0, 2 * np.pi, 500)
         self.y = np.zeros_like(self.x)  # Initial y values set to 0
 
         plt.style.use('dark_background')
@@ -42,7 +42,7 @@ class GraphCanvas(ttk.Frame):
         self.ax.grid()
 
         # Add a title
-        self.ax.set_title('Move the Closest Dot Along the Y-Axis')
+        self.ax.set_title('Draw Shape of Soundwave')
 
         # Create a cursor for better visibility
         self.cursor = Cursor(self.ax, useblit=True, color='blue', linewidth=1)
@@ -110,7 +110,7 @@ class GraphCanvas(ttk.Frame):
             self.redraw_needed = True
 
     def on_mouse_release(self, event):
-        self.last_index = self.selected_index
+        self.last_index = None
         self.selected_index = None
         self.redraw_needed = False
 

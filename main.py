@@ -7,7 +7,7 @@ import time
 import numpy as np
 from scr import music
 from scr import utils
-from scr.music import Synth, Synth2, musik_from_file
+from scr.music import Synth3, musik_from_file
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
 from scr.utils import DIE, tk_after_errorless
@@ -113,7 +113,7 @@ class MainGUI(tk.Tk):
         self.block_training = False
         self.queue = Queue(-1)
         self.fourier_nn = None
-        self.synth: Synth2 = None
+        self.synth: Synth3 = None
         self.init_terminal_frame()
         self.create_menu()
         self.create_row_one()
@@ -289,9 +289,7 @@ class MainGUI(tk.Tk):
                 try:
                     data = self.queue.get_nowait()
                     # print("!!!check!!!")
-                    data = list(zip(self.graph.x, data.reshape(-1)))
-                    # print(data)
-                    # graph.data=data
+                    data = list(zip(self.graph.x, data))
                     self.graph.plot_points(data, name="training", type='line')
                 except Exception as e:
                     # print(e)
@@ -309,8 +307,8 @@ class MainGUI(tk.Tk):
                     #     print(
                     #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
                     self.graph.plot_function(
-                        self.fourier_nn.predict, x_range=(0, 2*np.pi, 100000))
-                    self.synth = Synth2(self.fourier_nn, self.std_queue)
+                        self.fourier_nn.predict, x_range=(0, 2*np.pi, 44100//2))
+                    self.synth = Synth3(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
                 self.training_started = False
@@ -319,7 +317,7 @@ class MainGUI(tk.Tk):
                     "training Ended", f"exit code: {exit_code}")
                 # self.fourier_nn.clean_memory()
                 return
-        tk_after_errorless(self, 50, self.train_update)
+        tk_after_errorless(self, 10, self.train_update)
 
     def init_or_update_nn(self, stdout=None):
         if not self.fourier_nn:
@@ -418,7 +416,7 @@ class MainGUI(tk.Tk):
             self.graph.draw_extern_graph_from_func(
                 self.fourier_nn.predict, name)
             print(name)
-            self.synth = Synth2(self.fourier_nn, self.std_queue)
+            self.synth = Synth3(self.fourier_nn, self.std_queue)
             # self.fourier_nn.update_data(
             #     data=self.graph.get_graph(name=name)[0])
 

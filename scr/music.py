@@ -450,7 +450,6 @@ class Synth2():
 
 
 class Synth3():
-    # MIDI_NOTE_OF_FREQ_ONE = midi.frequency_to_midi(1)
     def __init__(self, fourier_nn, stdout: Queue = None):
         self.stdout = stdout
         self.live_synth: Process = None
@@ -467,6 +466,7 @@ class Synth3():
             for f in range(128)
         ])
         self.t_buffer = torch.tensor(t, dtype=torch.float32)
+        print(self.t_buffer.shape)
 
     def play_init_sound(self):
         f1 = 440  # Frequency of the "duuu" sound (in Hz)
@@ -514,11 +514,17 @@ class Synth3():
                         output=True)
         current_frame = 0
         notes = set()
-        y = torch.zeros(CHUNK)
-
+        audio_min = np.inf
+        audio_max = -np.inf
         for _ in utils.timed_loop(True):
-            y.zero_()  # Reset tensor instead of creating a new one
+            available_buffer = stream.get_write_available()
+            print(audio_min, audio_max, available_buffer, sep="\t", end=" |\t")
+            # stream.get_cpu_load
+            if available_buffer == 0:
+                continue
+            y = torch.zeros(available_buffer, device=self.fourier_nn.device)
             if midi_input.poll():
+                print()
                 midi_event, timestamp = midi_input.read(
                     1)[0]  # Read and process one event
                 if midi_event[0] == 144:  # Note on
@@ -536,12 +542,31 @@ class Synth3():
 
             for note in notes:
                 with torch.no_grad():
+                    actual_len = 2*torch.pi/midi.midi_to_frequency(note)
                     x = utils.wrap_concat(
-                        self.t_buffer[note], current_frame, current_frame + CHUNK)
-                    y += self.fourier_nn.current_model(x)
+                        self.t_buffer[note][:actual_len], current_frame, current_frame + available_buffer)
+                    # x = self.t_buffer[note]
+                    # print(x.shape)
+                    # y += torch.sin(x).flatten()
+                    y += self.fourier_nn.current_model(x.unsqueeze(1))
+            audio_data = y.cpu().numpy().astype(np.float32)
+            audio_data = audio_data/(len(notes))
+            audio_data = audio_data - np.mean(audio_data)
 
-            stream.write(y.cpu().numpy())
-            current_frame = (current_frame + CHUNK) % self.fs
+            min_val = np.nanmin(audio_data)
+            max_val = np.nanmax(audio_data)
+
+            audio_min = min(min_val, audio_min) if not np.isnan(
+                min_val) else audio_min
+            audio_max = max(max_val, audio_max) if not np.isnan(
+                max_val) else audio_max
+
+            audio_data *= 0.5
+            audio_data = np.clip(audio_data, -1, 1)
+            stream.write(audio_data,
+                         available_buffer,
+                         exception_on_underflow=True)
+            current_frame = (current_frame + available_buffer) % self.fs
 
     def run_live_synth(self):
         if not self.live_synth:
@@ -563,9 +588,9 @@ class Synth3():
         self.live_synth = live_synth
         return Synth_dict
 
-    def __setstate__(self, state):
-        # Load the model from a file after deserialization
-        self.__dict__.update(state)
-        if self.stdout is not None:
-            if current_process().name != 'MainProcess':
-                sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)
+    # def __setstate__(self, state):
+    #     # Load the model from a file after deserialization
+    #     self.__dict__.update(state)
+    #     if self.stdout is not None:
+    #         if current_process().name != 'MainProcess':
+    #             sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)

@@ -38,13 +38,13 @@ def main():
         fourier_nn = FourierNN(lock=manager.Lock(), data=data)
         fourier_nn.train(test_data=t)
 
-        # thread = Thread(target=stupid_thread, args=(fourier_nn,))
-        # thread.start()
-        # try:
-        #     while thread.is_alive():
-        #         pass
-        # except KeyboardInterrupt:
-        #     pass
+        thread = Thread(target=stupid_thread, args=(fourier_nn,))
+        thread.start()
+        try:
+            while thread.is_alive():
+                pass
+        except KeyboardInterrupt:
+            pass
 
         # stupid(fourier_nn)
         # stupid_thread(fourier_nn)

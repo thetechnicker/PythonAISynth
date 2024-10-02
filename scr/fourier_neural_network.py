@@ -11,6 +11,8 @@ from multiprocessing import Queue
 from scr import utils
 from scr.utils import QueueSTD_OUT, linear_interpolation, midi_to_freq
 
+DISABLE_GPU = False
+
 try:
     import torch_directml
     DIRECTML = True
@@ -41,11 +43,34 @@ class FourierRegresionModel(nn.Module):
         self.c = nn.Parameter(torch.zeros(1))
 
     def forward(self, x):
-        x = x.unsqueeze(1)
         y1 = self.a[0] * torch.sin(self.frequencies * x)
         y2 = self.a[1] * torch.cos(self.frequencies * x)
         z = torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1) + self.c
         return z
+
+
+class FourierRegresionModelV2(nn.Module):
+    def __init__(self, degree):
+        super(FourierRegresionModelV2, self).__init__()
+        self.frequencies_sin = nn.Parameter(
+            torch.arange(1, degree+1, 1, dtype=torch.float32),
+            requires_grad=False
+        )
+        self.frequencies_cos = nn.Parameter(
+            torch.arange(1, degree+1, 1, dtype=torch.float32),
+            requires_grad=False
+        )
+        self.a1 = nn.Parameter(torch.ones((degree)))
+        self.a2 = nn.Parameter(torch.ones((degree)))
+        self.c1 = nn.Parameter(torch.zeros((degree)))
+        self.c2 = nn.Parameter(torch.zeros((degree)))
+        self.d = nn.Parameter(torch.zeros(1))
+
+    def forward(self, x):
+        y1 = self.a1 * torch.sin(self.frequencies_sin * x+self.c1)
+        y2 = self.a2 * torch.cos(self.frequencies_cos * x+self.c2)
+        z = torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1)+self.d
+        return z  # , y1, y2
 
 
 class FourierNN():
@@ -105,7 +130,7 @@ class FourierNN():
         #     FourierLayer(self.fourier_degree),
         #     nn.Linear(self.fourier_degree*2, 1),  # bias=False),
         # )
-        model = FourierRegresionModel(self.fourier_degree)
+        model = FourierRegresionModelV2(self.fourier_degree)
         return model
 
     def update_data(self, data, stdout_queue=None):
@@ -130,13 +155,13 @@ class FourierNN():
         self.update_fourier_degree()
 
         x_train, y_train = linear_interpolation(
-            data, self.SAMPLES, self.device)
+            data, self.SAMPLES)  # , self.device)
         x_test, y_test = linear_interpolation(
-            data, self.SAMPLES//2, self.device)
+            data, self.SAMPLES//2)  # , self.device)
 
-        return (x_train,
+        return (x_train.unsqueeze(1),
                 y_train,
-                x_test,
+                x_test.unsqueeze(1),
                 y_test,
                 )
 
@@ -181,10 +206,9 @@ class FourierNN():
         #     dtype=torch.float32).to(self.device)
         prepared_test_data = torch.tensor(
             test_data.flatten(),
-            dtype=torch.float32, device=self.device)
-        print(prepared_test_data.shape)
+            dtype=torch.float32, device=self.device).unsqueeze(1)
 
-        min_delta = 0.000001  # 4.337714676382401e-14
+        min_delta = 0.0001  # 4.337714676382401e-14
         epoch_without_change = 0
         max_loss = torch.inf
 
@@ -200,7 +224,7 @@ class FourierNN():
                         self.device), batch_y.to(self.device)
                     optimizer.zero_grad()
                     outputs = model(batch_x)
-                    loss = criterion(outputs.squeeze(), batch_y)
+                    loss = criterion(outputs, batch_y)
                     loss.backward()
                     optimizer.step()
                     epoch_loss += loss.item()
@@ -213,11 +237,11 @@ class FourierNN():
             model.eval()
             with torch.no_grad():
                 val_outputs = model(test_x)
-                val_loss = criterion(val_outputs.squeeze(),
+                val_loss = criterion(val_outputs,
                                      test_y.to(self.device))
                 if queue and epoch % 10 == 0:
-                    predictions = model(prepared_test_data)
-                    queue.put(predictions.cpu().numpy())
+                    predictions = model(prepared_test_data).cpu().numpy()
+                    queue.put(predictions)
 
             # callback.on_epoch_end(epoch, epoch_loss, val_loss.item(), model)
             time_taken = time.perf_counter_ns() - timestamp
@@ -244,9 +268,9 @@ class FourierNN():
             x = torch.tensor(data, dtype=torch.float32, device=self.device)
         else:
             x = x.to(self.device)
-        if not x.dim():
-            x = x.unsqueeze(0)
-
+        if x.shape[0] > 1:
+            x = x.unsqueeze(1)
+        print(x.shape)
         with torch.no_grad():
             y = self.current_model(x)
 
