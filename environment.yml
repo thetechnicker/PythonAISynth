@@ -4,13 +4,13 @@ dependencies:
   - python==3.11
   - pip
   - pip:
-      - torch
-      - sounddevice
-      - pretty_midi
-      - scipy
-      - matplotlib
-      - sympy
+      - numpy
       - pygame
-      - python-rtmidi
+      - scipy
+      - torch
       - psutil
       - numba
+      - pretty_midi
+      - sounddevice
+      - pyaudio
+      - matplotlib
