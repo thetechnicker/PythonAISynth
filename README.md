@@ -24,7 +24,7 @@ Once the project setup is complete, you can initiate it by executing the `main.p
 python main.py
 ```
 
-![window](docs/img/main_window_dark.png)
+![window](docs/img/main_window_v3.png)
 
 Follow the steps below to generate sound:
 
