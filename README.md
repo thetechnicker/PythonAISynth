@@ -1,6 +1,6 @@
 # PythonAISynth
 
-PythonAISynth is a software designed to create music using a function approximating neural network. The network uses a Fourier basis to approximate a curve on a graph that a user can draw. The program then generates sound based on the approximation of the network when it receives a MIDI signal.
+PythonAISynth is a software designed to create music using a neural network. The network uses a Fourier-Series based Regression model to approximate a curve on a Plot that a user can draw on. the model is then used to generate sound with higher sample rate than the drawing.
 
 ## Branches
 

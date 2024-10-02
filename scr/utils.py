@@ -7,7 +7,14 @@ import threading
 import time
 from typing import Any, Callable, TextIO
 import numpy as np
+import psutil
 from scipy.fft import dst
+from numba import njit
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+import tkinter as tk
 
 
 class QueueSTD_OUT(TextIO):
@@ -16,7 +23,10 @@ class QueueSTD_OUT(TextIO):
         self.queue = queue
 
     def write(self, msg):
-        self.queue.put(msg)
+        try:
+            self.queue.put(msg)
+        except EOFError:
+            exit()
 
 
 def DIE(process: Process, join_timeout=30, term_iterations=50):
@@ -38,12 +48,36 @@ def DIE(process: Process, join_timeout=30, term_iterations=50):
         print("Success")
 
 
-def messure_time_taken(name, func, *args, **kwargs):
+def calculate_max_batch_size(num_features, dtype=np.float32, memory_buffer=0.1):
+    # Determine the number of bytes per feature based on the data type
+    bytes_per_feature = np.dtype(dtype).itemsize
+
+    # Calculate memory required for one sample
+    memory_per_sample = num_features * bytes_per_feature
+
+    # Get available memory in bytes
+    available_memory = psutil.virtual_memory().available
+
+    # Calculate maximum batch size with a memory buffer
+    max_batch_size = (memory_buffer * available_memory) // memory_per_sample
+
+    return max_batch_size
+
+
+def messure_time_taken(name, func, *args, wait=True, **kwargs):
+    if not hasattr(messure_time_taken, 'time_taken'):
+        messure_time_taken.time_taken = {}
+    if name not in messure_time_taken.time_taken:
+        messure_time_taken.time_taken[name] = 0
     timestamp = time.perf_counter_ns()
     result = func(*args, **kwargs)
+    time_taken = (time.perf_counter_ns()-timestamp)/1_000_000  # _000
     print(
-        f"Time taken for {name}: {(time.perf_counter_ns()-timestamp)/1_000_000_000}s")
-    input("paused")
+        f"Time taken for {name}: {time_taken:6.6f}ms")
+    if wait:
+        input("paused")
+    messure_time_taken.time_taken[name] = max(
+        messure_time_taken.time_taken[name], time_taken)
     return result
 
 
@@ -74,6 +108,7 @@ def find_two_closest(num_list, x):
     return sorted_list[:2]
 
 
+@ njit
 def interpolate(point1, point2, t=0.5):
     """
     Interpolate between two 2D points.
@@ -95,6 +130,7 @@ def interpolate(point1, point2, t=0.5):
     return (x, y)
 
 
+@ njit
 def interpolate_vectorized(point1, point2, t_values):
     """
     Vectorized interpolation between two 2D points.
@@ -198,6 +234,9 @@ def calculate_peak_frequency(signal):
     return peak_freq
 
 
+timers = []
+
+
 def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
     """
     Schedules a function to be run after a specified delay in milliseconds.
@@ -210,9 +249,138 @@ def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: 
     """
     delay_seconds = delay_ms / 1000.0
     timer = threading.Timer(delay_seconds, func, args=args, kwargs=kwargs)
+    timer.setDaemon(True)
     timer.start()
+    timers.append(timer)  # Keep track of the timer
 
 
-def kill_timer(timer):
+def kill_timer(timer: threading.Timer):
     if timer.is_alive():
         timer.cancel()
+
+
+def cleanup_timers():
+    for timer in timers:
+        kill_timer(timer)
+
+
+atexit.register(cleanup_timers)
+
+
+def tk_after_errorless(master: tk.Tk, delay_ms: int, func: Callable[..., Any], *args: Any):
+    def safe_call(master: tk.Tk, func: Callable[..., Any], *args: Any):
+        if master.winfo_exists():
+            func(*args)
+
+    try:
+        if master.winfo_exists():
+            master.update_idletasks()
+            master.after(delay_ms, safe_call, master, func, *args)
+    except:
+        pass
+
+
+def get_optimizer(optimizer_name, model_parameters, **kwargs):
+    if hasattr(optim, optimizer_name):
+        optimizer_class = getattr(optim, optimizer_name)
+        if issubclass(optimizer_class, optim.Optimizer):
+            return optimizer_class(model_parameters, **kwargs)
+    raise ValueError(f"Optimizer '{optimizer_name}' not found in torch.optim")
+
+
+def get_loss_function(loss_name, **kwargs):
+    if hasattr(nn, loss_name):
+        loss_class = getattr(nn, loss_name)
+        if issubclass(loss_class, nn.modules.loss._Loss):
+            return loss_class(**kwargs)
+    raise ValueError(f"Loss function '{loss_name}' not found in torch.nn")
+
+
+def linear_interpolation(data, target_length, device='cpu'):
+    # Convert data to a tensor and move to the specified device
+    data = np.array(data)
+    data_tensor = torch.tensor(data, dtype=torch.float32).to(device)
+
+    # Extract x and y values
+    x_values = data_tensor[:, 0]
+    y_values = data_tensor[:, 1]
+
+    # Generate new x values
+    new_x_values = torch.linspace(
+        x_values.min(), x_values.max(), target_length).to(device)
+
+    # Perform linear interpolation
+    new_y_values = F.interpolate(y_values.unsqueeze(0).unsqueeze(0),
+                                 size=new_x_values.size(0),
+                                 mode='linear',
+                                 align_corners=True).squeeze()
+
+    return (new_x_values.cpu(), new_y_values.cpu(),)
+
+
+def center_and_scale(arr):
+    # Convert the input list to a NumPy array
+    arr = np.array(arr)
+
+    # Center the array around 0
+    centered_arr = arr - np.mean(arr)
+
+    # Clip the centered array to the range [-1, 1]
+    # clipped_arr = np.clip(centered_arr, -1, 1)
+
+    # Scale the values to fit exactly within [-1, 1]
+    min_val = np.min(centered_arr)
+    max_val = np.max(centered_arr)
+
+    # Avoid division by zero if all values are the same
+    if abs(max_val) - abs(min_val) == 0:
+        # or return clipped_arr if you prefer
+        return np.zeros_like(centered_arr)
+
+    # Scale to [-1, 1]
+    scaled_arr = 2 * (centered_arr - min_val) / (max_val - min_val) - 1
+    return scaled_arr
+
+
+def center_and_clip(arr):
+    # Convert the input list to a NumPy array
+    arr = np.array(arr)
+
+    # Center the array around 0
+    centered_arr = arr - np.mean(arr)
+
+    # Clip the centered array to the range [-1, 1]
+    clipped_arr = np.clip(centered_arr, -1, 1)
+    return clipped_arr
+
+
+def wrap_concat(tensor, idx1, idx2):
+    length = tensor.size(0)
+
+    if idx2 >= length:
+        idx2 = idx2 % length
+
+    if idx1 <= idx2:
+        result = tensor[idx1:idx2]
+    else:
+        result = torch.cat((tensor[idx1:], tensor[:idx2]))
+    # print(result.shape)
+    return result
+
+
+def timed_generator(iterable):
+    for item in iterable:
+        start_time = time.time()
+        yield item
+        end_time = time.time()
+        print(
+            f"Time taken for this iteration: {((end_time - start_time)/1_000_000_000):10.9f}s")
+
+
+def timed_loop(condition):
+    while condition:
+        start_time = time.perf_counter_ns()
+        yield
+        end_time = time.perf_counter_ns()
+        print(
+            f"Time taken for this iteration: {((end_time - start_time)/1_000_000_000):10.9f}ms")

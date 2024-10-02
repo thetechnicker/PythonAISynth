@@ -4,7 +4,7 @@ dependencies:
   - python==3.11
   - pip
   - pip:
-      - tensorflow
+      - torch
       - sounddevice
       - pretty_midi
       - scipy
@@ -13,3 +13,4 @@ dependencies:
       - pygame
       - python-rtmidi
       - psutil
+      - numba
