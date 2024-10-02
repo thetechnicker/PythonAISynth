@@ -8,6 +8,7 @@ import sys
 from multiprocessing import Queue
 
 from scr import utils
+from scr.utils import tk_after_errorless
 
 
 class RedirectedOutputFrame(tk.Frame):
@@ -24,11 +25,11 @@ class RedirectedOutputFrame(tk.Frame):
         self.textbox.configure(wrap='word')
         self.textbox.bind("<Configure>", self.on_resize)
         self.queue: Queue = Queue(-1) if not std_queue else std_queue
-        self.old_stdout = copy(sys.stdout.write)
-        self.old_stderr = copy(sys.stderr.write)
-        sys.stdout.write = self.redirector
-        sys.stderr.write = self.redirector
-        self.after(100, self.check_queue)
+        self.old_stdout = sys.stdout
+        # self.old_stderr = copy(sys.stderr)
+        sys.stdout = utils.QueueSTD_OUT(self.queue)
+        sys.stderr = sys.stdout
+        tk_after_errorless(self, 100, self.check_queue)
 
         # dictionaries to replace formatting code with tags
         self.ansi_font_format = {1: 'bold',
@@ -153,7 +154,7 @@ class RedirectedOutputFrame(tk.Frame):
         # self.textbox.insert(tk.INSERT, inputStr)
         self.textbox.configure(state='disabled')
         self.textbox.see(tk.END)  # Auto-scroll to the end
-        self.old_stdout(inputStr)
+        self.old_stdout.write(inputStr)
 
     def on_resize(self, event):
         width = self.textbox.winfo_width()
@@ -162,13 +163,20 @@ class RedirectedOutputFrame(tk.Frame):
         sys.stdout.write = self.redirector
 
     def check_queue(self):
-        while not self.queue.empty():
+        try:
+            # print("asdfasdf")
+            while not self.queue.empty():
+                try:
+                    msg = self.queue.get_nowait()
+                    self.redirector(msg)
+                except queue.Empty:
+                    break
             try:
-                msg = self.queue.get_nowait()
-                self.redirector(msg)
-            except queue.Empty:
-                break
-        self.after(100, self.check_queue)
+                tk_after_errorless(self.master, 100, self.check_queue)
+            except:
+                print("ERROR")
+        except BrokenPipeError:
+            pass
 
     def __del__(self):
-        sys.stdout.write = self.old_stdout
+        sys.stdout = self.old_stdout

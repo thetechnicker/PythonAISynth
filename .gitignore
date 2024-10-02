@@ -165,3 +165,6 @@ tmp/
 build*/
 condaenv*txt
 logs/
+error.error
+*.c
+_ignore*

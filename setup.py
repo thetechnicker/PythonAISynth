@@ -8,14 +8,16 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'tensorflow',
-        'sounddevice',
-        'pretty_midi',
-        'scipy',
-        'matplotlib',
-        'sympy',
+        'numpy',
         'pygame',
-        'python-rtmidi',
+        'scipy',
+        'torch',
+        'psutil',
+        'numba',
+        'pretty_midi',
+        'sounddevice',
+        'pyaudio',
+        'matplotlib',
     ],
     entry_points={
         'console_scripts': [

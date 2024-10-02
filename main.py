@@ -1,11 +1,18 @@
 import copy
+import socket
 import sys
-from scr.music import Synth
+import threading
+import time
+
+import numpy as np
+from scr import music
+from scr import utils
+from scr.music import Synth3, musik_from_file
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
-from scr.utils import DIE
+from scr.utils import DIE, tk_after_errorless
 from scr.predefined_functions import predefined_functions_dict
-from scr.graph_canvas import GraphCanvas
+from scr.graph_canvas_v2 import GraphCanvas
 from scr.fourier_neural_network_gui import NeuralNetworkGUI
 from scr.fourier_neural_network import FourierNN
 from _version import version
@@ -20,7 +27,9 @@ from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 import psutil
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+state = "bootup"
+window = None
 
 dark_theme = {
     ".": {
@@ -81,8 +90,8 @@ class MainGUI(tk.Tk):
 
         self.style = ttk.Style()
         if DARKMODE:
-            self.configure(bg='#2d2d2d')
-            self.option_add("*TCombobox*Listbox*Background", "black")
+            self.configure(bg='#202020')
+            self.option_add("*TCombobox*Listbox*Background", "#202020")
             self.option_add("*TCombobox*Listbox*Foreground", "white")
             self.style.theme_create('dark', parent="clam", settings=dark_theme)
             self.style.theme_use('dark')
@@ -104,35 +113,46 @@ class MainGUI(tk.Tk):
         self.block_training = False
         self.queue = Queue(-1)
         self.fourier_nn = None
-        self.synth: Synth = None
+        self.synth: Synth3 = None
         self.init_terminal_frame()
         self.create_menu()
         self.create_row_one()
         self.graph = GraphCanvas(self, (900, 300), DARKMODE)
         self.graph.grid(row=1, column=0, columnspan=3, sticky='NSEW')
-        self.add_net_controll()
+        self.create_controll_column()
         self.create_status_bar()
+        # sys.stdout = utils.QueueSTD_OUT(self.std_queue)
+
+    # def destroy(self):
+    #     self.graph.destroy()
+    #     print("CLOSING")
+    #     time.sleep(1+max(tk_after_errorless.max_time)/1000)
+
+    #     super().destroy()
 
     def init_terminal_frame(self):
         self.std_redirect = RedirectedOutputFrame(self, self.std_queue)
         # self.std_queue = self.std_redirect.queue
         self.std_redirect.grid(row=2, column=0, columnspan=3, sticky='NSEW')
 
-    def add_net_controll(self):
+    def create_controll_column(self):
+        self.frame = ttk.Frame(self)
+
         defaults = {
-            'SAMPLES': 44100//2,
-            'EPOCHS': 100,
-            'DEFAULT_FORIER_DEGREE': 250,
+            'SAMPLES': 500,
+            'EPOCHS': 1000,
+            'DEFAULT_FORIER_DEGREE': 100,
             'FORIER_DEGREE_DIVIDER': 1,
             'FORIER_DEGREE_OFFSET': 0,
-            'PATIENCE': 10,
-            'OPTIMIZER': 'Adam',
-            'LOSS_FUNCTION': 'Huber',
+            'PATIENCE': 50,
+            'OPTIMIZER': 'SGD',
+            'LOSS_FUNCTION': 'HuberLoss',
         }
 
         self.gui = NeuralNetworkGUI(
-            self, defaults=defaults, callback=self.update_frourier_params)
-        self.gui.grid(row=1, column=3, sticky='NSEW')
+            self.frame, defaults=defaults, callback=self.update_frourier_params)
+        self.gui.grid(row=0, sticky='NSEW')
+        self.frame.grid(row=1, column=3, rowspan=2, sticky='NSEW')
 
     def create_status_bar(self):
         # Create a status bar with two labels
@@ -158,19 +178,26 @@ class MainGUI(tk.Tk):
         self.ram_label.pack(side=tk.RIGHT)
 
         self.frame_no = 0
-        self.after(500, self.update_status_bar)
+        tk_after_errorless(self, 500, self.update_status_bar)
 
     def update_status_bar(self):
         children = self.process_monitor.children(recursive=True)
         total_cpu = self.process_monitor.cpu_percent()
         total_mem = self.process_monitor.memory_percent()
-
+        i = 0
         for child in children:
             try:
                 total_cpu += child.cpu_percent(0.01)
                 total_mem += child.memory_percent()
+                i += 1
             except psutil.NoSuchProcess:
                 pass
+        # total_cpu /= i
+        # total_mem /= i
+        if total_mem >= 90:
+            print(total_mem)
+            self.quit()
+            # input("press key to continue")
         self.cpu_label.config(
             text=f"CPU Usage: {total_cpu/os.cpu_count():.2f}%")
         self.ram_label.config(text=f"RAM Usage: {total_mem:.2f}%")
@@ -185,7 +212,7 @@ class MainGUI(tk.Tk):
 
         self.processes_label.config(
             text=f"Children Processes: {len(children)}")
-        self.after(500, self.update_status_bar)
+        tk_after_errorless(self, 500, self.update_status_bar)
 
     def create_row_one(self):
         self.label = ttk.Label(self, text="Predefined Functions:")
@@ -214,7 +241,7 @@ class MainGUI(tk.Tk):
     def create_menu(self):
         # Create a menu bar
         if DARKMODE:
-            self.menu_bar = tk.Menu(self, background="#2d2d2d", foreground="white",
+            self.menu_bar = tk.Menu(self, bg="#2d2d2d", fg="white",
                                     activebackground="#3e3e3e", activeforeground="white")
         else:
             self.menu_bar = tk.Menu(self)
@@ -233,12 +260,13 @@ class MainGUI(tk.Tk):
         # Create a 'Graph' menu
         self.create_menu_item("Graph", [
             ("Clear Graph", self.clear_graph),
-            ("Redraw Graph", self.redraw_graph)
+            # ("Redraw Graph", self.redraw_graph)
         ])
 
         # Create a 'Music' menu
         self.create_menu_item("Music", [
-            ("Play Music from MIDI", self.play_music)
+            ("Play Music from MIDI Port", self.play_music),
+            ("Play Music from MIDI File", self.play_music_file)
         ])
 
         # Display the menu
@@ -257,47 +285,52 @@ class MainGUI(tk.Tk):
     def train_update(self):
         # print("!!!check!!!")
         if self.trainings_process and self.training_started:
-            if self.trainings_process.is_alive():
+            if self.trainings_process.is_alive() or not self.queue.empty():
                 try:
                     data = self.queue.get_nowait()
                     # print("!!!check!!!")
-                    data = list(zip(self.graph.lst, data.reshape(-1)))
-                    # graph.data=data
-                    self.graph.draw_extern_graph_from_data(
-                        data, "training", color="red", width=self.graph.point_radius/4)
-                except:
+                    data = list(zip(self.graph.x, data))
+                    self.graph.plot_points(data, name="training", type='line')
+                except Exception as e:
+                    # print(e)
                     pass
             else:
                 exit_code = self.trainings_process.exitcode
                 if exit_code == None:
-                    self.after(100, self.train_update)
+                    tk_after_errorless(self, 100, self.train_update)
                     return
                 if exit_code == 0:
                     print("loading trained model")
-                    self.fourier_nn.load_tmp_model()
+                    self.fourier_nn.load_new_model_from_file(delete_tmp=True)
                     print("model loaded")
-                    self.graph.draw_extern_graph_from_func(
-                        self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
-                    self.synth = Synth(self.fourier_nn, self.std_queue)
+                    # for name, param in self.fourier_nn.current_model.named_parameters():
+                    #     print(
+                    #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
+                    self.graph.plot_function(
+                        self.fourier_nn.predict, x_range=(0, 2*np.pi, 44100//2))
+                    self.synth = Synth3(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
                 self.training_started = False
                 self.block_training = False
                 messagebox.showinfo(
                     "training Ended", f"exit code: {exit_code}")
+                # self.fourier_nn.clean_memory()
                 return
-        self.after(100, self.train_update)
+        tk_after_errorless(self, 10, self.train_update)
 
-    def init_or_update_nn(self):  # , stdout=None):
+    def init_or_update_nn(self, stdout=None):
         if not self.fourier_nn:
+            print("".center(20, '*'))
             self.fourier_nn = FourierNN(
-                self.lock, self.graph.export_data(), stdout_queue=self.std_queue)
+                self.lock, self.graph.export_data(), stdout_queue=stdout)
         else:
+            print("".center(20, '#'))
             self.fourier_nn.update_data(self.graph.export_data())
 
-        self.fourier_nn.save_tmp_model()
+        self.fourier_nn.save_model()
         self.trainings_process = multiprocessing.Process(
-            target=self.fourier_nn.train, args=(self.graph.lst, self.queue, ))
+            target=self.fourier_nn.train, args=(self.graph.x, self.queue, ), kwargs={"stdout_queue": self.std_queue})
         self.trainings_process.start()
         self.training_started = True
 
@@ -309,19 +342,25 @@ class MainGUI(tk.Tk):
             return
         self.block_training = True
         print("STARTING TRAINING")
-        # , args=(self.std_redirect.queue,))
-        t = Thread(target=self.init_or_update_nn)
+        t = Thread(target=self.init_or_update_nn, args=(self.std_queue,))
         t.daemon = True
         t.start()
-        self.after(100, self.train_update)
+        tk_after_errorless(self, 100, self.train_update)
         atexit.register(DIE, self.trainings_process)
-        self.graph.draw_extern_graph_from_data(
-            self.graph.export_data(), "train_data", color="blue")
+        self.graph.remove_plot("predict")
 
     def play_music(self):
         print("play_music")
         if self.synth:
             self.synth.run_live_synth()
+        else:
+            print("or not")
+            # music.midi_to_musik_live(self.fourier_nn, self.std_queue)
+
+    def play_music_file(self):
+        print("play_music")
+        if self.fourier_nn:
+            music.musik_from_file(self.fourier_nn)
             # music.midi_to_musik_live(self.fourier_nn, self.std_queue)
 
     def clear_graph(self):
@@ -345,7 +384,7 @@ class MainGUI(tk.Tk):
                                                  default_str=f"model{i}",
                                                  label_select="Select Format",
                                                  default_select=default_format,
-                                                 values_to_select_from=["keras", "h5"])
+                                                 values_to_select_from=["pth"])
             name, file_format = dialog.result
             if not name:
                 name = f"model{i}"
@@ -364,8 +403,8 @@ class MainGUI(tk.Tk):
 
     def load_neural_net(self):
         print("load_neural_net")
-        filetypes = (('Keras files', '*.keras'),
-                     ('HDF5 files', '*.h5'), ('All files', '*.*'))
+        filetypes = (('Torch Model File', '*.pth'),
+                     ('All files', '*.*'))
         filename = filedialog.askopenfilename(
             title='Open a file', initialdir='.', filetypes=filetypes, parent=self)
         if os.path.exists(filename):
@@ -377,38 +416,81 @@ class MainGUI(tk.Tk):
             self.graph.draw_extern_graph_from_func(
                 self.fourier_nn.predict, name)
             print(name)
-            self.synth = Synth(self.fourier_nn, self.std_queue)
+            self.synth = Synth3(self.fourier_nn, self.std_queue)
             # self.fourier_nn.update_data(
             #     data=self.graph.get_graph(name=name)[0])
 
-    def redraw_graph(self):
-        # now idea when usefull
-        print("redraw_graph")
-        self.graph._draw()
+    # def redraw_graph(self):
+    #     # now idea when usefull
+    #     print("redraw_graph")
+    #     self.graph.draw_extern_graph_from_func(
+    #         self.fourier_nn.predict, "training", color="red", width=self.graph.point_radius/4)  # , graph_type='crazy')
+    #     # self.graph._draw()
 
     def draw_graph_from_func(self, *args, **kwargs):
         print("draw_graph_from_func:", self.combo_selected_value.get())
-        self.graph.use_preconfig_drawing(
-            predefined_functions_dict[self.combo_selected_value.get()])
+        self.graph.plot_function(
+            predefined_functions_dict[self.combo_selected_value.get()], overwrite=True)
 
     def update_frourier_params(self, key, value):
         if not self.fourier_nn:
+            # print(self.std_queue)
             self.fourier_nn = FourierNN(
                 lock=self.lock, stdout_queue=self.std_queue)
-        self.fourier_nn.update_attribs(**{key: value})
+        if not self.trainings_process and not self.block_training:
+            self.fourier_nn.update_attribs(**{key: value})
+            return True
+        return False
+
+
+# def start_server():
+#     global window
+#     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+#         while True:
+#             try:
+#                 s.bind(('localhost', 65432))
+#                 break
+#             except:
+#                 pass
+#         s.listen()
+#         while True:
+#             conn, addr = s.accept()
+#             with conn:
+#                 print('Connected by', addr)
+#                 conn.sendall(state.encode())  # Send the current state
+#                 msg = ""
+#                 try:
+#                     # Receive message from client
+#                     msg = conn.recv(1024).decode()
+#                     print("Received message:", msg)
+#                 except Exception as e:
+#                     print("Error receiving message:", e)
+#                 if msg == "exit":
+#                     # Close the Tkinter window
+#                     window.after(10, window.destroy)
 
 
 def main():
+    # global state, window
+    # threading.Thread(target=start_server, daemon=True).start()
+
     os.environ['HAS_RUN_INIT'] = 'True'
     multiprocessing.set_start_method("spawn")
     with multiprocessing.Manager() as manager:
         std_write = copy.copy(sys.stdout.write)
         window = MainGUI(manager=manager)
-
-        window.mainloop()
+        window.protocol("WM_DELETE_WINDOW", window.quit)
+        state = "running"
+        try:
+            # window.after(1000, lambda: window.graph.plot_function(
+            #     predefined_functions_dict['nice'], overwrite=True))
+            # window.after(2000, window.start_training)
+            window.mainloop()
+        except KeyboardInterrupt:
+            print("exiting via keybord interupt")
+            # window.quit()
         sys.stdout.write = std_write
 
 
 if __name__ == "__main__":
     main()
-    # manager.
