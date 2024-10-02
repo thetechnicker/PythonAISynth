@@ -39,12 +39,13 @@ class FourierRegresionModel(nn.Module):
         super(FourierRegresionModel, self).__init__()
         self.frequencies = torch.arange(
             1, degree+1, 1, dtype=torch.float32)
-        self.a = nn.Parameter(torch.ones((2, 1, degree)))
+        self.a1 = nn.Parameter(torch.ones((degree)))
+        self.a2 = nn.Parameter(torch.ones((degree)))
         self.c = nn.Parameter(torch.zeros(1))
 
     def forward(self, x):
-        y1 = self.a[0] * torch.sin(self.frequencies * x)
-        y2 = self.a[1] * torch.cos(self.frequencies * x)
+        y1 = self.a1 * torch.sin(self.frequencies * x)
+        y2 = self.a2 * torch.cos(self.frequencies * x)
         z = torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1) + self.c
         return z
 
@@ -67,9 +68,9 @@ class FourierRegresionModelV2(nn.Module):
         self.d = nn.Parameter(torch.zeros(1))
 
     def forward(self, x):
-        y1 = self.a1 * torch.sin(self.frequencies_sin * x+self.c1)
-        y2 = self.a2 * torch.cos(self.frequencies_cos * x+self.c2)
-        z = torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1)+self.d
+        y1 = self.a1 * torch.sin(self.frequencies_sin * x)  # +self.c1)
+        y2 = self.a2 * torch.cos(self.frequencies_cos * x)  # +self.c2)
+        z = torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1)  # +self.d
         return z  # , y1, y2
 
 
@@ -130,7 +131,7 @@ class FourierNN():
         #     FourierLayer(self.fourier_degree),
         #     nn.Linear(self.fourier_degree*2, 1),  # bias=False),
         # )
-        model = FourierRegresionModelV2(self.fourier_degree)
+        model = FourierRegresionModel(self.fourier_degree)
         return model
 
     def update_data(self, data, stdout_queue=None):

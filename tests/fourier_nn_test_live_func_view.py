@@ -27,8 +27,9 @@ def main():
     t = np.linspace(0, 2*np.pi, 250)
     max_parralel_notes = 1
     max_parralel_notes = min(max(1, max_parralel_notes), len(frequencies))
+    func_name = 'nice'
     data = list(
-        zip(t, (predefined_functions.call_func('nice', x) for x in t)))
+        zip(t, (predefined_functions.call_func(func_name, x) for x in t)))
     # print(data)
     with multiprocessing.Manager() as manager:
         fourier_nn = FourierNN(lock=manager.Lock(), data=data)
@@ -38,7 +39,9 @@ def main():
 
         # Initial setup
         fig, ax = plt.subplots()
-        x = np.linspace(0, 2*np.pi, 100)
+        resolution = 1000
+        x = np.linspace(-3*np.pi, 3*np.pi, resolution)
+        ax.set_ylim(-5, 5)
         with torch.no_grad():
             y = fourier_nn.current_model(
                 torch.tensor(
@@ -46,14 +49,24 @@ def main():
                     dtype=torch.float32
                 ).unsqueeze(1)
             )
-            line, = ax.plot(x, y.numpy())
+            line, = ax.plot(x, y.numpy(), label='model')
+            line1, = ax.plot(x, predefined_functions.call_func(
+                func_name, x), label='actual data')
 
             # Function to update the plot
             def update_plot(event):
-                print(event)
-                print(ax.get_xaxis(), ax.get_yaxis())
-                # y = generate_line_data(single_number)
-                # line.set_ydata(y.numpy())
+                # print(event)
+                # print(ax.get_xlim(), ax.get_ylim())
+                x_min, x_max = ax.get_xlim()
+                x = np.linspace(x_min, x_max, resolution)
+                y = fourier_nn.current_model(
+                    torch.tensor(
+                        x,
+                        dtype=torch.float32
+                    ).unsqueeze(1)
+                )
+                line.set_data(x, y.numpy())
+                line1.set_data(x, predefined_functions.call_func(func_name, x))
                 fig.canvas.draw_idle()
 
             # Connect the update function to the xlim and ylim changed events

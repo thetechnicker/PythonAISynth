@@ -518,8 +518,7 @@ class Synth3():
         audio_max = -np.inf
         for _ in utils.timed_loop(True):
             available_buffer = stream.get_write_available()
-            print(audio_min, audio_max, available_buffer, sep="\t", end=" |\t")
-            # stream.get_cpu_load
+            print(available_buffer, end=" |\t")
             if available_buffer == 0:
                 continue
             y = torch.zeros(available_buffer, device=self.fourier_nn.device)
@@ -542,9 +541,8 @@ class Synth3():
 
             for note in notes:
                 with torch.no_grad():
-                    actual_len = 2*torch.pi/midi.midi_to_frequency(note)
                     x = utils.wrap_concat(
-                        self.t_buffer[note][:actual_len], current_frame, current_frame + available_buffer)
+                        self.t_buffer[note], current_frame, current_frame + available_buffer)
                     # x = self.t_buffer[note]
                     # print(x.shape)
                     # y += torch.sin(x).flatten()
@@ -553,15 +551,7 @@ class Synth3():
             audio_data = audio_data/(len(notes))
             audio_data = audio_data - np.mean(audio_data)
 
-            min_val = np.nanmin(audio_data)
-            max_val = np.nanmax(audio_data)
-
-            audio_min = min(min_val, audio_min) if not np.isnan(
-                min_val) else audio_min
-            audio_max = max(max_val, audio_max) if not np.isnan(
-                max_val) else audio_max
-
-            audio_data *= 0.5
+            # audio_data *= 0.5
             audio_data = np.clip(audio_data, -1, 1)
             stream.write(audio_data,
                          available_buffer,
