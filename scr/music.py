@@ -516,14 +516,14 @@ class Synth3():
         notes = set()
         audio_min = np.inf
         audio_max = -np.inf
-        for _ in utils.timed_loop(True):
+        # for _ in utils.timed_loop(True):
+        while True:
             available_buffer = stream.get_write_available()
-            print(available_buffer, end=" |\t")
+            # print(available_buffer, end=" |\t")
             if available_buffer == 0:
                 continue
             y = torch.zeros(available_buffer, device=self.fourier_nn.device)
             if midi_input.poll():
-                print()
                 midi_event, timestamp = midi_input.read(
                     1)[0]  # Read and process one event
                 if midi_event[0] == 144:  # Note on
