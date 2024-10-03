@@ -378,9 +378,11 @@ def timed_generator(iterable):
 
 
 def timed_loop(condition):
+    max_val = 0
     while condition:
         start_time = time.perf_counter_ns()
         yield
-        end_time = time.perf_counter_ns()
+        current_time = time.perf_counter_ns() - start_time
+        max_val = max(current_time, max_val)
         print(
-            f"Time taken for this iteration: {((end_time - start_time)/1_000_000_000):10.9f}ms")
+            f"Time taken for this iteration: {(current_time/1_000_000_000):10.9f}ms, max_val: {max_val/1_000_000_000:10.3}")

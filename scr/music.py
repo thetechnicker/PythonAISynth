@@ -331,22 +331,35 @@ class Synth2():
         print(self.t_buffer.shape)
 
     def play_init_sound(self):
-        f1 = 440  # Frequency of the "duuu" sound (in Hz)
-        f2 = 880  # Frequency of the "dib" sound (in Hz)
-        t1 = 0.8  # Duration of the "duuu" sound (in seconds)
-        t2 = 0.2  # Duration of the "dib" sound (in seconds)
+        f1 = 440  # Frequency of the "du" sound (in Hz)
+        f2 = 660  # Frequency of the "dl" sound (in Hz)
+        f3 = 880  # Frequency of the "de" sound (in Hz)
+        f4 = 1320  # Frequency of the "dii" sound (in Hz)
+        t1 = 0.25  # Duration of the "du" sound (in seconds)
+        t2 = 0.25  # Duration of the "dl" sound (in seconds)
+        t3 = 0.25  # Duration of the "de" sound (in seconds)
+        t4 = 0.4  # Duration of the "dii" sound (in seconds)
+
+        # Generate the "duuu" sound
         t = np.arange(int(t1 * self.fs)) / self.fs
         sound1 = 0.5 * np.sin(2 * np.pi * f1 * t)
 
-        # Generate the "dib" sound
+        # Generate the "dl" sound
         t = np.arange(int(t2 * self.fs)) / self.fs
         sound2 = 0.5 * np.sin(2 * np.pi * f2 * t)
 
-        # Concatenate the two sounds
-        audio = np.concatenate([sound1, sound2])
+        # Generate the "diii" sound
+        t = np.arange(int(t3 * self.fs)) / self.fs
+        sound3 = 0.5 * np.sin(2 * np.pi * f3 * t)
+
+        # Generate the "dub" sound
+        t = np.arange(int(t4 * self.fs)) / self.fs
+        sound4 = 0.5 * np.sin(2 * np.pi * f4 * t)
+
+        # Concatenate the sounds to form "duuudldiiidub"
+        audio = np.concatenate([sound1, sound2, sound3, sound4])
         output = np.array(
             audio * 32767 / np.max(np.abs(audio)) / 2).astype(np.int16)
-        # stereo_sine_wave = np.repeat(output.reshape(-1, 1), 2, axis=1)
         sd.play(output, blocking=True)
         print("Ready")
 
@@ -368,10 +381,8 @@ class Synth2():
                         output=True)
         current_frame = 0
         notes = set()
-        audio_min = np.inf
-        audio_max = -np.inf
-        # for _ in utils.timed_loop(True):
-        while True:
+        for _ in utils.timed_loop(True):
+            # while True:
             available_buffer = stream.get_write_available()
             # print(available_buffer, end=" |\t")
             if available_buffer == 0:
@@ -404,7 +415,6 @@ class Synth2():
 
                 audio_data = sum_signals(y)
                 audio_data = audio_data - np.mean(audio_data)
-                audio_data = np.clip(audio_data, -1, 1)
                 audio_data *= 0.7
                 stream.write(audio_data,
                              available_buffer,
