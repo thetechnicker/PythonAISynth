@@ -381,8 +381,8 @@ class Synth2():
                         output=True)
         current_frame = 0
         notes = set()
-        for _ in utils.timed_loop(True):
-            # while True:
+        # for _ in utils.timed_loop(True):
+        while True:
             available_buffer = stream.get_write_available()
             # print(available_buffer, end=" |\t")
             if available_buffer == 0:
@@ -404,17 +404,18 @@ class Synth2():
                     notes.discard(midi_event[1])
 
             if len(notes) > 0:
-                y = np.zeros((len(notes), available_buffer))
+                y = np.zeros((len(notes), available_buffer), dtype=np.float32)
                 for i, note in enumerate(notes):
                     with torch.no_grad():
                         x = utils.wrap_concat(
                             self.t_buffer[note], current_frame, current_frame + available_buffer)
 
-                        y[i, :] = self.fourier_nn.current_model(x.unsqueeze(1))\
-                            .cpu().numpy().astype(np.float32)
+                        y[i, :] = self.fourier_nn.current_model(
+                            x.unsqueeze(1)).cpu().numpy().astype(np.float32)
 
                 audio_data = sum_signals(y)
-                audio_data = audio_data - np.mean(audio_data)
+                print(np.max(np.abs(audio_data)))
+                audio_data = np.clip(audio_data, -1, 1)
                 audio_data *= 0.7
                 stream.write(audio_data,
                              available_buffer,
