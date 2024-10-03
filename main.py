@@ -7,7 +7,7 @@ import time
 import numpy as np
 from scr import music
 from scr import utils
-from scr.music import Synth3, musik_from_file
+from scr.music import Synth2, musik_from_file
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
 from scr.utils import DIE, tk_after_errorless
@@ -113,7 +113,7 @@ class MainGUI(tk.Tk):
         self.block_training = False
         self.queue = Queue(-1)
         self.fourier_nn = None
-        self.synth: Synth3 = None
+        self.synth: Synth2 = None
         self.init_terminal_frame()
         self.create_menu()
         self.create_row_one()
@@ -308,7 +308,7 @@ class MainGUI(tk.Tk):
                     #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
                     self.graph.plot_function(
                         self.fourier_nn.predict, x_range=(0, 2*np.pi, 44100//2))
-                    self.synth = Synth3(self.fourier_nn, self.std_queue)
+                    self.synth = Synth2(self.fourier_nn, self.std_queue)
                 DIE(self.trainings_process)
                 self.trainings_process = None
                 self.training_started = False
@@ -340,6 +340,9 @@ class MainGUI(tk.Tk):
         if self.trainings_process or self.block_training:
             print('already training')
             return
+        if self.synth:
+            if self.synth.live_synth:
+                self.synth.run_live_synth()
         self.block_training = True
         print("STARTING TRAINING")
         t = Thread(target=self.init_or_update_nn, args=(self.std_queue,))
@@ -416,7 +419,7 @@ class MainGUI(tk.Tk):
             self.graph.draw_extern_graph_from_func(
                 self.fourier_nn.predict, name)
             print(name)
-            self.synth = Synth3(self.fourier_nn, self.std_queue)
+            self.synth = Synth2(self.fourier_nn, self.std_queue)
             # self.fourier_nn.update_data(
             #     data=self.graph.get_graph(name=name)[0])
 
@@ -442,7 +445,7 @@ class MainGUI(tk.Tk):
             return True
         return False
 
-
+# for "invalid command" in the tk.TK().after() function when programm gets closed
 # def start_server():
 #     global window
 #     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

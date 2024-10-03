@@ -285,10 +285,10 @@ def apply_reverb(audio, decay=0.5, delay=0.02, fs=44100):
 
 def apply_echo(audio, delay=0.2, decay=0.5, fs=44100):
     delay_samples = int(delay * fs)
-    echo_audio = np.zeros((len(audio) + delay_samples, audio.shape[1]))
-    echo_audio[:len(audio), :] = audio
-    echo_audio[delay_samples:, :] += decay * audio
-    echo_audio = echo_audio[:len(audio), :]
+    echo_audio = np.zeros((len(audio) + delay_samples))
+    echo_audio[:len(audio)] = audio
+    echo_audio[delay_samples:] += decay * audio
+    echo_audio = echo_audio[:len(audio)]
     return echo_audio
 
 
@@ -314,7 +314,6 @@ def apply_distortion(audio, gain=2.0, threshold=0.5):
 
 
 class Synth2():
-    # MIDI_NOTE_OF_FREQ_ONE = midi.frequency_to_midi(1)
     def __init__(self, fourier_nn, stdout: Queue = None):
         self.stdout = stdout
         self.live_synth: Process = None
@@ -322,143 +321,6 @@ class Synth2():
         self.fourier_nn: FourierNN = fourier_nn
         self.fs = 44100  # Sample rate
         self.max_parralel_notes = 3
-        self.current_notes: set = set()
-        self.effects: list[Callable] = [
-            # apply_reverb,
-            # apply_echo,
-            # apply_chorus,
-            # apply_distortion,
-        ]
-        self.current_frame = 0
-        t = np.array([2 * np.pi * midi.midi_to_frequency(f) *
-                     np.linspace(0, 1, self.fs) for f in range(128)])
-        self.t_buffer = torch.tensor(t, dtype=torch.float32)
-
-    def play_init_sound(self):
-        f1 = 440  # Frequency of the "duuu" sound (in Hz)
-        f2 = 880  # Frequency of the "dib" sound (in Hz)
-        t1 = 0.8  # Duration of the "duuu" sound (in seconds)
-        t2 = 0.2  # Duration of the "dib" sound (in seconds)
-        t = np.arange(int(t1 * self.fs)) / self.fs
-        sound1 = 0.5 * np.sin(2 * np.pi * f1 * t)
-
-        # Generate the "dib" sound
-        t = np.arange(int(t2 * self.fs)) / self.fs
-        sound2 = 0.5 * np.sin(2 * np.pi * f2 * t)
-
-        # Concatenate the two sounds
-        audio = np.concatenate([sound1, sound2])
-        output = np.array(
-            audio * 32767 / np.max(np.abs(audio)) / 2).astype(np.int16)
-        # stereo_sine_wave = np.repeat(output.reshape(-1, 1), 2, axis=1)
-        sd.play(output, blocking=True)
-        print("Ready")
-
-    def audio_callback(self, outdata, frames, time, status):
-        current_notes = set(self.current_notes)
-        # print(current_notes, self.current_notes)
-        if status:
-            print(status)
-        with torch.no_grad():
-            for j, note in enumerate(current_notes):
-                # pass
-                if j >= self.max_parralel_notes:
-                    break
-                self.pre_audio_buffer[j, :] = self.fourier_nn.current_model(
-                    utils.wrap_concat(self.t_buffer[note], self.current_frame, self.current_frame+frames))
-        y = torch.clamp(torch.sum(self.pre_audio_buffer, dim=0),
-                        min=-1, max=1).cpu().numpy()
-        # print(y.shape)
-        outdata[:] = y.reshape(-1, 1)
-        self.current_frame = (self.current_frame + frames) % self.fs
-
-    def apply_effects(self, sound):
-        for effect in self.effects:
-            print(effect.__name__)
-            sound[:] = effect(sound)
-        sound = sound-np.mean(sound)
-        sound[:] = rescale_audio(sound)
-        return sound
-
-    def live_synth_loop(self):
-        print("Live Synth is running")
-        self.fourier_nn.current_model.to(self.fourier_nn.device)
-        self.t_buffer = self.t_buffer.to(self.fourier_nn.device)
-        stream = sd.OutputStream(
-            callback=lambda *args, **kwargs: utils.messure_time_taken('audio_callback', self.audio_callback, *args, **kwargs, wait=False), samplerate=self.fs, channels=1, blocksize=512)
-        self.play_init_sound()
-        midi_thread = threading.Thread(target=self.midi_thread, daemon=True)
-        midi_thread.start()
-
-        self.pre_audio_buffer = torch.zeros((self.max_parralel_notes, 512),
-                                            device=self.fourier_nn.device)
-        with stream:
-            while midi_thread.is_alive():
-                time.sleep(0.1)
-        if hasattr(utils.messure_time_taken, 'time_taken'):
-            print(*utils.messure_time_taken.time_taken.items(), sep="\n")
-
-    def midi_thread(self):
-        midi.init()
-        input_id = midi.get_default_input_id()
-        # print(input_id)
-        if input_id == -1:
-            print("No MIDI input device found.")
-            return
-        midi_input = midi.Input(input_id)
-        while True:
-            if midi_input.poll():
-                midi_events = midi_input.read(10)
-                for midi_event, timestamp in midi_events:
-                    if midi_event[0] == 144:
-                        print("Note on",
-                              midi_event[1],
-                              midi.midi_to_frequency(midi_event[1]))
-                        self.current_notes.add(midi_event[1])
-                    elif midi_event[0] == 128:
-                        print("Note off",
-                              midi_event[1],
-                              midi.midi_to_frequency(midi_event[1]))
-                        self.current_notes.discard(midi_event[1])
-
-    def run_live_synth(self):
-        if not self.live_synth:
-            print("spawning live synth")
-            self.live_synth = Process(target=self.live_synth_loop)
-            self.live_synth.start()
-        else:
-            print("killing live synth")
-            self.live_synth.terminate()
-            self.live_synth.join()
-            self.live_synth = None
-            print("live synth killed")
-        atexit.register(utils.DIE, self.live_synth, 0, 0)
-
-    def __getstate__(self) -> object:
-        live_synth = self.live_synth
-        del self.live_synth
-        Synth_dict = self.__dict__.copy()
-        self.live_synth = live_synth
-        return Synth_dict
-
-    def __setstate__(self, state):
-        # Load the model from a file after deserialization
-        self.__dict__.update(state)
-        if self.stdout is not None:
-            if current_process().name != 'MainProcess':
-                sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)
-
-
-class Synth3():
-    def __init__(self, fourier_nn, stdout: Queue = None):
-        self.stdout = stdout
-        self.live_synth: Process = None
-        self.notes_ready = False
-        self.fourier_nn: FourierNN = fourier_nn
-        self.fs = 44100  # Sample rate
-        self.max_parralel_notes = 3
-        self.effects: list[Callable] = [
-        ]
         self.current_frame = 0
         t = np.array([
             midi.midi_to_frequency(f) *
@@ -488,14 +350,6 @@ class Synth3():
         sd.play(output, blocking=True)
         print("Ready")
 
-    def apply_effects(self, sound):
-        for effect in self.effects:
-            print(effect.__name__)
-            sound[:] = effect(sound)
-        sound = sound-np.mean(sound)
-        sound[:] = rescale_audio(sound)
-        return sound
-
     def live_synth_loop(self):
         print("Live Synth is running")
         self.play_init_sound()
@@ -522,7 +376,6 @@ class Synth3():
             # print(available_buffer, end=" |\t")
             if available_buffer == 0:
                 continue
-            y = torch.zeros(available_buffer, device=self.fourier_nn.device)
             if midi_input.poll():
                 midi_event, timestamp = midi_input.read(
                     1)[0]  # Read and process one event
@@ -539,23 +392,23 @@ class Synth3():
 
                     notes.discard(midi_event[1])
 
-            for note in notes:
-                with torch.no_grad():
-                    x = utils.wrap_concat(
-                        self.t_buffer[note], current_frame, current_frame + available_buffer)
-                    # x = self.t_buffer[note]
-                    # print(x.shape)
-                    # y += torch.sin(x).flatten()
-                    y += self.fourier_nn.current_model(x.unsqueeze(1))
-            audio_data = y.cpu().numpy().astype(np.float32)
-            audio_data = audio_data/(len(notes))
-            audio_data = audio_data - np.mean(audio_data)
+            if len(notes) > 0:
+                y = np.zeros((len(notes), available_buffer))
+                for i, note in enumerate(notes):
+                    with torch.no_grad():
+                        x = utils.wrap_concat(
+                            self.t_buffer[note], current_frame, current_frame + available_buffer)
 
-            # audio_data *= 0.5
-            audio_data = np.clip(audio_data, -1, 1)
-            stream.write(audio_data,
-                         available_buffer,
-                         exception_on_underflow=True)
+                        y[i, :] = self.fourier_nn.current_model(x.unsqueeze(1))\
+                            .cpu().numpy().astype(np.float32)
+
+                audio_data = sum_signals(y)
+                audio_data = audio_data - np.mean(audio_data)
+                audio_data = np.clip(audio_data, -1, 1)
+                audio_data *= 0.7
+                stream.write(audio_data,
+                             available_buffer,
+                             exception_on_underflow=True)
             current_frame = (current_frame + available_buffer) % self.fs
 
     def run_live_synth(self):
@@ -584,3 +437,50 @@ class Synth3():
     #     if self.stdout is not None:
     #         if current_process().name != 'MainProcess':
     #             sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)
+
+
+def normalize(signal):
+    return signal / np.max(np.abs(signal))
+
+
+def rms(signal):
+    return np.sqrt(np.mean(signal**2))
+
+
+def mix_signals(signal1, signal2):
+    # Normalize both signals
+    signal1 = normalize(signal1)
+    signal2 = normalize(signal2)
+
+    # Calculate RMS levels
+    rms1 = rms(signal1)
+    rms2 = rms(signal2)
+
+    # Adjust gain
+    gain1 = 1 / rms1
+    gain2 = 1 / rms2
+
+    # Apply gain
+    signal1 *= gain1
+    signal2 *= gain2
+
+    # Mix signals
+    mixed_signal = signal1 + signal2
+
+    # Normalize mixed signal to prevent clipping
+    mixed_signal = normalize(mixed_signal)
+
+    return mixed_signal
+
+
+def sum_signals(signals):
+    # Normalize each signal
+    normalized_signals = np.array([normalize(signal) for signal in signals])
+
+    # Sum the signals along dimension 0
+    summed_signal = np.sum(normalized_signals, axis=0)
+
+    # Normalize the combined signal to prevent clipping
+    summed_signal = normalize(summed_signal)
+
+    return summed_signal

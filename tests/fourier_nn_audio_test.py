@@ -11,7 +11,7 @@ import sounddevice as sd
 from context import scr
 from scr import predefined_functions, utils
 from scr.fourier_neural_network import FourierNN
-from scr.music import Synth2, Synth3
+from scr.music import Synth2, Synth2
 # autopep8: on
 
 
@@ -66,7 +66,7 @@ def main():
 
 
 def stupid_thread(fourier_nn):
-    synth = Synth3(fourier_nn)
+    synth = Synth2(fourier_nn)
     # synth.current_notes.add(45)
     synth.run_live_synth()
     while True:
