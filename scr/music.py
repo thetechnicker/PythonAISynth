@@ -381,6 +381,18 @@ def get_off_notes(notes):
     return {note: note_data for note, note_data in notes.items() if not note_data.on}
 
 
+def piano_id():
+    desired_name = "Digital Piano"
+    device_id = None
+
+    for i in range(pygame.midi.get_count()):
+        info = pygame.midi.get_device_info(i)
+        if info[1].decode() == desired_name:
+            device_id = i
+            break
+    return device_id
+
+
 class Synth2():
     def __init__(self, fourier_nn, stdout: Queue = None):
         self.stdout = stdout
@@ -436,11 +448,12 @@ class Synth2():
         self.play_init_sound()
 
         midi.init()
-        input_id = midi.get_default_input_id()
+        input_id = piano_id()
         if input_id == -1:
             print("No MIDI input device found.")
             return
         midi_input = midi.Input(input_id)
+
         p = pyaudio.PyAudio()
         CHUNK = 2048  # Increased chunk size
         stream = p.open(format=pyaudio.paFloat32,
@@ -451,7 +464,8 @@ class Synth2():
         cycle_frame = 0
 
         notes = set()
-        while True:
+        # while True:
+        for _ in utils.timed_loop(True):
             available_buffer = stream.get_write_available()
             # print(available_buffer, end=" |\t")
             if available_buffer == 0:

@@ -3,7 +3,7 @@ import mido
 
 def listen_midi():
     # Open a virtual port for input
-    midiin = mido.open_input('TEST', virtual=True)
+    midiin = mido.open_input('Digital Piano 2')
 
     while True:
         # Wait for a message and print it
