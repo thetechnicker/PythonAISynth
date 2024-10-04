@@ -313,6 +313,45 @@ def apply_distortion(audio, gain=2.0, threshold=0.5):
     return distorted_audio
 
 
+class ADSR():
+    def __init__(self, attack_time, decay_time, sustain_level, release_time, sample_rate):
+        self.attack_samples = int(attack_time * sample_rate)
+        self.decay_samples = int(decay_time * sample_rate)
+        self.sustain_level = sustain_level
+        self.release_samples = int(release_time * sample_rate)
+        self.sample_rate = sample_rate
+
+    def get_ads_envelope(self, frame):
+        envelope = np.zeros(frame)
+        # Attack phase
+        if frame < self.attack_samples:
+            envelope[:frame] = np.linspace(0, 1, frame)
+        else:
+            envelope[:self.attack_samples] = np.linspace(
+                0, 1, self.attack_samples)
+            # Decay phase
+            if frame < self.attack_samples + self.decay_samples:
+                envelope[self.attack_samples:frame] = np.linspace(
+                    1, self.sustain_level, frame - self.attack_samples)
+            else:
+                envelope[self.attack_samples:self.attack_samples +
+                         self.decay_samples] = np.linspace(1, self.sustain_level, self.decay_samples)
+                # Sustain phase
+                envelope[self.attack_samples +
+                         self.decay_samples:frame] = self.sustain_level
+        return envelope
+
+    def get_r_envelope(self, frame):
+        envelope = np.zeros(frame)
+        # Release phase
+        if frame < self.release_samples:
+            envelope[:frame] = np.linspace(self.sustain_level, 0, frame)
+        else:
+            envelope[:self.release_samples] = np.linspace(
+                self.sustain_level, 0, self.release_samples)
+        return envelope
+
+
 class Synth2():
     def __init__(self, fourier_nn, stdout: Queue = None):
         self.stdout = stdout
@@ -380,8 +419,9 @@ class Synth2():
                         rate=self.fs,
                         output=True)
         current_frame = 0
+        cycle_frame = 0
+
         notes = set()
-        # for _ in utils.timed_loop(True):
         while True:
             available_buffer = stream.get_write_available()
             # print(available_buffer, end=" |\t")
@@ -390,37 +430,39 @@ class Synth2():
             if midi_input.poll():
                 midi_event, timestamp = midi_input.read(
                     1)[0]  # Read and process one event
+                # print(midi_event)
                 if midi_event[0] == 144:  # Note on
                     print("Note on",
                           midi_event[1],
                           midi.midi_to_frequency(midi_event[1]))
 
-                    notes.add(midi_event[1])
+                    notes.add((midi_event[1], midi_event[2]))
                 elif midi_event[0] == 128:  # Note off
                     print("Note off",
                           midi_event[1],
                           midi.midi_to_frequency(midi_event[1]))
 
-                    notes.discard(midi_event[1])
+                    notes.discard((midi_event[1], midi_event[2]))
 
             if len(notes) > 0:
                 y = np.zeros((len(notes), available_buffer), dtype=np.float32)
-                for i, note in enumerate(notes):
+                for i, (note, amplitude) in enumerate(notes):
                     with torch.no_grad():
                         x = utils.wrap_concat(
-                            self.t_buffer[note], current_frame, current_frame + available_buffer)
+                            self.t_buffer[note], cycle_frame, cycle_frame + available_buffer)
 
-                        y[i, :] = self.fourier_nn.current_model(
-                            x.unsqueeze(1)).cpu().numpy().astype(np.float32)
+                        y[i, :] = (self.fourier_nn.current_model(
+                            x.unsqueeze(1)).cpu().numpy().astype(np.float32) * (amplitude/127))
 
                 audio_data = sum_signals(y)
-                print(np.max(np.abs(audio_data)))
+                # print(np.max(np.abs(audio_data)))
                 audio_data = np.clip(audio_data, -1, 1)
                 audio_data *= 0.7
                 stream.write(audio_data,
                              available_buffer,
                              exception_on_underflow=True)
-            current_frame = (current_frame + available_buffer) % self.fs
+            current_frame = (current_frame + available_buffer)
+            cycle_frame = (cycle_frame + available_buffer) % self.fs
 
     def run_live_synth(self):
         if not self.live_synth:
@@ -442,12 +484,12 @@ class Synth2():
         self.live_synth = live_synth
         return Synth_dict
 
-    # def __setstate__(self, state):
-    #     # Load the model from a file after deserialization
-    #     self.__dict__.update(state)
-    #     if self.stdout is not None:
-    #         if current_process().name != 'MainProcess':
-    #             sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)
+    def __setstate__(self, state):
+        # Load the model from a file after deserialization
+        self.__dict__.update(state)
+        if self.stdout is not None:
+            if current_process().name != 'MainProcess':
+                sys.stdout = utils.QueueSTD_OUT(queue=self.stdout)
 
 
 def normalize(signal):
