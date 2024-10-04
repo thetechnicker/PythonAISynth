@@ -321,35 +321,64 @@ class ADSR():
         self.release_samples = int(release_time * sample_rate)
         self.sample_rate = sample_rate
 
-    def get_ads_envelope(self, frame):
-        envelope = np.zeros(frame)
+    def get_ads_envelope(self, start_frame, num_frames):
+        envelope = np.zeros(num_frames)
+        end_frame = start_frame + num_frames
+
         # Attack phase
-        if frame < self.attack_samples:
-            envelope[:frame] = np.linspace(0, 1, frame)
-        else:
-            envelope[:self.attack_samples] = np.linspace(
-                0, 1, self.attack_samples)
-            # Decay phase
-            if frame < self.attack_samples + self.decay_samples:
-                envelope[self.attack_samples:frame] = np.linspace(
-                    1, self.sustain_level, frame - self.attack_samples)
-            else:
-                envelope[self.attack_samples:self.attack_samples +
-                         self.decay_samples] = np.linspace(1, self.sustain_level, self.decay_samples)
-                # Sustain phase
-                envelope[self.attack_samples +
-                         self.decay_samples:frame] = self.sustain_level
+        if start_frame < self.attack_samples:
+            attack_end = min(end_frame, self.attack_samples)
+            envelope[:attack_end -
+                     start_frame] = np.linspace(0, 1, attack_end - start_frame)
+            start_frame = attack_end
+
+        # Decay phase
+        if start_frame < self.attack_samples + self.decay_samples:
+            decay_end = min(end_frame, self.attack_samples +
+                            self.decay_samples)
+            envelope[start_frame - self.attack_samples:decay_end -
+                     self.attack_samples] = np.linspace(1, self.sustain_level, decay_end - start_frame)[start_frame - self.attack_samples:decay_end -
+                                                                                                        self.attack_samples]
+            start_frame = decay_end
+
+        # Sustain phase
+        if start_frame >= self.attack_samples + self.decay_samples:
+            sustain_start = max(
+                start_frame, self.attack_samples + self.decay_samples)
+            envelope[sustain_start - start_frame:] = self.sustain_level
+
         return envelope
 
-    def get_r_envelope(self, frame):
-        envelope = np.zeros(frame)
+    def get_r_envelope(self, start_frame, num_frames):
+        envelope = np.zeros(num_frames)
+        end_frame = start_frame + num_frames
+
         # Release phase
-        if frame < self.release_samples:
-            envelope[:frame] = np.linspace(self.sustain_level, 0, frame)
-        else:
-            envelope[:self.release_samples] = np.linspace(
-                self.sustain_level, 0, self.release_samples)
+        if start_frame < self.release_samples:
+            release_end = min(end_frame, self.release_samples)
+            envelope[:release_end - start_frame] = np.linspace(
+                self.sustain_level, 0, release_end - start_frame)
+
         return envelope
+
+
+class Note:
+    def __init__(self, amplitude):
+        self.amplitude = amplitude
+        self.on = True
+        self.adsr_state = 'attack'
+        self.adsr_position = 0
+
+    def __str__(self):
+        return f"Note({self.amplitude}, {self.on}, {self.adsr_position}, {self.adsr_state})"
+
+
+def get_on_notes(notes):
+    return {note: note_data for note, note_data in notes.items() if note_data.on}
+
+
+def get_off_notes(notes):
+    return {note: note_data for note, note_data in notes.items() if not note_data.on}
 
 
 class Synth2():
