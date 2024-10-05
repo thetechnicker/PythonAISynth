@@ -14,3 +14,8 @@ dependencies:
       - sounddevice
       - pyaudio
       - matplotlib
+      - mkdocs
+      - nuitka
+      - mkdocs-material
+      - mkdocs-git-revision-date-localized-plugin
+      - mkdocs-git-authors-plugin
