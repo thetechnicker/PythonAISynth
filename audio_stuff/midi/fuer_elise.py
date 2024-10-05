@@ -25,13 +25,15 @@ def note_to_midi(note):
     return 12 * (octave + 1) + note_map[key]
 
 
-# Stream the notes over MIDI in a loop
-while True:
-    for note, duration in fur_elise:
-        midi_note = note_to_midi(note)
-        output.send(mido.Message('note_on', note=midi_note, velocity=64))
-        time.sleep(duration/2)
-        output.send(mido.Message('note_off', note=midi_note, velocity=64))
-
+try:
+    # Stream the notes over MIDI in a loop
+    while True:
+        for note, duration in fur_elise:
+            midi_note = note_to_midi(note)
+            output.send(mido.Message('note_on', note=midi_note, velocity=64))
+            time.sleep(duration/2)
+            output.send(mido.Message('note_off', note=midi_note, velocity=64))
+except:
+    output.panic()
 # Close the MIDI output port (this line will never be reached due to the infinite loop)
 # output.close()

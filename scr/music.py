@@ -2,6 +2,7 @@ import copy
 import threading
 import time
 from typing import Callable
+import mido
 import pygame
 import scipy
 import torch
@@ -394,7 +395,7 @@ def piano_id():
 
 
 class Synth2():
-    def __init__(self, fourier_nn, stdout: Queue = None):
+    def __init__(self, fourier_nn, stdout: Queue = None, port_name=None):
         self.stdout = stdout
         self.live_synth: Process = None
         self.notes_ready = False
@@ -409,6 +410,10 @@ class Synth2():
         ])
         self.t_buffer = torch.tensor(t, dtype=torch.float32)
         print(self.t_buffer.shape)
+        self.port_name = port_name
+
+    def set_port_name(self, port_name):
+        self.port_name = port_name
 
     def play_init_sound(self):
         f1 = 440  # Frequency of the "du" sound (in Hz)
@@ -447,12 +452,8 @@ class Synth2():
         print("Live Synth is running")
         self.play_init_sound()
 
-        midi.init()
-        input_id = piano_id()
-        if input_id == -1:
-            print("No MIDI input device found.")
-            return
-        midi_input = midi.Input(input_id)
+        if not self.port_name:
+            self.port_name = mido.get_input_names()[0]
 
         p = pyaudio.PyAudio()
         CHUNK = 2048  # Increased chunk size
@@ -463,49 +464,53 @@ class Synth2():
         current_frame = 0
         cycle_frame = 0
 
-        notes = set()
-        # while True:
-        for _ in utils.timed_loop(True):
-            available_buffer = stream.get_write_available()
-            # print(available_buffer, end=" |\t")
-            if available_buffer == 0:
-                continue
-            if midi_input.poll():
-                midi_event, timestamp = midi_input.read(
-                    1)[0]  # Read and process one event
+        notes = {}
+        with mido.open_input(self.port_name) as midi_input:
+            while True:
+                # for _ in utils.timed_loop(True):
+                available_buffer = stream.get_write_available()
+                # print(available_buffer, end=" |\t")
+                if available_buffer == 0:
+                    continue
+                midi_event = midi_input.poll()
                 # print(midi_event)
-                if midi_event[0] == 144:  # Note on
-                    print("Note on",
-                          midi_event[1],
-                          midi.midi_to_frequency(midi_event[1]))
+                if midi_event:
+                    midi_event.type
+                    midi_event.note
+                    midi_event.velocity
+                    if midi_event.type == 'note_on':  # Note on
+                        print("Note on",
+                              midi_event.note,
+                              midi.midi_to_frequency(midi_event.note))
 
-                    notes.add((midi_event[1], midi_event[2]))
-                elif midi_event[0] == 128:  # Note off
-                    print("Note off",
-                          midi_event[1],
-                          midi.midi_to_frequency(midi_event[1]))
+                        notes[midi_event.note] = midi_event.velocity
+                    elif midi_event.type == 'note_off':  # Note off
+                        print("Note off",
+                              midi_event.note,
+                              midi.midi_to_frequency(midi_event.note))
 
-                    notes.discard((midi_event[1], midi_event[2]))
+                        del notes[midi_event.note]
 
-            if len(notes) > 0:
-                y = np.zeros((len(notes), available_buffer), dtype=np.float32)
-                for i, (note, amplitude) in enumerate(notes):
-                    with torch.no_grad():
-                        x = utils.wrap_concat(
-                            self.t_buffer[note], cycle_frame, cycle_frame + available_buffer)
+                if len(notes) > 0:
+                    y = np.zeros((len(notes), available_buffer),
+                                 dtype=np.float32)
+                    for i, (note, amplitude) in enumerate(notes.items()):
+                        with torch.no_grad():
+                            x = utils.wrap_concat(
+                                self.t_buffer[note], cycle_frame, cycle_frame + available_buffer)
 
-                        y[i, :] = (self.fourier_nn.current_model(
-                            x.unsqueeze(1)).cpu().numpy().astype(np.float32) * (amplitude/127))
+                            y[i, :] = self  .fourier_nn.current_model(
+                                x.unsqueeze(1)).cpu().numpy().astype(np.float32)  # * (amplitude/127)
 
-                audio_data = sum_signals(y)
-                # print(np.max(np.abs(audio_data)))
-                audio_data = np.clip(audio_data, -1, 1)
-                audio_data *= 0.7
-                stream.write(audio_data,
-                             available_buffer,
-                             exception_on_underflow=True)
-            current_frame = (current_frame + available_buffer)
-            cycle_frame = (cycle_frame + available_buffer) % self.fs
+                    audio_data = sum_signals(y)
+                    # print(np.max(np.abs(audio_data)))
+                    audio_data = np.clip(audio_data, -1, 1)
+                    audio_data *= 0.7
+                    stream.write(audio_data,
+                                 available_buffer,
+                                 exception_on_underflow=True)
+                current_frame = (current_frame + available_buffer)
+                cycle_frame = (cycle_frame + available_buffer) % self.fs
 
     def run_live_synth(self):
         if not self.live_synth:

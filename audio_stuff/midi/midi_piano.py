@@ -16,6 +16,7 @@ port = mido.open_output(selected_port.get())
 
 def changePort(event):
     global port
+    port.panic()
     port.close()
     port = mido.open_output(selected_port.get())
 
@@ -136,3 +137,5 @@ for a in range(octaves_to_display):
 
 # Run the Tkinter event loop
 window.mainloop()
+
+port.panic()
