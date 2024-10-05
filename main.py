@@ -10,6 +10,7 @@ from scr import utils
 from scr.music import Synth2, musik_from_file
 from scr.simple_input_dialog import askStringAndSelectionDialog
 from scr.std_redirect import RedirectedOutputFrame
+from scr.synth_gui import SynthGUI
 from scr.utils import DIE, tk_after_errorless
 from scr.predefined_functions import predefined_functions_dict
 from scr.graph_canvas_v2 import GraphCanvas
@@ -149,9 +150,16 @@ class MainGUI(tk.Tk):
             'LOSS_FUNCTION': 'HuberLoss',
         }
 
-        self.gui = NeuralNetworkGUI(
+        self.neural_network_gui = NeuralNetworkGUI(
             self.frame, defaults=defaults, callback=self.update_frourier_params)
-        self.gui.grid(row=0, sticky='NSEW')
+        self.neural_network_gui.grid(row=0, sticky='NSEW')
+
+        separator1 = ttk.Separator(self.frame, orient='horizontal')
+        separator1.grid(row=1, sticky='WE')
+
+        self.synth_gui=SynthGUI(self.frame)
+        self.synth_gui.grid(row=2, sticky='NSEW')
+
         self.frame.grid(row=1, column=3, rowspan=2, sticky='NSEW')
 
     def create_status_bar(self):
@@ -308,7 +316,7 @@ class MainGUI(tk.Tk):
                     #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
                     self.graph.plot_function(
                         self.fourier_nn.predict, x_range=(0, 2*np.pi, 44100//2))
-                    self.synth = Synth2(self.fourier_nn, self.std_queue)
+                    self.synth = Synth2(self.fourier_nn, self.std_queue, self.synth_gui.get_port_name())
                 DIE(self.trainings_process)
                 self.trainings_process = None
                 self.training_started = False
@@ -355,6 +363,8 @@ class MainGUI(tk.Tk):
     def play_music(self):
         print("play_music")
         if self.synth:
+            port_name=self.synth_gui.get_port_name()
+            self.synth.set_port_name(port_name)
             self.synth.run_live_synth()
         else:
             print("or not")
@@ -419,7 +429,7 @@ class MainGUI(tk.Tk):
             self.graph.draw_extern_graph_from_func(
                 self.fourier_nn.predict, name)
             print(name)
-            self.synth = Synth2(self.fourier_nn, self.std_queue)
+            self.synth = Synth2(self.fourier_nn, self.std_queue,self.synth_gui.get_port_name())
             # self.fourier_nn.update_data(
             #     data=self.graph.get_graph(name=name)[0])
 
