@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import traceback
 import numpy as np
 import torch
 import torch.nn as nn
@@ -11,7 +12,6 @@ from multiprocessing import Queue
 from scr import utils
 from scr.utils import QueueSTD_OUT, linear_interpolation, midi_to_freq
 
-DISABLE_GPU = False
 
 try:
     import torch_directml
@@ -19,7 +19,7 @@ try:
 except ImportError:
     DIRECTML = False
 
-DISABLE_GPU = True
+DISABLE_GPU = False
 
 
 class FourierLayer(nn.Module):
@@ -44,34 +44,11 @@ class FourierRegresionModel(nn.Module):
         self.c = nn.Parameter(torch.zeros(1))
 
     def forward(self, x):
+        self.frequencies = self.frequencies.to(x.device)
         y1 = self.a1 * torch.sin(self.frequencies * x)
         y2 = self.a2 * torch.cos(self.frequencies * x)
         z = torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1) + self.c
         return z
-
-
-class FourierRegresionModelV2(nn.Module):
-    def __init__(self, degree):
-        super(FourierRegresionModelV2, self).__init__()
-        self.frequencies_sin = nn.Parameter(
-            torch.arange(1, degree+1, 1, dtype=torch.float32),
-            requires_grad=False
-        )
-        self.frequencies_cos = nn.Parameter(
-            torch.arange(1, degree+1, 1, dtype=torch.float32),
-            requires_grad=False
-        )
-        self.a1 = nn.Parameter(torch.ones((degree)))
-        self.a2 = nn.Parameter(torch.ones((degree)))
-        self.c1 = nn.Parameter(torch.zeros((degree)))
-        self.c2 = nn.Parameter(torch.zeros((degree)))
-        self.d = nn.Parameter(torch.zeros(1))
-
-    def forward(self, x):
-        y1 = self.a1 * torch.sin(self.frequencies_sin * x)  # +self.c1)
-        y2 = self.a2 * torch.cos(self.frequencies_cos * x)  # +self.c2)
-        z = torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1)  # +self.d
-        return z  # , y1, y2
 
 
 class FourierNN():
@@ -183,6 +160,7 @@ class FourierNN():
         model = self.current_model.to(self.device)
         for param in self.current_model.parameters():
             param.requires_grad = True
+        model.to(self.device)
         model.train()
 
         x_train_transformed = x_train_transformed.to(self.device)
@@ -198,7 +176,7 @@ class FourierNN():
 
         train_dataset = TensorDataset(x_train_transformed, y_train)
         train_loader = DataLoader(
-            train_dataset, batch_size=int(self.SAMPLES / 2), shuffle=True)
+            train_dataset, batch_size=int(self.SAMPLES / 4))  # , shuffle=True)
 
         # prepared_test_data = torch.tensor(
         #     data=FourierNN.fourier_basis_numba(
@@ -207,11 +185,11 @@ class FourierNN():
         #     dtype=torch.float32).to(self.device)
         prepared_test_data = torch.tensor(
             test_data.flatten(),
-            dtype=torch.float32, device=self.device).unsqueeze(1)
+            dtype=torch.float32, device=self.device).unsqueeze(1).to(self.device)
 
-        min_delta = 0.0001  # 4.337714676382401e-14
+        min_delta = 0.001  # 4.337714676382401e-14
         epoch_without_change = 0
-        max_loss = torch.inf
+        min_loss = torch.inf
 
         for epoch in range(self.EPOCHS):
             # callback.on_epoch_begin(epoch)
@@ -230,6 +208,7 @@ class FourierNN():
                     optimizer.step()
                     epoch_loss += loss.item()
             except Exception as e:
+                # traceback.print_exc()
                 print(f"Exception while training: {e}")
                 exit(1)
             epoch_loss /= len(train_loader)
@@ -251,8 +230,8 @@ class FourierNN():
                   f"val_loss: {val_loss:3.5f}. "
                   f"Time Taken: {time_taken / 1_000_000_000}s")
 
-            if val_loss < max_loss-min_delta:
-                max_loss = epoch_loss
+            if abs(val_loss) < min_loss-min_delta:
+                min_loss = abs(val_loss)
                 epoch_without_change = 0
             else:
                 epoch_without_change += 1
@@ -272,8 +251,11 @@ class FourierNN():
         if x.shape[0] > 1:
             x = x.unsqueeze(1)
         print(x.shape)
+        model = self.current_model
+        model.to(self.device)
         with torch.no_grad():
-            y = self.current_model(x)
+            y = model(x)
+        model.to('cpu')
 
         return y.cpu().numpy()
 

@@ -5,7 +5,7 @@ import random
 import sys
 import threading
 import time
-from typing import Any, Callable, TextIO
+from typing import Any, Callable, TextIO, Tuple
 import numpy as np
 import psutil
 from scipy.fft import dst
@@ -296,7 +296,7 @@ def get_loss_function(loss_name, **kwargs):
     raise ValueError(f"Loss function '{loss_name}' not found in torch.nn")
 
 
-def linear_interpolation(data, target_length, device='cpu'):
+def linear_interpolation(data, target_length, device='cpu') -> Tuple[torch.Tensor, torch.Tensor]:
     # Convert data to a tensor and move to the specified device
     data = np.array(data)
     data_tensor = torch.tensor(data, dtype=torch.float32).to(device)
