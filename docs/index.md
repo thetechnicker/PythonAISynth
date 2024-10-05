@@ -5,4 +5,4 @@
 
 This is how The App Looks
 
-![window](img/main_window_v3.png)
+![window](./img/main_window_v3.png)
