@@ -450,7 +450,6 @@ class Synth2():
 
     def live_synth_loop(self):
         print("Live Synth is running")
-        self.play_init_sound()
 
         if not self.port_name:
             self.port_name = mido.get_input_names()[0]
@@ -465,6 +464,8 @@ class Synth2():
         cycle_frame = 0
 
         notes = {}
+        model = self.fourier_nn.current_model.to(self.fourier_nn.device)
+        self.play_init_sound()
         with mido.open_input(self.port_name) as midi_input:
             while True:
                 # for _ in utils.timed_loop(True):
@@ -488,8 +489,8 @@ class Synth2():
                         print("Note off",
                               midi_event.note,
                               midi.midi_to_frequency(midi_event.note))
-
-                        del notes[midi_event.note]
+                        if midi_event.note in notes:
+                            del notes[midi_event.note]
 
                 if len(notes) > 0:
                     y = np.zeros((len(notes), available_buffer),
@@ -497,9 +498,9 @@ class Synth2():
                     for i, (note, amplitude) in enumerate(notes.items()):
                         with torch.no_grad():
                             x = utils.wrap_concat(
-                                self.t_buffer[note], cycle_frame, cycle_frame + available_buffer)
+                                self.t_buffer[note], cycle_frame, cycle_frame + available_buffer).to(self.fourier_nn.device)
 
-                            y[i, :] = self  .fourier_nn.current_model(
+                            y[i, :] = model(
                                 x.unsqueeze(1)).cpu().numpy().astype(np.float32)  # * (amplitude/127)
 
                     audio_data = sum_signals(y)
@@ -580,6 +581,28 @@ def sum_signals(signals):
 
     # Sum the signals along dimension 0
     summed_signal = np.sum(normalized_signals, axis=0)
+
+    # Normalize the combined signal to prevent clipping
+    summed_signal = normalize(summed_signal)
+
+    return summed_signal
+
+
+def normalize_torch(signal):
+    return signal / torch.max(torch.abs(signal))
+
+
+def sum_signals_torch(signals):
+    # Convert signals to a PyTorch tensor and move to GPU
+    # signals = torch.stack([signals
+    #                       for signal in signals])
+
+    # Normalize each signal
+    normalized_signals = torch.stack(
+        [sum_signals_torch(signal) for signal in signals])
+
+    # Sum the signals along dimension 0
+    summed_signal = torch.sum(normalized_signals, dim=0)
 
     # Normalize the combined signal to prevent clipping
     summed_signal = normalize(summed_signal)

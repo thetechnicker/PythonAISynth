@@ -44,11 +44,14 @@ class FourierRegresionModel(nn.Module):
         self.c = nn.Parameter(torch.zeros(1))
 
     def forward(self, x):
-        self.frequencies = self.frequencies.to(x.device)
         y1 = self.a1 * torch.sin(self.frequencies * x)
         y2 = self.a2 * torch.cos(self.frequencies * x)
         z = torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1) + self.c
         return z
+
+    def to(self, device):
+        self.frequencies = self.frequencies.to(device)
+        return super(FourierRegresionModel, self).to(device)
 
 
 class FourierNN():
@@ -176,7 +179,7 @@ class FourierNN():
 
         train_dataset = TensorDataset(x_train_transformed, y_train)
         train_loader = DataLoader(
-            train_dataset, batch_size=int(self.SAMPLES / 4))  # , shuffle=True)
+            train_dataset, batch_size=int(self.SAMPLES / 2), shuffle=True)
 
         # prepared_test_data = torch.tensor(
         #     data=FourierNN.fourier_basis_numba(
@@ -255,8 +258,8 @@ class FourierNN():
         model.to(self.device)
         with torch.no_grad():
             y = model(x)
-        model.to('cpu')
 
+        self.current_model = self.current_model.to('cpu')
         return y.cpu().numpy()
 
     def save_model(self, filename='./tmp/model.pth'):

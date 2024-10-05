@@ -157,7 +157,7 @@ class MainGUI(tk.Tk):
         separator1 = ttk.Separator(self.frame, orient='horizontal')
         separator1.grid(row=1, sticky='WE')
 
-        self.synth_gui=SynthGUI(self.frame)
+        self.synth_gui = SynthGUI(self.frame)
         self.synth_gui.grid(row=2, sticky='NSEW')
 
         self.frame.grid(row=1, column=3, rowspan=2, sticky='NSEW')
@@ -316,7 +316,8 @@ class MainGUI(tk.Tk):
                     #         f"Layer: {name} | Size: {param.size()} | Values:\n{param[:2]}\n------------------------------")
                     self.graph.plot_function(
                         self.fourier_nn.predict, x_range=(0, 2*np.pi, 44100//2))
-                    self.synth = Synth2(self.fourier_nn, self.std_queue, self.synth_gui.get_port_name())
+                    self.synth = Synth2(
+                        self.fourier_nn, self.std_queue, self.synth_gui.get_port_name())
                 DIE(self.trainings_process)
                 self.trainings_process = None
                 self.training_started = False
@@ -363,7 +364,8 @@ class MainGUI(tk.Tk):
     def play_music(self):
         print("play_music")
         if self.synth:
-            port_name=self.synth_gui.get_port_name()
+            port_name = self.synth_gui.get_port_name()
+            # print([param.device for param in self.fourier_nn.current_model.parameters()])
             self.synth.set_port_name(port_name)
             self.synth.run_live_synth()
         else:
@@ -429,7 +431,8 @@ class MainGUI(tk.Tk):
             self.graph.draw_extern_graph_from_func(
                 self.fourier_nn.predict, name)
             print(name)
-            self.synth = Synth2(self.fourier_nn, self.std_queue,self.synth_gui.get_port_name())
+            self.synth = Synth2(self.fourier_nn, self.std_queue,
+                                self.synth_gui.get_port_name())
             # self.fourier_nn.update_data(
             #     data=self.graph.get_graph(name=name)[0])
 
