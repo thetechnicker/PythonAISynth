@@ -23,6 +23,14 @@ You can select them in the Select Box labeled **Predefined Functions**
 
 ## Training
 
-Once you have drawn the Shape of the Soundwave you Start the trainings Process by Clicking on the **Start Training** Button
+Once you have drawn the Shape of the Soundwave you Start the trainings Process by Clicking on the **Start Training** Button.
 
 ![start_training_button](img/start_training_button.png)
+
+The Trainings Process gets initialized and after some time a Red Line appears in the Plot, this it the current output of the model.
+
+![while_training](img/while_training.png)
+
+## Making Music
+
+> Still a TODO
