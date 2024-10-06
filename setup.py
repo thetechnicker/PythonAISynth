@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-from _version import version
+from src._version import version
 
 setup(
     name='PythonAISynth',

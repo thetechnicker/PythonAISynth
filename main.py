@@ -16,7 +16,7 @@ from src.predefined_functions import predefined_functions_dict
 from src.graph_canvas_v2 import GraphCanvas
 from src.fourier_neural_network_gui import NeuralNetworkGUI
 from src.fourier_neural_network import FourierNN
-from _version import version
+from src._version import version
 import atexit
 from multiprocessing import Process, Queue
 from multiprocessing.managers import SyncManager
@@ -507,6 +507,7 @@ class MainGUI(tk.Tk):
 
 
 def main():
+    print(version)
     # global state, window
     # threading.Thread(target=start_server, daemon=True).start()
 
