@@ -1,5 +1,6 @@
 site_name: Python AI Synthesizer
 repo_url: https://github.com/thetechnicker/PythonAISynth
+
 nav:
   - Home: index.md
   - Initial Concept: idea.md
@@ -43,6 +44,11 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.instant
+    - navigation.instant.progress
 
 extra:
   consent:

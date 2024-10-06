@@ -1,6 +1,6 @@
 # HOW TO USE
 
-## Main Functionalities
+## Basics
 
 ### Soundwave Drawing
 
@@ -17,4 +17,12 @@ You can select them in the Select Box labeled **Predefined Functions**
 ![predefined_functions](./img/predefined_functions.png)
 
 ![example_function](./img/example_function.png)
-This is one of the predefined functions, its called **nice**, cause i find it sounds nice and i had no better name, if you have a problem with this, find a better name!
+
+> This is one of the predefined functions, its called **nice**, cause i find it sounds nice and i had no better name, if you have a
+> problem with this, find a better name!
+
+## Training
+
+Once you have drawn the Shape of the Soundwave you Start the trainings Process by Clicking on the **Start Training** Button
+
+![start_training_button](img/start_training_button.png)
