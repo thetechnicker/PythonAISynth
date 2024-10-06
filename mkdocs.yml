@@ -2,7 +2,8 @@ site_name: Python AI Synthesizer
 repo_url: https://github.com/thetechnicker/PythonAISynth
 nav:
   - Home: index.md
-  - Idea: idea.md
+  - Initial Concept: idea.md
+  - How to Use: how_to_use.md
   - Python Modules:
       - Overview: python_modules/overview.md
       - Main: python_modules/main.md
@@ -51,10 +52,10 @@ extra:
       as to measure the effectiveness of our documentation and whether users
       find what they're searching for. With your consent, you're helping us to
       make our documentation better.
+
 plugins:
   - git-revision-date-localized:
       enable_creation_date: true
-      repository: thetechnicker/PythonAISynth
   - git-authors
   - search
   - mkdocstrings:
@@ -62,6 +63,7 @@ plugins:
         python:
           options:
             docstring_style: google
+
 markdown_extensions:
   - abbr
   - admonition
