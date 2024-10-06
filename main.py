@@ -86,6 +86,27 @@ DARKMODE = True
 
 
 class MainGUI(tk.Tk):
+    """
+    MainGUI is the main application window for the AI Synth project.
+
+    This class initializes the Tkinter GUI, sets up the application layout,
+    and manages the interaction between the frontend and backend components.
+    It includes features such as dark mode, status bar updates, and various
+    controls for training AI models and synthesizing sound.
+
+    Attributes:
+        manager (SyncManager): Manages shared resources and processes.
+        lock (Lock): Ensures thread-safe operations.
+        std_queue (Queue): Handles standard output redirection.
+        process_monitor (psutil.Process): Monitors the main process and its children.
+        trainings_process (multiprocessing.Process): Manages the AI model training process.
+        training_started (bool): Indicates if training has started.
+        block_training (bool): Prevents multiple training sessions.
+        queue (Queue): Handles inter-process communication.
+        fourier_nn (FourierNN): The neural network for Fourier transformations.
+        synth (Synth2): The synthesizer object.
+    """
+
     def __init__(self, *args, manager: SyncManager = None, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -109,7 +130,6 @@ class MainGUI(tk.Tk):
         self.columnconfigure(3, weight=1)
 
         self.trainings_process: Process = None
-        self.music_process: Process = None
         self.training_started = False
         self.block_training = False
         self.queue = Queue(-1)
