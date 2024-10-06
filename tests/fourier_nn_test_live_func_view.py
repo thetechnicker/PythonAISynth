@@ -6,15 +6,15 @@ import torch
 
 
 # autopep8: off
-from context import scr
-from scr import predefined_functions, utils
-from scr.fourier_neural_network import FourierNN
+from context import src
+from src import predefined_functions, utils
+from src.fourier_neural_network import FourierNN
 # autopep8: on
 
 
 def _1():
     # to avoid removing importent import of scr
-    scr
+    src
 
 
 def main():

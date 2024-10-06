@@ -1,7 +1,7 @@
 # import os
 # import unittest
-from context import scr
-from scr import graph_canvas
+from context import src
+from src import graph_canvas
 import tkinter as tk
 
 """

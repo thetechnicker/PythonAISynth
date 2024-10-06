@@ -6,8 +6,8 @@ import mido
 import pygame
 import scipy
 import torch
-from scr.fourier_neural_network import FourierNN
-from scr import utils
+from src.fourier_neural_network import FourierNN
+from src import utils
 from pygame import mixer, midi, sndarray
 import atexit
 import multiprocessing

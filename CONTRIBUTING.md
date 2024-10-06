@@ -44,7 +44,7 @@ Please follow these steps to have your contribution considered by the maintainer
 
 1. **Fork** the repository and create your branch from `dev`.
 2. **If you've added code** that should be tested, add tests.
-3. **If you've changed APIs**, update the documentation.
+3. **If you’ve modified any modules or files**, update the documentation accordingly.
 4. **Ensure the test suite passes**.
 5. **Make sure your code lints** using `ms-python.autopep8` from VSCode.
 6. **Issue that pull request**!

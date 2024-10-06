@@ -8,16 +8,16 @@ import torch
 import sounddevice as sd
 
 # autopep8: off
-from context import scr
-from scr import predefined_functions, utils
-from scr.fourier_neural_network import FourierNN
-from scr.music import Synth2, Synth2
+from context import src
+from src import predefined_functions, utils
+from src.fourier_neural_network import FourierNN
+from src.music import Synth2, Synth2
 # autopep8: on
 
 
 def _1():
     # to avoid removing importent import of scr
-    scr
+    src
 
 
 fourier_nn = None

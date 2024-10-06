@@ -5,18 +5,18 @@ import threading
 import time
 
 import numpy as np
-from scr import music
-from scr import utils
-from scr.music import Synth2, musik_from_file
-from scr.simple_input_dialog import askStringAndSelectionDialog
-from scr.std_redirect import RedirectedOutputFrame
-from scr.synth_gui import SynthGUI
-from scr.utils import DIE, tk_after_errorless
-from scr.predefined_functions import predefined_functions_dict
-from scr.graph_canvas_v2 import GraphCanvas
-from scr.fourier_neural_network_gui import NeuralNetworkGUI
-from scr.fourier_neural_network import FourierNN
-from _version import version
+from src import music
+from src import utils
+from src.music import Synth2, musik_from_file
+from src.simple_input_dialog import askStringAndSelectionDialog
+from src.std_redirect import RedirectedOutputFrame
+from src.synth_gui import SynthGUI
+from src.utils import DIE, tk_after_errorless
+from src.predefined_functions import predefined_functions_dict
+from src.graph_canvas_v2 import GraphCanvas
+from src.fourier_neural_network_gui import NeuralNetworkGUI
+from src.fourier_neural_network import FourierNN
+from src._version import version
 import atexit
 from multiprocessing import Process, Queue
 from multiprocessing.managers import SyncManager
@@ -86,6 +86,27 @@ DARKMODE = True
 
 
 class MainGUI(tk.Tk):
+    """
+    MainGUI is the main application window for the AI Synth project.
+
+    This class initializes the Tkinter GUI, sets up the application layout,
+    and manages the interaction between the frontend and backend components.
+    It includes features such as dark mode, status bar updates, and various
+    controls for training AI models and synthesizing sound.
+
+    Attributes:
+        manager (SyncManager): Manages shared resources and processes.
+        lock (Lock): Ensures thread-safe operations.
+        std_queue (Queue): Handles standard output redirection.
+        process_monitor (psutil.Process): Monitors the main process and its children.
+        trainings_process (multiprocessing.Process): Manages the AI model training process.
+        training_started (bool): Indicates if training has started.
+        block_training (bool): Prevents multiple training sessions.
+        queue (Queue): Handles inter-process communication.
+        fourier_nn (FourierNN): The neural network for Fourier transformations.
+        synth (Synth2): The synthesizer object.
+    """
+
     def __init__(self, *args, manager: SyncManager = None, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -109,7 +130,6 @@ class MainGUI(tk.Tk):
         self.columnconfigure(3, weight=1)
 
         self.trainings_process: Process = None
-        self.music_process: Process = None
         self.training_started = False
         self.block_training = False
         self.queue = Queue(-1)
@@ -487,6 +507,7 @@ class MainGUI(tk.Tk):
 
 
 def main():
+    print(version)
     # global state, window
     # threading.Thread(target=start_server, daemon=True).start()
 

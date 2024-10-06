@@ -1,5 +1,7 @@
 # My Idea about this programm
 
+> This was my Plan at the Beginning
+
 I want to create a Python-Application where you draw a function and a neural-net tries to aproximate it to make sound from it.
 
 ## GUI Desing

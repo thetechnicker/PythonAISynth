@@ -2,7 +2,21 @@ site_name: Python AI Synthesizer
 repo_url: https://github.com/thetechnicker/PythonAISynth
 nav:
   - Home: index.md
-  - Idea: idea.md
+  - Initial Concept: idea.md
+  - How to Use: how_to_use.md
+  - Python Modules:
+      - Overview: python_modules/overview.md
+      - Main: python_modules/main.md
+      - Graph Canvas: python_modules/graph_canvas_v2.md
+      - Fourier Neural Network Core: python_modules/fourier_neural_network.md
+      - Fourier Neural Network GUI: python_modules/fourier_neural_network_gui.md
+      - Music Synthesis: python_modules/music.md
+      - Predefined Functions: python_modules/predefined_functions.md
+      - Input Dialog: python_modules/simple_input_dialog.md
+      - Standard Output Redirect: python_modules/std_redirect.md
+      - Synthesizer GUI: python_modules/synth_gui.md
+      - Utility Functions: python_modules/utils.md
+
 theme:
   icon:
     repo: fontawesome/brands/github
@@ -38,11 +52,17 @@ extra:
       as to measure the effectiveness of our documentation and whether users
       find what they're searching for. With your consent, you're helping us to
       make our documentation better.
+
 plugins:
   - git-revision-date-localized:
       enable_creation_date: true
-      repository: thetechnicker/PythonAISynth
   - git-authors
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
 
 markdown_extensions:
   - abbr
