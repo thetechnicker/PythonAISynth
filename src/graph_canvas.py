@@ -7,7 +7,7 @@ from typing import Literal
 
 import numpy as np
 
-from scr import utils
+from src import utils
 
 
 class GraphCanvas(ttk.Frame):

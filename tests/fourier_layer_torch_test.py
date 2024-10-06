@@ -7,9 +7,9 @@ import torch
 
 
 # autopep8: off
-from context import scr
-from scr import predefined_functions, utils
-from scr.fourier_neural_network import FourierLayer
+from context import src
+from src import predefined_functions, utils
+from src.fourier_neural_network import FourierLayer
 # autopep8: on
 
 

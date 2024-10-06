@@ -5,17 +5,17 @@ import threading
 import time
 
 import numpy as np
-from scr import music
-from scr import utils
-from scr.music import Synth2, musik_from_file
-from scr.simple_input_dialog import askStringAndSelectionDialog
-from scr.std_redirect import RedirectedOutputFrame
-from scr.synth_gui import SynthGUI
-from scr.utils import DIE, tk_after_errorless
-from scr.predefined_functions import predefined_functions_dict
-from scr.graph_canvas_v2 import GraphCanvas
-from scr.fourier_neural_network_gui import NeuralNetworkGUI
-from scr.fourier_neural_network import FourierNN
+from src import music
+from src import utils
+from src.music import Synth2, musik_from_file
+from src.simple_input_dialog import askStringAndSelectionDialog
+from src.std_redirect import RedirectedOutputFrame
+from src.synth_gui import SynthGUI
+from src.utils import DIE, tk_after_errorless
+from src.predefined_functions import predefined_functions_dict
+from src.graph_canvas_v2 import GraphCanvas
+from src.fourier_neural_network_gui import NeuralNetworkGUI
+from src.fourier_neural_network import FourierNN
 from _version import version
 import atexit
 from multiprocessing import Process, Queue

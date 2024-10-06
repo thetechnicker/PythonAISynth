@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
-from context import scr
-from scr.utils import calculate_peak_frequency
+from context import src
+from src.utils import calculate_peak_frequency
 
 
 class TestCalculatePeakFrequency(unittest.TestCase):

@@ -1,11 +1,11 @@
 from scipy.fft import fft, fftfreq
 import multiprocessing
 import numpy as np
-from context import scr
-from scr.fourier_neural_network import FourierNN
+from context import src
+from src.fourier_neural_network import FourierNN
 import matplotlib.pyplot as plt
 
-from scr.utils import calculate_peak_frequency
+from src.utils import calculate_peak_frequency
 
 
 def main():

@@ -5,6 +5,6 @@ import sys
 path=os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, path)
 
-import scr
+import src
 import main
 # autopep8: on

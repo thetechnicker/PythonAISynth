@@ -5,7 +5,8 @@ setup(
     name='PythonAISynth',
     version=version,
     py_modules=['main', '_version'],
-    packages=find_packages(),
+    packages=find_packages(where='src'),
+    package_dir={'': 'src'},
     include_package_data=True,
     install_requires=[
         'numpy',

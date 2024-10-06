@@ -1,7 +1,7 @@
 import random
 import numpy as np
 
-from scr import utils
+from src import utils
 
 
 def funny(x):
