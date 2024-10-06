@@ -23,6 +23,8 @@ $newpoint=\frac{(old\_point_1+old\_point_2)}{2}$ or by duplicating points and ad
 
 ## Future Plans for My Synth Project
 
+> These plans will not be considered for implementation in the near Future.
+
 Here are some enhancements I'm considering for my synth project:
 
 1. **Frequency to MIDI Mapping**: I'm thinking of mapping the dominant frequency of my model to a MIDI note. This could result in cleaner sounds, as MIDI notes correspond to specific frequencies.
