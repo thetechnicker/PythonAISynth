@@ -4,7 +4,8 @@ repo_url: https://github.com/thetechnicker/PythonAISynth
 nav:
   - Home: index.md
   - Initial Concept: idea.md
-  - How to Use: how_to_use.md
+  - How to Use: 
+    - Basics: how_to_use/basics.md
   - Python Modules:
       - Overview: python_modules/overview.md
       - Main: python_modules/main.md
