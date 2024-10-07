@@ -33,6 +33,8 @@ The Trainings Process gets initialized and after some time a Red Line appears in
 
 ## Making Music
 
+> Images need to be Edited to Highlight GUI Elements
+
 To make Music using this Synth, you need to have a valid Midi Input Port.
 You can select a Midi Port at the Select Box labeld **MIDI PORT**.
 
@@ -47,4 +49,4 @@ Once the synth is ready you hear a Sound. Now you can use it.
 
 ## Midi piano
 
-In case you have no midi piano or similar device that can send Midi Signals to the Synth we included a simple Piano programm where you can select a Midi Port and play musik with it.
+In case you have no midi piano or similar device that can send Midi Signals to the Synth we included a simple Piano programm where you can select a Midi Port and play musik with it.   
