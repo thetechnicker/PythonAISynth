@@ -314,66 +314,6 @@ def apply_distortion(audio, gain=2.0, threshold=0.5):
     return distorted_audio
 
 
-class ADSR():
-    def __init__(self, attack_time, decay_time, sustain_level, release_time, sample_rate):
-        self.attack_samples = int(attack_time * sample_rate)
-        self.decay_samples = int(decay_time * sample_rate)
-        self.sustain_level = sustain_level
-        self.release_samples = int(release_time * sample_rate)
-        self.sample_rate = sample_rate
-
-    def get_ads_envelope(self, start_frame, num_frames):
-        envelope = np.zeros(num_frames)
-        end_frame = start_frame + num_frames
-
-        # Attack phase
-        if start_frame < self.attack_samples:
-            attack_end = min(end_frame, self.attack_samples)
-            envelope[:attack_end -
-                     start_frame] = np.linspace(0, 1, attack_end - start_frame)
-            start_frame = attack_end
-
-        # Decay phase
-        if start_frame < self.attack_samples + self.decay_samples:
-            decay_end = min(end_frame, self.attack_samples +
-                            self.decay_samples)
-            envelope[start_frame - self.attack_samples:decay_end -
-                     self.attack_samples] = np.linspace(1, self.sustain_level, decay_end - start_frame)[start_frame - self.attack_samples:decay_end -
-                                                                                                        self.attack_samples]
-            start_frame = decay_end
-
-        # Sustain phase
-        if start_frame >= self.attack_samples + self.decay_samples:
-            sustain_start = max(
-                start_frame, self.attack_samples + self.decay_samples)
-            envelope[sustain_start - start_frame:] = self.sustain_level
-
-        return envelope
-
-    def get_r_envelope(self, start_frame, num_frames):
-        envelope = np.zeros(num_frames)
-        end_frame = start_frame + num_frames
-
-        # Release phase
-        if start_frame < self.release_samples:
-            release_end = min(end_frame, self.release_samples)
-            envelope[:release_end - start_frame] = np.linspace(
-                self.sustain_level, 0, release_end - start_frame)
-
-        return envelope
-
-
-class Note:
-    def __init__(self, amplitude):
-        self.amplitude = amplitude
-        self.on = True
-        self.adsr_state = 'attack'
-        self.adsr_position = 0
-
-    def __str__(self):
-        return f"Note({self.amplitude}, {self.on}, {self.adsr_position}, {self.adsr_state})"
-
-
 def get_on_notes(notes):
     return {note: note_data for note, note_data in notes.items() if note_data.on}
 
@@ -394,6 +334,64 @@ def piano_id():
     return device_id
 
 
+class ADSR:
+    def __init__(self, attack_time, decay_time, sustain_level, release_time, sample_rate):
+        self.attack_samples = int(attack_time * sample_rate)
+        self.decay_samples = int(decay_time * sample_rate)
+        self.ad_samples = self.attack_samples + self.decay_samples
+        self.sustain_level = sustain_level
+        self.release_samples = int(release_time * sample_rate)
+
+        self.ads_envelope = np.concatenate((
+            np.linspace(0, 1, self.attack_samples),
+            np.linspace(1, self.sustain_level, self.decay_samples)
+        ))
+        self.r_envelope = np.linspace(self.sustain_level, 0, self.release_samples)
+
+        self._r_counter = [0 for _ in range(128)]
+        self._ads_counter = [0 for _ in range(128)]
+
+    def reset_note(self, note_num):
+        self._ads_counter[note_num] = 0
+        self._r_counter[note_num] = 0
+
+    def has_note_ended(self, note_num) -> bool:
+        return self._r_counter[note_num]>=self.release_samples
+
+    def get_ads_envelope(self, note_num, frame):
+        start = self._ads_counter[note_num]
+        end = start + frame
+        self._ads_counter[note_num] += frame
+        
+        if start > self.ad_samples:
+            return np.ones(frame) * self.sustain_level
+        
+        envelope = np.zeros(frame)
+        if end > self.ad_samples:
+            envelope[:self.ad_samples - start] = self.ads_envelope[start:self.ad_samples]
+            envelope[self.ad_samples:] = np.zeros(end - self.ad_samples)
+        else:
+            envelope[:] = self.ads_envelope[start:end]
+        
+        return envelope
+
+    def get_r_envelope(self, note_num, frame):
+        start = self._r_counter[note_num]
+        end = start + frame
+        self._r_counter[note_num] += frame
+        
+        if start > self.release_samples:
+            return np.zeros(frame)
+
+        envelope = np.zeros(frame)
+        if end <= self.release_samples:
+            envelope[:] = self.r_envelope[start:end]
+        else:
+            envelope[:self.release_samples - start] = self.r_envelope[start:self.release_samples]
+            envelope[self.release_samples - start:] = 0  # After release, the envelope is 0
+        return envelope
+
+        
 class Synth2():
     def __init__(self, fourier_nn, stdout: Queue = None, port_name=None):
         self.stdout = stdout
