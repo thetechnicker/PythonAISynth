@@ -56,8 +56,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: "v${{ env.VERSION }}"
-          release_name: "Release v${{ env.VERSION }}"
+          name: "Release v${{ env.VERSION }}"
           draft: true
+          prerelease: true
           files: dist/*.whl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
