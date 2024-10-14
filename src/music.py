@@ -181,7 +181,7 @@ class Synth2():
         self.adsr_envelope=ADSR(
                 0.1,
                 0.1,
-                0.7,
+                0.75,
                 0.2,
                 self.fs)
 
