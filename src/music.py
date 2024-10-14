@@ -181,7 +181,7 @@ class Synth2():
         self.adsr_envelope=ADSR(
                 0.1,
                 0.1,
-                0.7,
+                0.75,
                 0.2,
                 self.fs)
 
@@ -247,11 +247,11 @@ class Synth2():
                 if available_buffer == 0:
                     continue
                 midi_event = midi_input.poll()
-                # print(midi_event)
                 if midi_event:
-                    midi_event.type
-                    midi_event.note
-                    midi_event.velocity
+                    print(midi_event)
+                    #midi_event.type
+                    #midi_event.note
+                    #midi_event.velocity
                     if midi_event.type == 'note_on':  # Note on
                         print("Note on",
                               midi_event.note,
