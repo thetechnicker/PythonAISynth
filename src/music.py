@@ -170,7 +170,7 @@ class ADSR:
         return envelope
 
 
-class Echo:
+class Echo_torch:
     def __init__(self, sample_size, delay_time_ms, feedback, wet_dry_mix, device='cpu'):
         self.sample_size = sample_size
         # Convert ms to samples (assuming 44.1 kHz sample rate)
@@ -206,6 +206,51 @@ class Echo:
 
             # Store the current sample in the past buffer
             self.past = torch.roll(self.past, shifts=-1, dims=0)
+            self.past[-1] = current_sample
+
+            # Combine the original sound and the echo
+            output[i] = current_sample * (1 - self.wet_dry_mix) + echo_sample
+
+        return output
+
+
+class Echo:
+    def __init__(self, sample_size, delay_time_ms, feedback, wet_dry_mix):
+        self.sample_size = sample_size
+        # Convert ms to samples (assuming 44.1 kHz sample rate)
+        # Convert ms to seconds
+        self.delay_time = int(delay_time_ms * 44.1 / 1000)
+        self.feedback = feedback
+        self.wet_dry_mix = wet_dry_mix
+
+        # Initialize the past buffer to store delayed samples
+        self.past = np.zeros((self.delay_time + 1, sample_size))
+
+    def apply(self, sound):
+        # Ensure sound is a 2D array with shape (num_samples, sample_size)
+        if sound.ndim != 2 or sound.shape[1] != self.sample_size:
+            raise ValueError(
+                "Input sound must be a 2D array with shape (num_samples, sample_size)")
+
+        # Create an output array
+        output = np.zeros_like(sound)
+
+        for i in range(sound.shape[0]):
+            # Get the current sample
+            current_sample = sound[i]
+
+            # Get the delayed sample from the past buffer
+            if i >= self.delay_time:
+                delayed_sample = self.past[-self.delay_time]
+            else:
+                delayed_sample = np.zeros(self.sample_size)
+
+            # Calculate the echo effect
+            echo_sample = (current_sample + delayed_sample *
+                           self.feedback) * self.wet_dry_mix
+
+            # Store the current sample in the past buffer
+            self.past = np.roll(self.past, shift=-1, axis=0)
             self.past[-1] = current_sample
 
             # Combine the original sound and the echo
