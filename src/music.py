@@ -366,6 +366,7 @@ class Synth2():
                             notes[midi_event.note][0] = False
 
                 if len(notes) > 0:
+                    print(f"available_buffer: {available_buffer}")
                     # y = torch.zeros(size=(len(notes), available_buffer),
                     #                 device=self.fourier_nn.device)
                     y = np.zeros((len(notes), available_buffer),
