@@ -265,12 +265,12 @@ class Synth2():
         self.live_synth: Process = None
         self.notes_ready = False
         self.fourier_nn: FourierNN = fourier_nn
-        self.fs = 44100  # Sample rate
+        self.sample_rate = 44100  # Sample rate
         self.max_parralel_notes = 3
         self.current_frame = 0
         t = np.array([
             utils.midi_to_freq(f) *
-            np.linspace(0, 2*np.pi, self.fs)
+            np.linspace(0, 2*np.pi, self.sample_rate)
             for f in range(128)
         ])
         self.t_buffer = torch.tensor(t, dtype=torch.float32)
@@ -291,19 +291,19 @@ class Synth2():
         t4 = 0.4  # Duration of the "dii" sound (in seconds)
 
         # Generate the "duuu" sound
-        t = np.arange(int(t1 * self.fs)) / self.fs
+        t = np.arange(int(t1 * self.sample_rate)) / self.sample_rate
         sound1 = 0.5 * np.sin(2 * np.pi * f1 * t)
 
         # Generate the "dl" sound
-        t = np.arange(int(t2 * self.fs)) / self.fs
+        t = np.arange(int(t2 * self.sample_rate)) / self.sample_rate
         sound2 = 0.5 * np.sin(2 * np.pi * f2 * t)
 
         # Generate the "diii" sound
-        t = np.arange(int(t3 * self.fs)) / self.fs
+        t = np.arange(int(t3 * self.sample_rate)) / self.sample_rate
         sound3 = 0.5 * np.sin(2 * np.pi * f3 * t)
 
         # Generate the "dub" sound
-        t = np.arange(int(t4 * self.fs)) / self.fs
+        t = np.arange(int(t4 * self.sample_rate)) / self.sample_rate
         sound4 = 0.5 * np.sin(2 * np.pi * f4 * t)
 
         # Concatenate the sounds to form "duuudldiiidub"
@@ -323,8 +323,8 @@ class Synth2():
         CHUNK = 2048  # Increased chunk size
         stream = p.open(format=pyaudio.paFloat32,
                         channels=1,
-                        frames_per_buffer=CHUNK,
-                        rate=self.fs,
+                        # frames_per_buffer=CHUNK,
+                        rate=self.sample_rate,
                         output=True)
         current_frame = 0
         cycle_frame = 0
@@ -333,11 +333,12 @@ class Synth2():
             0.1,
             0.75,
             0.2,
-            self.fs)
+            self.sample_rate)
 
         notes = {}
         model = self.fourier_nn.current_model.to(self.fourier_nn.device)
         self.play_init_sound()
+
         with mido.open_input(self.port_name) as midi_input:
             while True:
                 # for _ in utils.timed_loop(True):
@@ -399,15 +400,16 @@ class Synth2():
                     audio_data = sum_signals(y)
                     # print(np.max(np.abs(audio_data)))
                     audio_data = normalize(audio_data)
+                    audio_data *= 1  # oscilating_amplitude
                     audio_data = np.clip(audio_data, -1, 1)
-                    audio_data *= 0.7
                     stream.write(audio_data.astype(np.float32),
                                  available_buffer,
                                  exception_on_underflow=True)
                 # if cycle_frame <= 100:
                 #     print(f"available_buffer: {available_buffer}")
                 current_frame = (current_frame + available_buffer)
-                cycle_frame = (cycle_frame + available_buffer) % self.fs
+                cycle_frame = (cycle_frame + available_buffer) %\
+                    self.sample_rate
 
     def run_live_synth(self):
         if not self.live_synth:
