@@ -519,9 +519,9 @@ def main():
         window.protocol("WM_DELETE_WINDOW", window.quit)
         state = "running"
         try:
-            window.after(1000, lambda: window.graph.plot_function(
-                predefined_functions_dict['funny2'], overwrite=True))
-            window.after(2000, window.start_training)
+            # window.after(1000, lambda: window.graph.plot_function(
+            #     predefined_functions_dict['funny2'], overwrite=True))
+            # window.after(2000, window.start_training)
             window.mainloop()
         except KeyboardInterrupt:
             print("exiting via keybord interupt")
