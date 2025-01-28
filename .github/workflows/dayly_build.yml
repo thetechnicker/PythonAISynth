@@ -1,9 +1,11 @@
 name: Dayly Build
 
 on:
+  pull_request:
   push:
     branches:
       - dev
+      - main
 
 jobs:
   build-linux:

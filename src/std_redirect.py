@@ -165,18 +165,21 @@ class RedirectedOutputFrame(tk.Frame):
     def check_queue(self):
         try:
             # print("asdfasdf")
-            while not self.queue.empty():
-                try:
-                    msg = self.queue.get_nowait()
-                    self.redirector(msg)
-                except queue.Empty:
-                    break
-            try:
-                tk_after_errorless(self.master, 100, self.check_queue)
-            except:
-                print("ERROR")
+            if not self.queue.empty():
+                for i in range(100):
+                    try:
+                        msg = self.queue.get_nowait()
+                        self.redirector(msg)
+                        # self.old_stdout.write(str(self.queue.qsize())+'\n')
+                    except queue.Empty:
+                        break
         except BrokenPipeError:
-            pass
+            return
+        # delay = 100
+        delay = int(500 if self.queue.empty()
+                    else min(5, 100/min(1, self.queue.qsize()/10)))
+        # self.old_stdout.write(f'Delay: {delay}\n')
+        tk_after_errorless(self.master, delay, self.check_queue)
 
     def __del__(self):
         sys.stdout = self.old_stdout

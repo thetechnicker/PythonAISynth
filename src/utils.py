@@ -378,11 +378,32 @@ def timed_generator(iterable):
 
 
 def timed_loop(condition):
+    """
+    A generator that runs a timed loop while the condition is true.
+
+    Args:
+        condition (bool): A condition that controls the loop.
+
+    Yields:
+        None: Control is yielded back to the caller.
+    """
     max_val = 0
+    total_time = 0
+    iteration_count = 0
+
     while condition:
         start_time = time.perf_counter_ns()
-        yield
+        yield  # Yield control back to the caller
         current_time = time.perf_counter_ns() - start_time
+
         max_val = max(current_time, max_val)
-        print(
-            f"Time taken for this iteration: {(current_time/1_000_000_000):10.9f}ms, max_val: {max_val/1_000_000_000:10.3}")
+        total_time += current_time
+        iteration_count += 1
+
+        if total_time >= 100_000_000:  # 100 milliseconds
+            avg_time = (total_time / iteration_count) / \
+                1_000_000  # Convert to milliseconds
+            max_time = max_val / 1_000_000  # Convert to milliseconds
+            print(
+                f"Time taken for this iteration: {avg_time:10.9f} ms, max_val: {max_time:10.3f} ms")
+            total_time, iteration_count = 0, 0  # Reset for the next period

@@ -520,7 +520,7 @@ def main():
         state = "running"
         try:
             # window.after(1000, lambda: window.graph.plot_function(
-            #     predefined_functions_dict['nice'], overwrite=True))
+            #     predefined_functions_dict['funny2'], overwrite=True))
             # window.after(2000, window.start_training)
             window.mainloop()
         except KeyboardInterrupt:
