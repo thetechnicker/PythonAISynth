@@ -1,7 +1,6 @@
 import mido
 import time
 
-
 # Define the MIDI output port
 output = mido.open_output("LoopBe Internal MIDI 1")
 
@@ -60,13 +59,16 @@ def note_to_midi(note):
 
 try:
     # Stream the notes over MIDI in a loop
+    last_note = None
     while True:
         for note, duration in fur_elise:
             midi_note = note_to_midi(note)
+            last_note = midi_note
             output.send(mido.Message("note_on", note=midi_note, velocity=64))
             time.sleep(duration / 2)
             output.send(mido.Message("note_off", note=midi_note, velocity=64))
 except:
     output.panic()
+output.send(mido.Message("note_off", note=last_note, velocity=64))
 # Close the MIDI output port (this line will never be reached due to the infinite loop)
 # output.close()
