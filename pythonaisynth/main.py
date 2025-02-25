@@ -1,22 +1,17 @@
 import copy
-import socket
 import sys
-import threading
-import time
 
 import numpy as np
-from src import music
-from src import utils
-from src.music import Synth2, musik_from_file
-from src.simple_input_dialog import askStringAndSelectionDialog
-from src.std_redirect import RedirectedOutputFrame
-from src.synth_gui import SynthGUI
-from src.utils import DIE, tk_after_errorless
-from src.predefined_functions import predefined_functions_dict
-from src.graph_canvas_v2 import GraphCanvas
-from src.fourier_neural_network_gui import NeuralNetworkGUI
-from src.fourier_neural_network import FourierNN
-from src._version import version
+from .music import Synth2, musik_from_file
+from .simple_input_dialog import askStringAndSelectionDialog
+from .std_redirect import RedirectedOutputFrame
+from .synth_gui import SynthGUI
+from .utils import DIE, tk_after_errorless
+from .predefined_functions import predefined_functions_dict
+from .graph_canvas_v2 import GraphCanvas
+from .fourier_neural_network_gui import NeuralNetworkGUI
+from .fourier_neural_network import FourierNN
+from ._version import version
 import atexit
 from multiprocessing import Process, Queue
 from multiprocessing.managers import SyncManager
@@ -395,7 +390,7 @@ class MainGUI(tk.Tk):
     def play_music_file(self):
         print("play_music")
         if self.fourier_nn:
-            music.musik_from_file(self.fourier_nn)
+            musik_from_file(self.fourier_nn)
             # music.midi_to_musik_live(self.fourier_nn, self.std_queue)
 
     def clear_graph(self):

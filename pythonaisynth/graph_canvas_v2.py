@@ -6,7 +6,7 @@ from matplotlib.widgets import Cursor
 import tkinter as tk
 from tkinter import ttk
 
-from src.utils import center_and_scale, run_after_ms, tk_after_errorless
+from .utils import center_and_scale, run_after_ms, tk_after_errorless
 
 matplotlib.use('TkAgg')
 

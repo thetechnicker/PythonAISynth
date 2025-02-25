@@ -1,11 +1,10 @@
 from setuptools import setup, find_packages
-from src._version import version
+from pythonaisynth._version import version
 
 setup(
     name='PythonAISynth',
     version=version,
-    py_modules=['main', '_version'],
-    packages=find_packages(),
+    packages=find_packages('.', ['tests', 'audio_stuff']),
     include_package_data=True,
     install_requires=[
         'numpy',
@@ -21,7 +20,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'PythonAISynth = main:main',
+            'PythonAISynth = pythonaisynth.main:main',
         ],
     },
 )

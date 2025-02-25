@@ -7,8 +7,8 @@ from copy import copy
 import sys
 from multiprocessing import Queue
 
-from src import utils
-from src.utils import tk_after_errorless
+from pythonaisynth import utils
+from .utils import tk_after_errorless
 
 
 class RedirectedOutputFrame(tk.Frame):

@@ -1,20 +1,20 @@
 import mido
 import scipy
 import torch
-from src.fourier_neural_network import FourierNN
-from src import utils
+from .fourier_neural_network import FourierNN
+from pythonaisynth import utils
 import atexit
 from multiprocessing import Process, Queue, current_process
 import sys
 from tkinter import filedialog
 import numpy as np
-import pretty_midi
 import sounddevice as sd
 import pyaudio
 
 
 def musik_from_file(fourier_nn: FourierNN):
     import sounddevice as sd
+    import pretty_midi
     midi_file = filedialog.askopenfilename()
     if not midi_file:
         return

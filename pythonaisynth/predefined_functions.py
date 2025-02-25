@@ -1,7 +1,7 @@
 import random
 import numpy as np
 
-from src import utils
+from pythonaisynth import utils
 
 
 def funny(x):

@@ -9,8 +9,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from typing import Tuple
 from multiprocessing import Queue
 
-from src import utils
-from src.utils import QueueSTD_OUT, linear_interpolation, midi_to_freq
+from pythonaisynth import utils
+from .utils import QueueSTD_OUT, linear_interpolation, midi_to_freq
 
 
 try:
