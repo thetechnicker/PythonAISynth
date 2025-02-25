@@ -13,33 +13,39 @@ def funny2(x):
 
 
 def funny3(x):
-    return np.sin(np.cos(x) * np.maximum(0, x)) / np.cos(1 / (x+0.001))
+    return np.sin(np.cos(x) * np.maximum(0, x)) / np.cos(1 / (x + 0.001))
 
 
 def my_random(x):
-    x = x-np.pi
+    x = x - np.pi
     return np.sin(x * np.random.uniform(-1, 1, size=x.shape))
 
 
 def my_complex_function(x):
     x = np.abs(x)  # Ensure x is non-negative for relu
-    return np.where(x > 0,
-                    np.sin(x) * (np.sin(np.tan(x) * x) /
-                                 np.cos(np.random.uniform(-1, 1, size=x.shape) * x)),
-                    -np.sin(-x) * (np.sin(np.tan(-x) * -x) / np.cos(np.random.uniform(-1, 1, size=x.shape) * -x)))
+    return np.where(
+        x > 0,
+        np.sin(x)
+        * (np.sin(np.tan(x) * x) / np.cos(np.random.uniform(-1, 1, size=x.shape) * x)),
+        -np.sin(-x)
+        * (
+            np.sin(np.tan(-x) * -x)
+            / np.cos(np.random.uniform(-1, 1, size=x.shape) * -x)
+        ),
+    )
 
 
 def nice(x):
     x_greater_pi = False
     # x = utils.map_value(x, -np.pi, np.pi, 0, 2*np.pi)
-    if x >= 2*np.pi:
+    if x >= 2 * np.pi:
         x_greater_pi = True
         x = x - np.pi
-    if x > (np.pi/2):
+    if x > (np.pi / 2):
         y = np.sin(np.tan(x))
-    elif 0 < x and x < (np.pi/2):
+    elif 0 < x and x < (np.pi / 2):
         y = np.cos(-np.tan(x))
-    elif (-np.pi/2) < x and x < 0:
+    elif (-np.pi / 2) < x and x < 0:
         y = np.cos(np.tan(x))
     else:
         y = np.sin(-np.tan(x))
@@ -53,10 +59,17 @@ def nice_2(x):
     x_greater_pi = x >= 2 * np.pi
     x = np.where(x_greater_pi, x - np.pi, x)
 
-    y = np.where(x > (np.pi / 2), np.sin(np.tan(x)),
-                 np.where((0 < x) & (x < (np.pi / 2)), np.cos(-np.tan(x)),
-                          np.where(((-np.pi / 2) < x) & (x < 0), np.cos(np.tan(x)),
-                                   np.sin(-np.tan(x)))))
+    y = np.where(
+        x > (np.pi / 2),
+        np.sin(np.tan(x)),
+        np.where(
+            (0 < x) & (x < (np.pi / 2)),
+            np.cos(-np.tan(x)),
+            np.where(
+                ((-np.pi / 2) < x) & (x < 0), np.cos(np.tan(x)), np.sin(-np.tan(x))
+            ),
+        ),
+    )
 
     y = np.where(x_greater_pi, -y, y)
     return y
@@ -76,34 +89,43 @@ def my_generated_function(x):
 
 
 def extreme(x):
-    y = np.tile(np.array([-1, 1]), len(x)//2).flatten()
+    y = np.tile(np.array([-1, 1]), len(x) // 2).flatten()
     if len(y) < len(x):
         y = np.append(y, [y[-2]])
     return y
 
 
 predefined_functions_dict = {
-    'funny': funny,
-    'funny2': funny2,
-    'funny3': funny3,
-    'random': my_random,
-    'cool': my_complex_function,
-    'bing': my_generated_function,
-    'nice': nice_2,
-    'extreme': extreme,
-    'sin': np.sin,
-    'cos': np.cos,
-    'tan': np.tan,
-    'relu': lambda x: np.maximum(0, x - np.pi),
+    "funny": funny,
+    "funny2": funny2,
+    "funny3": funny3,
+    "random": my_random,
+    "cool": my_complex_function,
+    "bing": my_generated_function,
+    "nice": nice_2,
+    "extreme": extreme,
+    "sin": np.sin,
+    "cos": np.cos,
+    "tan": np.tan,
+    "relu": lambda x: np.maximum(0, x - np.pi),
     # ELU approximation
-    'elu': lambda x: np.where(x - np.pi > 0, x - np.pi, np.expm1(x - np.pi)),
-    'linear': lambda x: x - np.pi,  # Linear function
-    'sigmoid': lambda x: 1 / (1 + np.exp(-(x - np.pi))),
-    'exponential': lambda x: np.exp(x - np.pi),
+    "elu": lambda x: np.where(x - np.pi > 0, x - np.pi, np.expm1(x - np.pi)),
+    "linear": lambda x: x - np.pi,  # Linear function
+    "sigmoid": lambda x: 1 / (1 + np.exp(-(x - np.pi))),
+    "exponential": lambda x: np.exp(x - np.pi),
     # SELU approximation
-    'selu': lambda x: np.where(x - np.pi > 0, 1.0507 * (x - np.pi), 1.0507 * (np.exp(x - np.pi) - 1)),
+    "selu": lambda x: np.where(
+        x - np.pi > 0, 1.0507 * (x - np.pi), 1.0507 * (np.exp(x - np.pi) - 1)
+    ),
     # GELU approximation
-    'gelu': lambda x: 0.5 * (x - np.pi) * (1 + np.tanh(np.sqrt(2 / np.pi) * ((x - np.pi) + 0.044715 * np.power((x - np.pi), 3))))
+    "gelu": lambda x: 0.5
+    * (x - np.pi)
+    * (
+        1
+        + np.tanh(
+            np.sqrt(2 / np.pi) * ((x - np.pi) + 0.044715 * np.power((x - np.pi), 3))
+        )
+    ),
 }
 
 

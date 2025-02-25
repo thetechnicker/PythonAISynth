@@ -8,7 +8,7 @@ from tkinter import ttk
 
 from .utils import center_and_scale, run_after_ms, tk_after_errorless
 
-matplotlib.use('TkAgg')
+matplotlib.use("TkAgg")
 
 
 class GraphCanvas(ttk.Frame):
@@ -20,32 +20,31 @@ class GraphCanvas(ttk.Frame):
         self.x = np.linspace(0, 2 * np.pi, 500)
         self.y = np.zeros_like(self.x)  # Initial y values set to 0
 
-        plt.style.use('dark_background')
+        plt.style.use("dark_background")
         # Create the plot
         self.fig, self.ax = plt.subplots(figsize=(10, 6))
-        self.line, = self.ax.plot(
-            self.x, self.y, '-o', markersize=5)  # Red dots
+        (self.line,) = self.ax.plot(self.x, self.y, "-o", markersize=5)  # Red dots
 
         # Set the x and y axis limits
         self.ax.set_xlim(0, 2 * np.pi)
         self.ax.set_ylim(-2, 2)
 
         # Set the x and y axis labels
-        self.ax.set_xlabel('x (radians)')
-        self.ax.set_ylabel('y')
+        self.ax.set_xlabel("x (radians)")
+        self.ax.set_ylabel("y")
 
         # Customize the ticks on the x-axis
-        self.ax.set_xticks([0, np.pi/2, np.pi, 3*np.pi/2, 2*np.pi])
-        self.ax.set_xticklabels(['0', 'π/2', 'π', '3π/2', '2π'])
+        self.ax.set_xticks([0, np.pi / 2, np.pi, 3 * np.pi / 2, 2 * np.pi])
+        self.ax.set_xticklabels(["0", "π/2", "π", "3π/2", "2π"])
 
         # Draw the grid
         self.ax.grid()
 
         # Add a title
-        self.ax.set_title('Draw Shape of Soundwave')
+        self.ax.set_title("Draw Shape of Soundwave")
 
         # Create a cursor for better visibility
-        self.cursor = Cursor(self.ax, useblit=True, color='blue', linewidth=1)
+        self.cursor = Cursor(self.ax, useblit=True, color="blue", linewidth=1)
 
         # Variables to track the selected point
         self.selected_index = None
@@ -55,11 +54,9 @@ class GraphCanvas(ttk.Frame):
         self.existing_plots = {}
 
         # Connect the events to the functions
-        self.fig.canvas.mpl_connect('button_press_event', self.on_mouse_press)
-        self.fig.canvas.mpl_connect(
-            'button_release_event', self.on_mouse_release)
-        self.fig.canvas.mpl_connect(
-            'motion_notify_event', self.on_mouse_motion)
+        self.fig.canvas.mpl_connect("button_press_event", self.on_mouse_press)
+        self.fig.canvas.mpl_connect("button_release_event", self.on_mouse_release)
+        self.fig.canvas.mpl_connect("motion_notify_event", self.on_mouse_motion)
 
         # Create a canvas to embed the plot in Tkinter
         self.redraw_needed = False
@@ -98,12 +95,15 @@ class GraphCanvas(ttk.Frame):
                 if self.last_index is not None:
                     start_index = self.last_index
                     end_index = new_index
-                    indices = np.arange(
-                        start_index, end_index + 1) if new_index > self.selected_index else np.arange(start_index, end_index - 1, -1)
-                    percentages = (indices - start_index) / \
-                        (end_index - start_index)
-                    self.y[indices] = event.ydata * percentages + \
-                        self.y[start_index] * (1 - percentages)
+                    indices = (
+                        np.arange(start_index, end_index + 1)
+                        if new_index > self.selected_index
+                        else np.arange(start_index, end_index - 1, -1)
+                    )
+                    percentages = (indices - start_index) / (end_index - start_index)
+                    self.y[indices] = event.ydata * percentages + self.y[
+                        start_index
+                    ] * (1 - percentages)
                 self.selected_index = new_index
                 self.update_y()
                 self.last_index = new_index
@@ -135,11 +135,13 @@ class GraphCanvas(ttk.Frame):
             self.existing_plots[name].remove()
 
         if type == "points":
-            plot_line, = self.ax.plot(
-                x_values, y_values, 'ro', label=name)  # 'ro' for red dots
+            (plot_line,) = self.ax.plot(
+                x_values, y_values, "ro", label=name
+            )  # 'ro' for red dots
         elif type == "line":
-            plot_line, = self.ax.plot(
-                x_values, y_values, 'r-', label=name)  # 'r-' for red line
+            (plot_line,) = self.ax.plot(
+                x_values, y_values, "r-", label=name
+            )  # 'r-' for red line
         else:
             raise ValueError("Invalid type. Use 'points' or 'line'.")
 
@@ -170,8 +172,9 @@ class GraphCanvas(ttk.Frame):
                 self.existing_plots[name].set_ydata(y_values)
             else:
                 # Create a new plot for the function
-                plot_line, = self.ax.plot(
-                    x_values, y_values, label=f'Function: {name}')
+                (plot_line,) = self.ax.plot(
+                    x_values, y_values, label=f"Function: {name}"
+                )
                 self.ax.legend()
                 # Store the new plot line
                 self.existing_plots[name] = plot_line
@@ -200,8 +203,9 @@ class GraphCanvas(ttk.Frame):
                     self.existing_plots[func.__name__].remove()
 
                 # Create a new plot for the function
-                plot_line, = self.ax.plot(
-                    x_values, y_values, label=f'Function: {func.__name__}')
+                (plot_line,) = self.ax.plot(
+                    x_values, y_values, label=f"Function: {func.__name__}"
+                )
                 self.ax.legend()
                 # Store the new plot line
                 self.existing_plots[func.__name__] = plot_line

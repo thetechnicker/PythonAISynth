@@ -15,6 +15,7 @@ from .utils import QueueSTD_OUT, linear_interpolation, midi_to_freq
 
 try:
     import torch_directml
+
     DIRECTML = True
 except ImportError:
     DIRECTML = False
@@ -25,7 +26,7 @@ DISABLE_GPU = False
 class FourierLayer(nn.Module):
     def __init__(self, fourier_degree):
         super(FourierLayer, self).__init__()
-        self.tensor = torch.arange(1, fourier_degree+1)
+        self.tensor = torch.arange(1, fourier_degree + 1)
 
     def forward(self, x):
         self.tensor = self.tensor.to(x.device)
@@ -37,8 +38,7 @@ class FourierLayer(nn.Module):
 class FourierRegresionModel(nn.Module):
     def __init__(self, degree):
         super(FourierRegresionModel, self).__init__()
-        self.frequencies = torch.arange(
-            1, degree+1, 1, dtype=torch.float32)
+        self.frequencies = torch.arange(1, degree + 1, 1, dtype=torch.float32)
         self.a1 = nn.Parameter(torch.ones((degree)))
         self.a2 = nn.Parameter(torch.ones((degree)))
         self.c = nn.Parameter(torch.zeros(1))
@@ -46,7 +46,7 @@ class FourierRegresionModel(nn.Module):
     def forward(self, x):
         y1 = self.a1 * torch.sin(self.frequencies * x)
         y2 = self.a2 * torch.cos(self.frequencies * x)
-        z = torch.sum(y1, dim=-1)+torch.sum(y2, dim=-1) + self.c
+        z = torch.sum(y1, dim=-1) + torch.sum(y2, dim=-1) + self.c
         return z
 
     def to(self, device):
@@ -54,15 +54,15 @@ class FourierRegresionModel(nn.Module):
         return super(FourierRegresionModel, self).to(device)
 
 
-class FourierNN():
+class FourierNN:
     SAMPLES = 1000
     EPOCHS = 1000
     DEFAULT_FORIER_DEGREE = 100
     FORIER_DEGREE_DIVIDER = 1
     FORIER_DEGREE_OFFSET = 0
     PATIENCE = 100
-    OPTIMIZER = 'SGD'
-    LOSS_FUNCTION = 'HuberLoss'
+    OPTIMIZER = "SGD"
+    LOSS_FUNCTION = "HuberLoss"
     CALC_FOURIER_DEGREE_BY_DATA_LENGTH = False
 
     def __init__(self, lock, data=None, stdout_queue=None):
@@ -76,14 +76,16 @@ class FourierNN():
         self.stdout_queue = stdout_queue
         self.device = None
         if DIRECTML and not DISABLE_GPU:
-            self.device = torch_directml.device() if torch_directml.is_available() else None
+            self.device = (
+                torch_directml.device() if torch_directml.is_available() else None
+            )
         if not self.device:
             if torch.cuda.is_available() and torch.version.hip and not DISABLE_GPU:
-                self.device = torch.device('rocm')
+                self.device = torch.device("rocm")
             elif torch.cuda.is_available() and not DISABLE_GPU:
-                self.device = torch.device('cuda')
+                self.device = torch.device("cuda")
             else:
-                self.device = torch.device('cpu')
+                self.device = torch.device("cpu")
         print(self.device)
         if data is not None:
             self.update_data(data)
@@ -98,8 +100,7 @@ class FourierNN():
             if hasattr(self, key):
                 setattr(self, key, val)
             else:
-                raise ValueError(
-                    f"Parameter '{key}' does not exist in the model.")
+                raise ValueError(f"Parameter '{key}' does not exist in the model.")
 
         # If the data has been prepared, recreate the model with updated parameters
         if self.prepared_data:
@@ -117,15 +118,19 @@ class FourierNN():
     def update_data(self, data, stdout_queue=None):
         if stdout_queue:
             self.stdout_queue = stdout_queue
-        self.prepared_data = self.prepare_data(
-            list(data), std_queue=self.stdout_queue)
+        self.prepared_data = self.prepare_data(list(data), std_queue=self.stdout_queue)
         if not self.current_model:
             self.current_model = self.create_model()
 
     def update_fourier_degree(self):
-        self.fourier_degree = ((
-            (self.orig_data_len // self.FORIER_DEGREE_DIVIDER) + self.FORIER_DEGREE_OFFSET)
-            if self.CALC_FOURIER_DEGREE_BY_DATA_LENGTH else self.DEFAULT_FORIER_DEGREE)
+        self.fourier_degree = (
+            (
+                (self.orig_data_len // self.FORIER_DEGREE_DIVIDER)
+                + self.FORIER_DEGREE_OFFSET
+            )
+            if self.CALC_FOURIER_DEGREE_BY_DATA_LENGTH
+            else self.DEFAULT_FORIER_DEGREE
+        )
 
     def prepare_data(self, data, std_queue: Queue = None):
         if std_queue:
@@ -135,16 +140,15 @@ class FourierNN():
 
         self.update_fourier_degree()
 
-        x_train, y_train = linear_interpolation(
-            data, self.SAMPLES)  # , self.device)
-        x_test, y_test = linear_interpolation(
-            data, self.SAMPLES//2)  # , self.device)
+        x_train, y_train = linear_interpolation(data, self.SAMPLES)  # , self.device)
+        x_test, y_test = linear_interpolation(data, self.SAMPLES // 2)  # , self.device)
 
-        return (x_train.unsqueeze(1),
-                y_train,
-                x_test.unsqueeze(1),
-                y_test,
-                )
+        return (
+            x_train.unsqueeze(1),
+            y_train,
+            x_test.unsqueeze(1),
+            y_test,
+        )
 
     def train(self, test_data, queue=None, quiet=False, stdout_queue=None):
         # exit(-1)
@@ -152,11 +156,13 @@ class FourierNN():
         if stdout_queue:
             sys.stdout = QueueSTD_OUT(stdout_queue)
 
-        print(self.OPTIMIZER,
-              self.LOSS_FUNCTION,
-              self.fourier_degree,
-              self.PATIENCE,
-              sep="\n")
+        print(
+            self.OPTIMIZER,
+            self.LOSS_FUNCTION,
+            self.fourier_degree,
+            self.PATIENCE,
+            sep="\n",
+        )
 
         x_train_transformed, y_train, test_x, test_y = self.prepared_data
 
@@ -172,23 +178,25 @@ class FourierNN():
         test_y = test_y.to(self.device)
 
         optimizer = utils.get_optimizer(
-            optimizer_name=self.OPTIMIZER,
-            model_parameters=model.parameters(),
-            lr=0.1)
+            optimizer_name=self.OPTIMIZER, model_parameters=model.parameters(), lr=0.1
+        )
         criterion = utils.get_loss_function(self.LOSS_FUNCTION)
 
         train_dataset = TensorDataset(x_train_transformed, y_train)
         train_loader = DataLoader(
-            train_dataset, batch_size=int(self.SAMPLES / 2), shuffle=True)
+            train_dataset, batch_size=int(self.SAMPLES / 2), shuffle=True
+        )
 
         # prepared_test_data = torch.tensor(
         #     data=FourierNN.fourier_basis_numba(
         #         data=test_data.flatten(),
         #         indices=FourierNN.precompute_indices(self.fourier_degree)),
         #     dtype=torch.float32).to(self.device)
-        prepared_test_data = torch.tensor(
-            test_data.flatten(),
-            dtype=torch.float32, device=self.device).unsqueeze(1).to(self.device)
+        prepared_test_data = (
+            torch.tensor(test_data.flatten(), dtype=torch.float32, device=self.device)
+            .unsqueeze(1)
+            .to(self.device)
+        )
 
         min_delta = 0.001  # 4.337714676382401e-14
         epoch_without_change = 0
@@ -202,8 +210,7 @@ class FourierNN():
             epoch_loss = 0
             try:
                 for batch_x, batch_y in train_loader:
-                    batch_x, batch_y = batch_x.to(
-                        self.device), batch_y.to(self.device)
+                    batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
                     optimizer.zero_grad()
                     outputs = model(batch_x)
                     loss = criterion(outputs, batch_y)
@@ -220,20 +227,21 @@ class FourierNN():
             model.eval()
             with torch.no_grad():
                 val_outputs = model(test_x)
-                val_loss = criterion(val_outputs,
-                                     test_y.to(self.device))
+                val_loss = criterion(val_outputs, test_y.to(self.device))
                 if queue and epoch % 10 == 0:
                     predictions = model(prepared_test_data).cpu().numpy()
                     queue.put(predictions)
 
             # callback.on_epoch_end(epoch, epoch_loss, val_loss.item(), model)
             time_taken = time.perf_counter_ns() - timestamp
-            print(f"epoch {epoch+1} ends. "
-                  f"loss: {epoch_loss:3.5f}, "
-                  f"val_loss: {val_loss:3.5f}. "
-                  f"Time Taken: {time_taken / 1_000_000_000}s")
+            print(
+                f"epoch {epoch+1} ends. "
+                f"loss: {epoch_loss:3.5f}, "
+                f"val_loss: {val_loss:3.5f}. "
+                f"Time Taken: {time_taken / 1_000_000_000}s"
+            )
 
-            if abs(val_loss) < min_loss-min_delta:
+            if abs(val_loss) < min_loss - min_delta:
                 min_loss = abs(val_loss)
                 epoch_without_change = 0
             else:
@@ -259,13 +267,13 @@ class FourierNN():
         with torch.no_grad():
             y = model(x)
 
-        self.current_model = self.current_model.to('cpu')
+        self.current_model = self.current_model.to("cpu")
         return y.cpu().numpy()
 
-    def save_model(self, filename='./tmp/model.pth'):
+    def save_model(self, filename="./tmp/model.pth"):
         torch.save(self.current_model.state_dict(), filename)
 
-    def load_new_model_from_file(self, filename='./tmp/model.pth', *, delete_tmp=False):
+    def load_new_model_from_file(self, filename="./tmp/model.pth", *, delete_tmp=False):
         self.current_model = self.create_model()
         model = torch.load(filename, weights_only=False)
         if delete_tmp:

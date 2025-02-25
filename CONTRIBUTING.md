@@ -60,8 +60,8 @@ Please follow these steps to have your contribution considered by the maintainer
 
 ### Python Style Guide
 
-- Use PEP 8 style guide.
-- Use `ms-python.autopep8` from VSCode for formatting.
+- Use The Black code style.
+- Use `ms-python.black-formatter` from VSCode for formatting.
 
 ### Clean Code and Documentation
 
