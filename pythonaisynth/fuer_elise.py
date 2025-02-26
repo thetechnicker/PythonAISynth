@@ -1,8 +1,17 @@
 import mido
 import time
+import os
 
 # Define the MIDI output port
-output = mido.open_output("LoopBe Internal MIDI 1")
+if os.name == "nt":
+    output = mido.open_output("LoopBe Internal MIDI 1")
+else:
+    try:
+        output = mido.open_output("Midi Through Port-0")
+    except:
+        print("no midi loopback found")
+        exit()
+
 
 # Define the notes for "Für Elise"
 fur_elise = [
