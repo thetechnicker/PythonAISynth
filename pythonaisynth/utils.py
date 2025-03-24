@@ -5,7 +5,7 @@ import random
 import sys
 import threading
 import time
-from typing import Any, Callable, TextIO
+from typing import Any, Callable, TextIO, Tuple
 import numpy as np
 import psutil
 from scipy.fft import dst
@@ -27,6 +27,28 @@ class QueueSTD_OUT(TextIO):
             self.queue.put(msg)
         except EOFError:
             exit()
+
+    def flush(self):
+        pass
+
+    def fileno(self):
+        raise IOError("This TextIO does not have a file descriptor.")
+
+    def isatty(self):
+        return sys.stdout.isatty()
+
+    def readable(self):
+        return True
+
+    def writable(self):
+        return True
+
+    def seekable(self):
+        return False
+
+    def writelines(self, lines):
+        for line in lines:
+            self.write(line)
 
 
 def DIE(process: Process, join_timeout=30, term_iterations=50):
@@ -65,19 +87,19 @@ def calculate_max_batch_size(num_features, dtype=np.float32, memory_buffer=0.1):
 
 
 def messure_time_taken(name, func, *args, wait=True, **kwargs):
-    if not hasattr(messure_time_taken, 'time_taken'):
+    if not hasattr(messure_time_taken, "time_taken"):
         messure_time_taken.time_taken = {}
     if name not in messure_time_taken.time_taken:
         messure_time_taken.time_taken[name] = 0
     timestamp = time.perf_counter_ns()
     result = func(*args, **kwargs)
-    time_taken = (time.perf_counter_ns()-timestamp)/1_000_000  # _000
-    print(
-        f"Time taken for {name}: {time_taken:6.6f}ms")
+    time_taken = (time.perf_counter_ns() - timestamp) / 1_000_000  # _000
+    print(f"Time taken for {name}: {time_taken:6.6f}ms")
     if wait:
         input("paused")
     messure_time_taken.time_taken[name] = max(
-        messure_time_taken.time_taken[name], time_taken)
+        messure_time_taken.time_taken[name], time_taken
+    )
     return result
 
 
@@ -91,13 +113,13 @@ def midi_to_freq(midi_note):
 
 def pair_iterator(lst):
     for i in range(len(lst) - 1):
-        yield lst[i], lst[i+1]
+        yield lst[i], lst[i + 1]
 
 
 def note_iterator(lst):
-    for i in range(len(lst)-1):
-        yield lst[i], lst[i+1]
-    yield lst[len(lst)-1], None
+    for i in range(len(lst) - 1):
+        yield lst[i], lst[i + 1]
+    yield lst[len(lst) - 1], None
 
 
 def find_two_closest(num_list, x):
@@ -108,7 +130,7 @@ def find_two_closest(num_list, x):
     return sorted_list[:2]
 
 
-@ njit
+@njit
 def interpolate(point1, point2, t=0.5):
     """
     Interpolate between two 2D points.
@@ -130,7 +152,7 @@ def interpolate(point1, point2, t=0.5):
     return (x, y)
 
 
-@ njit
+@njit
 def interpolate_vectorized(point1, point2, t_values):
     """
     Vectorized interpolation between two 2D points.
@@ -183,8 +205,8 @@ def map_value_old(x, a1, a2, b1, b2):
 
 def random_hex_color():
     # Generate a random color in hexadecimal format
-    color = '{:06x}'.format(random.randint(0x111111, 0xFFFFFF))
-    return '#' + color
+    color = "{:06x}".format(random.randint(0x111111, 0xFFFFFF))
+    return "#" + color
 
 
 def random_color():
@@ -193,7 +215,7 @@ def random_color():
 
 
 def get_prepared_random_color(maxColors=None):
-    if not hasattr(get_prepared_random_color, 'colors'):
+    if not hasattr(get_prepared_random_color, "colors"):
         get_prepared_random_color.colors = []
         for i in range(maxColors or 100):
             while True:
@@ -222,22 +244,24 @@ def exec_with_queue_stdout(func: Callable, *args, queue: Queue):
 
 
 def calculate_peak_frequency(signal):
-    np.savetxt('tmp/why_do_i_need_this_array.txt', signal)
-    test_data = np.loadtxt('tmp/why_do_i_need_this_array.txt')
+    np.savetxt("tmp/why_do_i_need_this_array.txt", signal)
+    test_data = np.loadtxt("tmp/why_do_i_need_this_array.txt")
     test_data = test_data - np.mean(test_data)
 
     # Perform the Discrete Sine Transform (DST)
-    transformed_signal = dst(test_data, type=4, norm='ortho')
+    transformed_signal = dst(test_data, type=4, norm="ortho")
 
     peak_index = np.argmax(np.abs(transformed_signal))
-    peak_freq = (peak_index+1)/2
+    peak_freq = (peak_index + 1) / 2
     return peak_freq
 
 
 timers = []
 
 
-def run_after_ms(delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
+def run_after_ms(
+    delay_ms: int, func: Callable[..., Any], *args: Any, **kwargs: Any
+) -> None:
     """
     Schedules a function to be run after a specified delay in milliseconds.
 
@@ -267,7 +291,9 @@ def cleanup_timers():
 atexit.register(cleanup_timers)
 
 
-def tk_after_errorless(master: tk.Tk, delay_ms: int, func: Callable[..., Any], *args: Any):
+def tk_after_errorless(
+    master: tk.Tk, delay_ms: int, func: Callable[..., Any], *args: Any
+):
     def safe_call(master: tk.Tk, func: Callable[..., Any], *args: Any):
         if master.winfo_exists():
             func(*args)
@@ -296,7 +322,9 @@ def get_loss_function(loss_name, **kwargs):
     raise ValueError(f"Loss function '{loss_name}' not found in torch.nn")
 
 
-def linear_interpolation(data, target_length, device='cpu'):
+def linear_interpolation(
+    data, target_length, device="cpu"
+) -> Tuple[torch.Tensor, torch.Tensor]:
     # Convert data to a tensor and move to the specified device
     data = np.array(data)
     data_tensor = torch.tensor(data, dtype=torch.float32).to(device)
@@ -306,16 +334,22 @@ def linear_interpolation(data, target_length, device='cpu'):
     y_values = data_tensor[:, 1]
 
     # Generate new x values
-    new_x_values = torch.linspace(
-        x_values.min(), x_values.max(), target_length).to(device)
+    new_x_values = torch.linspace(x_values.min(), x_values.max(), target_length).to(
+        device
+    )
 
     # Perform linear interpolation
-    new_y_values = F.interpolate(y_values.unsqueeze(0).unsqueeze(0),
-                                 size=new_x_values.size(0),
-                                 mode='linear',
-                                 align_corners=True).squeeze()
+    new_y_values = F.interpolate(
+        y_values.unsqueeze(0).unsqueeze(0),
+        size=new_x_values.size(0),
+        mode="linear",
+        align_corners=True,
+    ).squeeze()
 
-    return (new_x_values.cpu(), new_y_values.cpu(),)
+    return (
+        new_x_values.cpu(),
+        new_y_values.cpu(),
+    )
 
 
 def center_and_scale(arr):
@@ -374,13 +408,39 @@ def timed_generator(iterable):
         yield item
         end_time = time.time()
         print(
-            f"Time taken for this iteration: {((end_time - start_time)/1_000_000_000):10.9f}s")
+            f"Time taken for this iteration: {((end_time - start_time)/1_000_000_000):10.9f}s"
+        )
 
 
 def timed_loop(condition):
+    """
+    A generator that runs a timed loop while the condition is true.
+
+    Args:
+        condition (bool): A condition that controls the loop.
+
+    Yields:
+        None: Control is yielded back to the caller.
+    """
+    max_val = 0
+    total_time = 0
+    iteration_count = 0
+
     while condition:
         start_time = time.perf_counter_ns()
-        yield
-        end_time = time.perf_counter_ns()
-        print(
-            f"Time taken for this iteration: {((end_time - start_time)/1_000_000_000):10.9f}ms")
+        yield  # Yield control back to the caller
+        current_time = time.perf_counter_ns() - start_time
+
+        max_val = max(current_time, max_val)
+        total_time += current_time
+        iteration_count += 1
+
+        if total_time >= 100_000_000:  # 100 milliseconds
+            avg_time = (
+                total_time / iteration_count
+            ) / 1_000_000  # Convert to milliseconds
+            max_time = max_val / 1_000_000  # Convert to milliseconds
+            print(
+                f"Time taken for this iteration: {avg_time:10.9f} ms, max_val: {max_time:10.3f} ms"
+            )
+            total_time, iteration_count = 0, 0  # Reset for the next period

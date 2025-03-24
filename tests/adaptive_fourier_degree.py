@@ -24,8 +24,8 @@ EPOCHS_BEFORE_ADJUSTMENT = 100
 TRAIN_SAMPLES = 1000
 
 # autopep8: off
-from context import scr
-from scr import predefined_functions
+from context import src
+from src import predefined_functions
 # autopep8: on
 
 

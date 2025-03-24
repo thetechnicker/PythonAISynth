@@ -21,7 +21,7 @@ conda activate ai_synth
 Once the project setup is complete, you can initiate it by executing the `main.py` file in the environment:
 
 ```bash
-python main.py
+python -m pythonaisynth.main
 ```
 
 ![window](docs/img/main_window_v3.png)

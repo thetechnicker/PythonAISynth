@@ -8,16 +8,16 @@ import torch
 import sounddevice as sd
 
 # autopep8: off
-from context import scr
-from scr import predefined_functions, utils
-from scr.fourier_neural_network import FourierNN
-from scr.music import Synth2, Synth3
+from context import src
+from src import predefined_functions, utils
+from src.fourier_neural_network import FourierNN
+from src.music import Synth2, Synth2
 # autopep8: on
 
 
 def _1():
     # to avoid removing importent import of scr
-    scr
+    src
 
 
 fourier_nn = None
@@ -66,7 +66,7 @@ def main():
 
 
 def stupid_thread(fourier_nn):
-    synth = Synth3(fourier_nn)
+    synth = Synth2(fourier_nn)
     # synth.current_notes.add(45)
     synth.run_live_synth()
     while True:

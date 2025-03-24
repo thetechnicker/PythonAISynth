@@ -1,5 +1,7 @@
 # My Idea about this programm
 
+> This was my Plan at the Beginning
+
 I want to create a Python-Application where you draw a function and a neural-net tries to aproximate it to make sound from it.
 
 ## GUI Desing
@@ -20,6 +22,8 @@ The amount of samples in the training data should be able to be way lower than t
 $newpoint=\frac{(old\_point_1+old\_point_2)}{2}$ or by duplicating points and adding a random small amount to $x$ and $y$ of the new point.
 
 ## Future Plans for My Synth Project
+
+> These plans will not be considered for implementation in the near Future.
 
 Here are some enhancements I'm considering for my synth project:
 
