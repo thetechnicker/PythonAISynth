@@ -1,15 +1,22 @@
+import ctypes
+import multiprocessing
+import wave
 import mido
 import scipy
 import torch
 from .fourier_neural_network import FourierNN
 from pythonaisynth import utils
 import atexit
-from multiprocessing import Process, Queue, current_process
+from multiprocessing import Process, Queue, Value, current_process
 import sys
 from tkinter import filedialog
 import numpy as np
 import sounddevice as sd
 import pyaudio
+
+START = 0
+STOP = 1
+PAUSE = 2
 
 
 def musik_from_file(fourier_nn: FourierNN):
@@ -275,7 +282,12 @@ class Echo:
 
 
 class Synth2:
-    def __init__(self, fourier_nn, stdout: Queue = None, port_name=None):
+    def __init__(
+        self,
+        fourier_nn,
+        stdout: Queue = None,
+        port_name=None,
+    ):
         self.stdout = stdout
         self.live_synth: Process = None
         self.notes_ready = False
@@ -292,6 +304,16 @@ class Synth2:
         self.t_buffer = torch.tensor(t, dtype=torch.float32)
         print(self.t_buffer.shape)
         self.port_name = port_name
+        self.command_queue = multiprocessing.Queue()
+
+    def start_recording(self, file_name):
+        self.command_queue.put((START, file_name))
+
+    def stop_recording(self):
+        self.command_queue.put((STOP,))
+
+    def pause_recording(self):
+        self.command_queue.put((PAUSE,))
 
     def set_port_name(self, port_name):
         self.port_name = port_name
@@ -350,9 +372,27 @@ class Synth2:
         notes = {}
         model = self.fourier_nn.current_model.to(self.fourier_nn.device)
         self.play_init_sound()
+        output_file = None
+        is_recoding = False
 
         with mido.open_input(self.port_name) as midi_input:
             while True:
+                if not self.command_queue.empty():
+                    c = self.command_queue.get_nowait()
+                    if is_recoding and not (output_file is None):
+                        if c[0] == STOP:
+                            output_file.close()
+                            output_file = None
+                            is_recoding = False
+                        elif c[0] == PAUSE:
+                            is_recoding = False
+                    else:
+                        if c[0] == START:
+                            is_recoding = True
+                            output_file = wave.open(c[1], "wb")
+                            output_file.setnchannels(1)  # Mono
+                            output_file.setsampwidth(4)
+                            output_file.setframerate(self.sample_rate)
                 # for _ in utils.timed_loop(True):
                 available_buffer = stream.get_write_available()
                 if available_buffer == 0:
@@ -423,8 +463,13 @@ class Synth2:
                     audio_data = normalize(audio_data)
                     audio_data *= 1  # oscilating_amplitude
                     audio_data = np.clip(audio_data, -1, 1)
+                    audio_data = audio_data.astype(np.float32)
+
+                    if is_recoding:
+                        output_file.writeframes(audio_data)
+
                     stream.write(
-                        audio_data.astype(np.float32),
+                        audio_data,
                         available_buffer,
                         exception_on_underflow=True,
                     )
@@ -447,10 +492,9 @@ class Synth2:
         atexit.register(utils.DIE, self.live_synth, 0, 0)
 
     def __getstate__(self) -> object:
-        live_synth = self.live_synth
-        del self.live_synth
         Synth_dict = self.__dict__.copy()
-        self.live_synth = live_synth
+        del Synth_dict["live_synth"]
+        # del Synth_dict["command_queue"]
         return Synth_dict
 
     def __setstate__(self, state):

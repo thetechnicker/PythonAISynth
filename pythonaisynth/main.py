@@ -138,6 +138,8 @@ class MainGUI(tk.Tk):
         self.graph.grid(row=1, column=0, columnspan=3, sticky="NSEW")
         self.create_controll_column()
         self.create_status_bar()
+        self.is_recording = False
+        # self.is_paused = False
         # sys.stdout = utils.QueueSTD_OUT(self.std_queue)
 
     # def destroy(self):
@@ -327,6 +329,8 @@ class MainGUI(tk.Tk):
                 ("Play Music from MIDI Port", self.play_music),
                 ("Play Music from MIDI File", self.play_music_file),
                 ("Play Example", self.play_example),
+                ("Record to File", self.start_recording),
+                ("Stop Recording", self.stop_recording),
             ],
         )
 
@@ -534,6 +538,23 @@ class MainGUI(tk.Tk):
         pass
         # path = os.path.join(os.path.dirname(__file__), "fuer_elise.py")
         # subprocess.Popen(["python", path])
+
+    def start_recording(self):
+        if self.synth and not self.is_recording:
+            file_path = filedialog.asksaveasfilename(
+                title="Save Recording",
+                defaultextension=".wav",
+                filetypes=(("WAV files", "*.wav"), ("All files", "*.*")),
+            )
+            if file_path:
+                print(f"Recording will be saved to: {file_path}")
+            self.synth.start_recording(file_path)
+            self.is_recording = True
+
+    def stop_recording(self):
+        if self.synth and self.is_recording:
+            self.synth.stop_recording()
+            self.is_recording = False
 
 
 # for "invalid command" in the tk.TK().after() function when programm gets closed
