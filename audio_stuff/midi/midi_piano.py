@@ -119,11 +119,11 @@ for a in range(octaves_to_display):
         )
         button.grid(row=0, column=white_keys[i] + a * 12)
 
-        def press(event, i=i, a=a):
+        def press(event, button=button, i=i, a=a):
             button.config(relief="sunken")
             return send_midi_note(white_keys[i] + a * 12, type="note_on")
 
-        def release(event, i=i, a=a):
+        def release(event, button=button, i=i, a=a):
             button.config(relief="raised")
             return send_midi_note(white_keys[i] + a * 12, type="note_off")
 
