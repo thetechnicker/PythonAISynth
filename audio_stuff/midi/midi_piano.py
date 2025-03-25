@@ -32,7 +32,8 @@ selected_channel = tk.StringVar(window)
 selected_channel.set("1")  # default value
 
 # Create a dropdown menu to select the MIDI channel
-channel_menu = tk.OptionMenu(window, selected_channel, *[str(i) for i in range(1, 17)])
+channel_menu = tk.OptionMenu(
+    window, selected_channel, *[str(i) for i in range(1, 17)])
 channel_menu.pack()
 
 # Create a variable to store the selected octave
@@ -85,19 +86,39 @@ white_keys_bindings_per_octaves = [
     ["a", "s", "d", "f", "g", "h", "j"],
     ["k", "l", ";", "'", "z", "x", "c"],
 ]
-black_keys_bindings_per_octaves = [["w", "e", "r", "t", "y"], ["u", "i", "o", "p", "["]]
+black_keys_bindings_per_octaves = [
+    ["w", "e", "r", "t", "y"], ["u", "i", "o", "p", "["]]
 
 current_locale = locale.getlocale()
 # If the current locale is German, adjust the key bindings
 if "de_DE" in current_locale:
     white_keys_bindings_per_octaves = [
         ["a", "s", "d", "f", "g", "h", "j"],
-        ["k", "l", "odiaeresis", "adiaeresis", "y", "x", "c"],
+        ["k", "l", "ö", "ä", "y", "x", "c"],
     ]
     black_keys_bindings_per_octaves = [
         ["w", "e", "r", "t", "z"],
-        ["u", "i", "o", "p", "udiaeresis"],
+        ["u", "i", "o", "p", "ü"],
     ]
+
+sym_dict = {
+    "ä": "odiaeresis",
+    "ö": "adiaeresis",
+    "ü": "udiaeresis",
+}
+
+keypress_map = {}
+
+
+def key_press(event):
+    # print(event)
+    fn = keypress_map.get(event.char)
+    if fn:
+        fn(event)
+
+
+window.bind("<KeyPress>", key_press)
+
 
 for a in range(octaves_to_display):
     if a < len(white_keys_bindings_per_octaves) or a < len(
@@ -112,7 +133,7 @@ for a in range(octaves_to_display):
     for i in range(7):
         button = tk.Button(
             keys_frame,
-            text=f'{white_key_note[i]}\n|{white_keys_bindings[i].replace("odiaeresis", "ö").replace("adiaeresis", "ä")}|',
+            text=f'{white_key_note[i]}\n|{white_keys_bindings[i]}|',
             bg="white",
             width=2,
             height=6,
@@ -129,10 +150,11 @@ for a in range(octaves_to_display):
 
         button.bind("<ButtonPress-1>", press)
         button.bind("<ButtonRelease-1>", release)
-        # Bind the button to a key press event
         if white_keys_bindings[i] != " ":
-            window.bind("<KeyPress-%s>" % white_keys_bindings[i], press)
-            window.bind("<KeyRelease-%s>" % white_keys_bindings[i], release)
+            sym = sym_dict.get(white_keys_bindings[i], white_keys_bindings[i])
+            window.bind("<KeyRelease-%s>" %
+                        sym, release)
+            keypress_map[white_keys_bindings[i]] = press
 
     for i in range(5):
         button = tk.Button(
@@ -156,9 +178,11 @@ for a in range(octaves_to_display):
         button.bind("<ButtonPress-1>", press)
         button.bind("<ButtonRelease-1>", release)
         # Bind the button to a key press event
-        if white_keys_bindings[i] != " ":
-            window.bind("<KeyPress-%s>" % black_keys_bindings[i], press)
-            window.bind("<KeyRelease-%s>" % black_keys_bindings[i], release)
+        if black_keys_bindings[i] != " ":
+            sym = sym_dict.get(black_keys_bindings[i], black_keys_bindings[i])
+            window.bind("<KeyRelease-%s>" %
+                        sym, release)
+            keypress_map[black_keys_bindings[i]] = press
 
 
 # Run the Tkinter event loop
