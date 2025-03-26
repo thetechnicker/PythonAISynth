@@ -3,6 +3,8 @@ import subprocess
 import sys
 
 import numpy as np
+
+from pythonaisynth.fuer_elise import play_fur_elise
 from .music import Synth2, musik_from_file
 from .simple_input_dialog import askStringAndSelectionDialog
 from .std_redirect import RedirectedOutputFrame
@@ -139,6 +141,7 @@ class MainGUI(tk.Tk):
         self.create_controll_column()
         self.create_status_bar()
         self.is_recording = False
+        self.fuer_elisese_play_status = multiprocessing.Event()
         # self.is_paused = False
         # sys.stdout = utils.QueueSTD_OUT(self.std_queue)
 
@@ -331,6 +334,8 @@ class MainGUI(tk.Tk):
                 ("Play Example", self.play_example),
                 ("Record to File", self.start_recording),
                 ("Stop Recording", self.stop_recording),
+                ("Play Für Elise", self.play_fuer_eliese),
+                ("Stop Für Elise", self.play_fuer_eliese),
             ],
         )
 
@@ -555,6 +560,21 @@ class MainGUI(tk.Tk):
         if self.synth and self.is_recording:
             self.synth.stop_recording()
             self.is_recording = False
+
+    def play_fuer_eliese(self):
+        if hasattr(self, "fuer_elisese_process"):
+            self.fuer_elisese_play_status.set()
+            self.fuer_elisese_process.terminate()
+            self.fuer_elisese_play_status.clear()
+            del self.fuer_elisese_process
+        else:
+            self.fuer_elisese_process = multiprocessing.Process(
+                target=play_fur_elise,
+                args=(self.fuer_elisese_play_status,),
+                kwargs={"port_name": self.synth_gui.get_port_name()},
+            )
+            self.fuer_elisese_process.start()
+        # raise NotImplementedError
 
 
 # for "invalid command" in the tk.TK().after() function when programm gets closed

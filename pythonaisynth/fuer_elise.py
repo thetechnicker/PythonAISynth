@@ -1,12 +1,20 @@
 import multiprocessing
+import sys
 import mido
 import time
 import os
 from multiprocessing.synchronize import Event
 
+from pythonaisynth import utils
 
-def play_fur_elise(stop_event: Event, port_name=None):
+
+def play_fur_elise(stop_event: Event, port_name=None, std_out_queue=None):
+    if std_out_queue:
+        sys.stdout = utils.QueueSTD_OUT(std_out_queue)
     if port_name:
+        # i know that this is a bad workaround
+        if "LoopBe" in port_name:
+            port_name = port_name.replace("0", "1")
         output = mido.open_output(port_name)
     else:
         # Define the MIDI output port
@@ -76,6 +84,7 @@ def play_fur_elise(stop_event: Event, port_name=None):
             for note, duration in fur_elise:
                 if stop_event.is_set():
                     break
+                print(note)
                 midi_note = note_to_midi(note)
                 last_note = midi_note
                 output.send(mido.Message("note_on", note=midi_note, velocity=64))

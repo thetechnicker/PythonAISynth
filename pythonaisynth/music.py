@@ -399,31 +399,31 @@ class Synth2:
                     continue
                 midi_event = midi_input.poll()
                 if midi_event:
-                    print(midi_event)
+                    # print(midi_event)
                     # midi_event.type
                     # midi_event.note
                     # midi_event.velocity
                     if midi_event.type == "note_on":  # Note on
-                        print(
-                            "Note on",
-                            midi_event.note,
-                            utils.midi_to_freq(midi_event.note),
-                        )
+                        # print(
+                        #     "Note on",
+                        #     midi_event.note,
+                        #     utils.midi_to_freq(midi_event.note),
+                        # )
 
                         notes[midi_event.note] = [True, midi_event.velocity]
                         self.adsr_envelope.reset_note(midi_event.note)
                     elif midi_event.type == "note_off":  # Note off
-                        print(
-                            "Note off",
-                            midi_event.note,
-                            utils.midi_to_freq(midi_event.note),
-                        )
+                        # print(
+                        #     "Note off",
+                        #     midi_event.note,
+                        #     utils.midi_to_freq(midi_event.note),
+                        # )
                         if midi_event.note in notes:
                             # del notes[midi_event.note]
                             notes[midi_event.note][0] = False
 
                 if len(notes) > 0:
-                    print(f"available_buffer: {available_buffer}")
+                    # print(f"available_buffer: {available_buffer}")
                     # y = torch.zeros(size=(len(notes), available_buffer),
                     #                 device=self.fourier_nn.device)
                     y = np.zeros((len(notes), available_buffer), dtype=np.float32)
