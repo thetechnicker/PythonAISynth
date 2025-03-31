@@ -91,8 +91,9 @@ def play_fur_elise(stop_event: Event, port_name=None, std_out_queue=None):
                 time.sleep(duration / 2)
                 output.send(mido.Message("note_off", note=midi_note, velocity=64))
     except:
-        output.panic()
+        pass
     finally:
+        output.panic()
         if last_note:
             output.send(mido.Message("note_off", note=last_note, velocity=64))
         output.close()
