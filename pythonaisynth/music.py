@@ -4,7 +4,7 @@ import wave
 import mido
 import scipy
 import torch
-from .fourier_neural_network import FourierNN
+from .fourier_regression_model import FourierNN
 from pythonaisynth import utils
 import atexit
 from multiprocessing import Process, Queue, Value, current_process

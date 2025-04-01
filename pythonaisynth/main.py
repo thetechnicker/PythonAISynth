@@ -12,8 +12,8 @@ from .synth_gui import SynthGUI
 from .utils import DIE, QueueSTD_OUT, tk_after_errorless
 from .predefined_functions import predefined_functions_dict
 from .graph_canvas_v2 import GraphCanvas
-from .fourier_neural_network_gui import NeuralNetworkGUI
-from .fourier_neural_network import FourierNN
+from .fourier_regression_model_gui import RegressionModelGUI
+from .fourier_regression_model import FourierNN
 from ._version import version
 import atexit
 from multiprocessing import Process, Queue
@@ -171,7 +171,7 @@ class MainGUI(tk.Tk):
             "LOSS_FUNCTION": "HuberLoss",
         }
 
-        self.neural_network_gui = NeuralNetworkGUI(
+        self.neural_network_gui = RegressionModelGUI(
             self.frame, defaults=defaults, callback=self.update_frourier_params
         )
         self.neural_network_gui.grid(row=0, sticky="NSEW")

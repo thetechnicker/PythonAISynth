@@ -4,7 +4,7 @@ import tkinter as tk
 from tkinter import ttk
 
 
-class NeuralNetworkGUI(ttk.Frame):
+class RegressionModelGUI(ttk.Frame):
     def __init__(self, parent=None, defaults: dict = None, callback=None, **kwargs):
         ttk.Frame.__init__(self, parent, **kwargs)
         self.on_change_callback = callback
@@ -130,7 +130,7 @@ if __name__ == "__main__":
         "OPTIMIZER": "Adam",
         "LOSS_FUNCTION": "mse_loss",
     }
-    gui = NeuralNetworkGUI(root, defaults=defaults, callback=stupid)
+    gui = RegressionModelGUI(root, defaults=defaults, callback=stupid)
     gui.grid(row=0, column=0, sticky="NSEW")
     root.mainloop()
 
