@@ -4,7 +4,7 @@ import wave
 import mido
 import scipy
 import torch
-from .fourier_regression_model import FourierNN
+from .fourier_regression_model import FourierNN, USE_JIT
 from pythonaisynth import utils
 import atexit
 from multiprocessing import Process, Queue, Value, current_process
@@ -13,6 +13,8 @@ from tkinter import filedialog
 import numpy as np
 import sounddevice as sd
 import pyaudio
+import torch.jit
+
 
 START = 0
 STOP = 1
@@ -361,7 +363,7 @@ class Synth2:
         stream = p.open(
             format=pyaudio.paFloat32,
             channels=1,
-            # frames_per_buffer=CHUNK,
+            frames_per_buffer=CHUNK,
             rate=self.sample_rate,
             output=True,
         )
@@ -371,6 +373,8 @@ class Synth2:
 
         notes = {}
         model = self.fourier_nn.current_model.to(self.fourier_nn.device)
+        if USE_JIT:
+            model = torch.jit.script(model)
         self.play_init_sound()
         output_file = None
         is_recoding = False
@@ -395,7 +399,7 @@ class Synth2:
                             output_file.setframerate(self.sample_rate)
                 # for _ in utils.timed_loop(True):
                 available_buffer = stream.get_write_available()
-                if available_buffer == 0:
+                if available_buffer < 10:
                     continue
                 midi_event = midi_input.poll()
                 if midi_event:

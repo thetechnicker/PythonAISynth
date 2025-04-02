@@ -8,6 +8,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 from typing import Tuple
 from multiprocessing import Queue
+import torch.jit
 
 from pythonaisynth import utils
 from .utils import QueueSTD_OUT, linear_interpolation, midi_to_freq
@@ -20,7 +21,9 @@ try:
 except ImportError:
     DIRECTML = False
 
+# TODO: make thos flags to settings in the gui
 DISABLE_GPU = False
+USE_JIT = False
 
 
 class FourierLayer(nn.Module):
@@ -108,10 +111,6 @@ class FourierNN:
             self.create_new_model()
 
     def create_model(self):
-        # model = nn.Sequential(
-        #     FourierLayer(self.fourier_degree),
-        #     nn.Linear(self.fourier_degree*2, 1),  # bias=False),
-        # )
         model = FourierRegresionModel(self.fourier_degree)
         return model
 
@@ -167,9 +166,12 @@ class FourierNN:
         x_train_transformed, y_train, test_x, test_y = self.prepared_data
 
         model = self.current_model.to(self.device)
+        if USE_JIT:
+            model = torch.jit.script(model)
+
         for param in self.current_model.parameters():
             param.requires_grad = True
-        model.to(self.device)
+
         model.train()
 
         x_train_transformed = x_train_transformed.to(self.device)
@@ -187,11 +189,6 @@ class FourierNN:
             train_dataset, batch_size=int(self.SAMPLES / 2), shuffle=True
         )
 
-        # prepared_test_data = torch.tensor(
-        #     data=FourierNN.fourier_basis_numba(
-        #         data=test_data.flatten(),
-        #         indices=FourierNN.precompute_indices(self.fourier_degree)),
-        #     dtype=torch.float32).to(self.device)
         prepared_test_data = (
             torch.tensor(test_data.flatten(), dtype=torch.float32, device=self.device)
             .unsqueeze(1)
@@ -201,7 +198,7 @@ class FourierNN:
         min_delta = 0.001  # 4.337714676382401e-14
         epoch_without_change = 0
         min_loss = torch.inf
-
+        start_time = time.perf_counter_ns()
         for epoch in range(self.EPOCHS):
             # callback.on_epoch_begin(epoch)
             print(f"epoch {epoch+1} beginns")
@@ -251,7 +248,9 @@ class FourierNN:
                 print("Early Stopping")
                 break
 
-        print("Training Ended")
+        end_time = time.perf_counter_ns()
+        duration = end_time - start_time
+        print(f"Training Ended. trainings duration: {duration}ns")
         self.save_model()
 
     def predict(self, data):
