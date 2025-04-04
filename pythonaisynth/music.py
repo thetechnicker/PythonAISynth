@@ -1,5 +1,6 @@
 import ctypes
 import multiprocessing
+import time
 import wave
 import mido
 import scipy
@@ -135,7 +136,8 @@ class ADSR:
                 np.linspace(1, self.sustain_level, self.decay_samples),
             )
         )
-        self.r_envelope = np.linspace(self.sustain_level, 0, self.release_samples)
+        self.r_envelope = np.linspace(
+            self.sustain_level, 0, self.release_samples)
 
         self._r_counter = [0 for _ in range(128)]
         self._ads_counter = [0 for _ in range(128)]
@@ -158,9 +160,9 @@ class ADSR:
         envelope = np.zeros(frame)
         if end > self.ad_samples:
             envelope[: self.ad_samples - start] = self.ads_envelope[
-                start : self.ad_samples
+                start: self.ad_samples
             ]
-            envelope[self.ad_samples - start :] = (
+            envelope[self.ad_samples - start:] = (
                 np.ones(end - self.ad_samples) * self.sustain_level
             )
         else:
@@ -181,10 +183,10 @@ class ADSR:
             envelope[:] = self.r_envelope[start:end]
         else:
             envelope[: self.release_samples - start] = self.r_envelope[
-                start : self.release_samples
+                start: self.release_samples
             ]
             # After release, the envelope is 0
-            envelope[self.release_samples - start :] = 0
+            envelope[self.release_samples - start:] = 0
         return envelope
 
 
@@ -198,7 +200,8 @@ class Echo_torch:
         self.device = device
 
         # Initialize the past buffer to store delayed samples
-        self.past = torch.zeros((self.delay_time + 1, sample_size), device=device)
+        self.past = torch.zeros(
+            (self.delay_time + 1, sample_size), device=device)
 
     def apply(self, sound):
         # Ensure sound is a tensor of shape (num_samples, sample_size)
@@ -299,7 +302,8 @@ class Synth2:
         self.current_frame = 0
         t = np.array(
             [
-                utils.midi_to_freq(f) * np.linspace(0, 2 * np.pi, self.sample_rate)
+                utils.midi_to_freq(f) * np.linspace(0, 2 *
+                                                    np.pi, self.sample_rate)
                 for f in range(128)
             ]
         )
@@ -348,7 +352,8 @@ class Synth2:
 
         # Concatenate the sounds to form "duuudldiiidub"
         audio = np.concatenate([sound1, sound2, sound3, sound4])
-        output = np.array(audio * 32767 / np.max(np.abs(audio)) / 2).astype(np.int16)
+        output = np.array(
+            audio * 32767 / np.max(np.abs(audio)) / 2).astype(np.int16)
         sd.play(output, blocking=True)
         print("Ready")
 
@@ -430,7 +435,8 @@ class Synth2:
                     # print(f"available_buffer: {available_buffer}")
                     # y = torch.zeros(size=(len(notes), available_buffer),
                     #                 device=self.fourier_nn.device)
-                    y = np.zeros((len(notes), available_buffer), dtype=np.float32)
+                    y = np.zeros((len(notes), available_buffer),
+                                 dtype=np.float32)
                     to_delete = []
                     for i, (note, data) in enumerate(notes.items()):
                         with torch.no_grad():
@@ -450,7 +456,18 @@ class Synth2:
                                 if self.adsr_envelope.has_note_ended(note):
                                     to_delete.append(note)
 
+                            time_start = time.perf_counter_ns()
                             model_output = model(x.unsqueeze(1))
+                            time_end = time.perf_counter_ns()
+                            duration = time_end - time_start
+                            time_eqivalent = x.shape[0] / self.sample_rate
+                            if False:  # DEBUG
+                                print(
+                                    f"Model time: {(duration) / 1e6}ms. Sample Count: {x.shape[0]}. Time: {time_eqivalent}s"
+                                )
+                                if duration > time_eqivalent * 1e9:
+                                    print("Model is slow:",
+                                          f"{(duration - time_eqivalent * 1e9) / 1e6} ms")
                             y[i, :] = (
                                 model_output.cpu().numpy().astype(np.float32) * envelope
                             )
@@ -480,7 +497,8 @@ class Synth2:
                 # if cycle_frame <= 100:
                 #     print(f"available_buffer: {available_buffer}")
                 current_frame = current_frame + available_buffer
-                cycle_frame = (cycle_frame + available_buffer) % self.sample_rate
+                cycle_frame = (
+                    cycle_frame + available_buffer) % self.sample_rate
 
     def run_live_synth(self):
         if not self.live_synth:
@@ -569,7 +587,8 @@ def sum_signals_torch(signals):
     #                       for signal in signals])
 
     # Normalize each signal
-    normalized_signals = torch.stack([sum_signals_torch(signal) for signal in signals])
+    normalized_signals = torch.stack(
+        [sum_signals_torch(signal) for signal in signals])
 
     # Sum the signals along dimension 0
     summed_signal = torch.sum(normalized_signals, dim=0)

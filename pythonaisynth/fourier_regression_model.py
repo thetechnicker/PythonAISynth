@@ -23,6 +23,7 @@ except ImportError:
 
 # TODO: make thos flags to settings in the gui
 DISABLE_GPU = False
+AUTO_USE_JIT = True
 USE_JIT = False
 
 
@@ -89,7 +90,11 @@ class FourierNN:
                 self.device = torch.device("cuda")
             else:
                 self.device = torch.device("cpu")
-        print(self.device)
+                if AUTO_USE_JIT:
+                    global USE_JIT
+                    USE_JIT = True
+
+        print(f"Device: {self.device}" + "USING Torch JIT" if USE_JIT else "")
         if data is not None:
             self.update_data(data)
 
@@ -103,7 +108,8 @@ class FourierNN:
             if hasattr(self, key):
                 setattr(self, key, val)
             else:
-                raise ValueError(f"Parameter '{key}' does not exist in the model.")
+                raise ValueError(
+                    f"Parameter '{key}' does not exist in the model.")
 
         # If the data has been prepared, recreate the model with updated parameters
         if self.prepared_data:
@@ -117,7 +123,8 @@ class FourierNN:
     def update_data(self, data, stdout_queue=None):
         if stdout_queue:
             self.stdout_queue = stdout_queue
-        self.prepared_data = self.prepare_data(list(data), std_queue=self.stdout_queue)
+        self.prepared_data = self.prepare_data(
+            list(data), std_queue=self.stdout_queue)
         if not self.current_model:
             self.current_model = self.create_model()
 
@@ -139,8 +146,10 @@ class FourierNN:
 
         self.update_fourier_degree()
 
-        x_train, y_train = linear_interpolation(data, self.SAMPLES)  # , self.device)
-        x_test, y_test = linear_interpolation(data, self.SAMPLES // 2)  # , self.device)
+        x_train, y_train = linear_interpolation(
+            data, self.SAMPLES)  # , self.device)
+        x_test, y_test = linear_interpolation(
+            data, self.SAMPLES // 2)  # , self.device)
 
         return (
             x_train.unsqueeze(1),
@@ -190,7 +199,8 @@ class FourierNN:
         )
 
         prepared_test_data = (
-            torch.tensor(test_data.flatten(), dtype=torch.float32, device=self.device)
+            torch.tensor(test_data.flatten(),
+                         dtype=torch.float32, device=self.device)
             .unsqueeze(1)
             .to(self.device)
         )
@@ -207,7 +217,8 @@ class FourierNN:
             epoch_loss = 0
             try:
                 for batch_x, batch_y in train_loader:
-                    batch_x, batch_y = batch_x.to(self.device), batch_y.to(self.device)
+                    batch_x, batch_y = batch_x.to(
+                        self.device), batch_y.to(self.device)
                     optimizer.zero_grad()
                     outputs = model(batch_x)
                     loss = criterion(outputs, batch_y)
