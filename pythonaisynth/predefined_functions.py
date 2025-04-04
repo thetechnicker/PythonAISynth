@@ -4,24 +4,24 @@ import numpy as np
 from pythonaisynth import utils
 
 
-def funny(x):
+def tan_sin_cos(x):
     return np.tan(np.sin(x) * np.cos(x))
 
 
-def funny2(x):
+def sin_cos_relu_div_cos(x):
     return np.sin(np.cos(x) * np.maximum(0, x)) / np.cos(x)
 
 
-def funny3(x):
+def sin_cos_relu_div_cos_offset(x):
     return np.sin(np.cos(x) * np.maximum(0, x)) / np.cos(1 / (x + 0.001))
 
 
-def my_random(x):
+def random_sin(x):
     x = x - np.pi
     return np.sin(x * np.random.uniform(-1, 1, size=x.shape))
 
 
-def my_complex_function(x):
+def complex_trig_random(x):
     x = np.abs(x)  # Ensure x is non-negative for relu
     return np.where(
         x > 0,
@@ -35,9 +35,8 @@ def my_complex_function(x):
     )
 
 
-def nice(x):
+def conditional_trig(x):
     x_greater_pi = False
-    # x = utils.map_value(x, -np.pi, np.pi, 0, 2*np.pi)
     if x >= 2 * np.pi:
         x_greater_pi = True
         x = x - np.pi
@@ -54,7 +53,7 @@ def nice(x):
     return y
 
 
-def nice_2(x):
+def vectorized_conditional_trig(x):
     x = np.array(x)
     x_greater_pi = x >= 2 * np.pi
     x = np.where(x_greater_pi, x - np.pi, x)
@@ -75,7 +74,7 @@ def nice_2(x):
     return y
 
 
-def my_generated_function(x):
+def combined_trig_activation(x):
     # Apply a combination of trigonometric functions and activation functions
     part1 = np.sin(x) * np.maximum(0, x)
     part2 = np.cos(x) * (1 / (1 + np.exp(-x)))  # Sigmoid approximation
@@ -88,7 +87,7 @@ def my_generated_function(x):
     return result
 
 
-def extreme(x):
+def alternating_sign_pattern(x):
     y = np.tile(np.array([-1, 1]), len(x) // 2).flatten()
     if len(y) < len(x):
         y = np.append(y, [y[-2]])
@@ -96,17 +95,19 @@ def extreme(x):
 
 
 predefined_functions_dict = {
-    "funny": funny,
-    "funny2": funny2,
-    "funny3": funny3,
-    "random": my_random,
-    "cool": my_complex_function,
-    "bing": my_generated_function,
-    "nice": nice_2,
-    "extreme": extreme,
+    # "funny": funny,
+    "My Func1 (sin_cos_relu_div_cos)": sin_cos_relu_div_cos,
+    # "funny3": funny3,
+    "My Func2 (sin_cos_relu_div_cos)": random_sin,
+    # "cool": my_complex_function,
+    # "bing": my_generated_function,
+    # "nice": nice,
+    "My Func3 (vectorized_conditional_trig)": vectorized_conditional_trig,
+    # "extreme": extreme,
+
     "sin": np.sin,
     "cos": np.cos,
-    "tan": np.tan,
+    # "tan": np.tan,
     "relu": lambda x: np.maximum(0, x - np.pi),
     # ELU approximation
     "elu": lambda x: np.where(x - np.pi > 0, x - np.pi, np.expm1(x - np.pi)),
@@ -123,7 +124,8 @@ predefined_functions_dict = {
     * (
         1
         + np.tanh(
-            np.sqrt(2 / np.pi) * ((x - np.pi) + 0.044715 * np.power((x - np.pi), 3))
+            np.sqrt(2 / np.pi) * ((x - np.pi) +
+                                  0.044715 * np.power((x - np.pi), 3))
         )
     ),
 }
