@@ -9,4 +9,4 @@ This is how The App Looks
 
 ## General
 
-PythonAISynth is a software designed to create music using a neural network. The network uses a Fourier-Series based Regression model to approximate a curve on a Plot that a user can draw on. the model is then used to generate sound with higher sample rate than the drawing.
+PythonAISynth is a software designed to create music using a Regression Model. The Model is based on the concept of Fourier Series. it is used to approximate a curve on a Plot that a user can draw. the model is then used to generate sound with higher sample rate than the drawing.
