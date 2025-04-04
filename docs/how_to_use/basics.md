@@ -18,8 +18,7 @@ You can select them in the Select Box labeled **Predefined Functions**
 
 ![example_function](../img/example_function.png)
 
-> This is one of the predefined functions, its called **nice**, cause i find it sounds nice and i had no better name, if you have a
-> problem with this, find a better name!
+> This is one of the predefined functions, its called **Func3 (vectorized_conditional_trig)**
 
 ## Training
 
@@ -49,4 +48,4 @@ Once the synth is ready you hear a Sound. Now you can use it.
 
 ## Midi piano
 
-In case you have no midi piano or similar device that can send Midi Signals to the Synth we included a simple Piano programm where you can select a Midi Port and play musik with it.   
+In case you have no midi piano or similar device that can send Midi Signals to the Synth we included a simple Piano programm where you can select a Midi Port and play musik with it.

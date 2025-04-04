@@ -95,19 +95,12 @@ def alternating_sign_pattern(x):
 
 
 predefined_functions_dict = {
-    # "funny": funny,
-    "My Func1 (sin_cos_relu_div_cos)": sin_cos_relu_div_cos,
-    # "funny3": funny3,
-    "My Func2 (sin_cos_relu_div_cos)": random_sin,
-    # "cool": my_complex_function,
-    # "bing": my_generated_function,
-    # "nice": nice,
-    "My Func3 (vectorized_conditional_trig)": vectorized_conditional_trig,
-    # "extreme": extreme,
+    "Func1 (sin_cos_relu_div_cos)": sin_cos_relu_div_cos,
+    "Func2 (sin_cos_relu_div_cos)": random_sin,
+    "Func3 (vectorized_conditional_trig)": vectorized_conditional_trig,
 
     "sin": np.sin,
     "cos": np.cos,
-    # "tan": np.tan,
     "relu": lambda x: np.maximum(0, x - np.pi),
     # ELU approximation
     "elu": lambda x: np.where(x - np.pi > 0, x - np.pi, np.expm1(x - np.pi)),
