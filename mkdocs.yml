@@ -7,18 +7,18 @@ nav:
   - How to Use:
       - Basics: how_to_use/basics.md
       - Adjusting The Model: how_to_use/model_params.md
-  - Python Modules:
-      - Overview: python_modules/overview.md
-      - Main: python_modules/main.md
-      - Graph Canvas: python_modules/graph_canvas_v2.md
-      - Fourier Neural Network Core: python_modules/fourier_neural_network.md
-      - Fourier Neural Network GUI: python_modules/fourier_neural_network_gui.md
-      - Music Synthesis: python_modules/music.md
-      - Predefined Functions: python_modules/predefined_functions.md
-      - Input Dialog: python_modules/simple_input_dialog.md
-      - Standard Output Redirect: python_modules/std_redirect.md
-      - Synthesizer GUI: python_modules/synth_gui.md
-      - Utility Functions: python_modules/utils.md
+  # - Python Modules:
+  #     - Overview: python_modules/overview.md
+  #     - Main: python_modules/main.md
+  #     - Graph Canvas: python_modules/graph_canvas_v2.md
+  #     - Fourier Neural Network Core: python_modules/fourier_regression_model.md
+  #     - Fourier Neural Network GUI: python_modules/fourier_regression_model_gui.md
+  #     - Music Synthesis: python_modules/music.md
+  #     - Predefined Functions: python_modules/predefined_functions.md
+  #     - Input Dialog: python_modules/simple_input_dialog.md
+  #     - Standard Output Redirect: python_modules/std_redirect.md
+  #     - Synthesizer GUI: python_modules/synth_gui.md
+  #     - Utility Functions: python_modules/utils.md
 
 theme:
   icon:
